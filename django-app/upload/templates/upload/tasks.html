@@ -1,0 +1,291 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Tasks — PRIMED-LLM{% endblock %}
+{% block nav_tasks %}active{% endblock %}
+
+{% block extra_css %}
+.tasks-page {
+    max-width: 1100px;
+    margin: 36px auto;
+    padding: 0 20px 40px;
+}
+
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+}
+.page-title { font-size: 1.5em; font-weight: 700; }
+.task-count { color: var(--c-text-muted); font-size: .9em; }
+
+/* ══════════ Table ══════════ */
+.tasks-table-wrap {
+    overflow-x: auto;
+}
+
+.tasks-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: .88em;
+}
+.tasks-table th {
+    text-align: left;
+    padding: 10px 14px;
+    background: #f1f5f9;
+    font-weight: 600;
+    font-size: .82em;
+    color: var(--c-text-muted);
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    border-bottom: 2px solid var(--c-border);
+    white-space: nowrap;
+}
+.tasks-table td {
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--c-border);
+    vertical-align: middle;
+}
+.tasks-table tr:last-child td { border-bottom: none; }
+.tasks-table tr:hover td { background: #f8fafc; }
+
+/* ── Status badges ── */
+.status-badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 10px;
+    font-size: .82em;
+    font-weight: 600;
+    white-space: nowrap;
+}
+.status-queued     { background: #fef9c3; color: #92400e; }
+.status-processing { background: #dbeafe; color: #1e40af; }
+.status-completed  { background: #dcfce7; color: #166534; }
+.status-failed     { background: #fee2e2; color: #991b1b; }
+
+/* ── Progress bar (inline) ── */
+.mini-progress {
+    width: 80px;
+    height: 6px;
+    background: #e2e8f0;
+    border-radius: 99px;
+    overflow: hidden;
+    display: inline-block;
+    vertical-align: middle;
+    margin-right: 6px;
+}
+.mini-progress-fill {
+    height: 100%;
+    border-radius: 99px;
+    transition: width .3s;
+}
+
+.progress-cell {
+    white-space: nowrap;
+}
+
+/* ── Misc ── */
+.msg-cell {
+    max-width: 220px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--c-text-muted);
+    font-size: .9em;
+}
+
+.num-cell { text-align: center; font-variant-numeric: tabular-nums; }
+.date-cell { white-space: nowrap; font-size: .88em; color: var(--c-text-muted); }
+
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--c-text-muted);
+}
+.empty-state .icon { font-size: 2.5em; margin-bottom: 12px; }
+
+.delete-form { display: inline; }
+
+/* ── Confirm modal ── */
+.modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,.35);
+    z-index: 1000;
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0; pointer-events: none;
+    transition: opacity .2s;
+}
+.modal-overlay.show { opacity: 1; pointer-events: auto; }
+.modal-box {
+    background: white;
+    border-radius: var(--radius);
+    padding: 28px 32px;
+    box-shadow: var(--shadow-md);
+    max-width: 400px;
+    width: 90%;
+    text-align: center;
+}
+.modal-box h3 { margin-bottom: 8px; }
+.modal-box p { color: var(--c-text-muted); font-size: .92em; margin-bottom: 20px; }
+.modal-actions { display: flex; gap: 10px; justify-content: center; }
+
+@media (max-width: 768px) {
+    .tasks-page { padding: 0 10px 30px; margin-top: 20px; }
+}
+{% endblock %}
+
+{% block body %}
+<div class="tasks-page">
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">📋 Processing Tasks</h1>
+            <span class="task-count">{{ tasks|length }} task{{ tasks|length|pluralize }}</span>
+        </div>
+    </div>
+
+    <div class="card">
+        {% if tasks %}
+        <div class="tasks-table-wrap">
+            <table class="tasks-table">
+                <thead>
+                    <tr>
+                        <th>Status</th>
+                        <th>Progress</th>
+                        <th>Message</th>
+                        <th>Created</th>
+                        <th>Completed</th>
+                        <th class="num-cell">Processed</th>
+                        <th class="num-cell">Added</th>
+                        <th class="num-cell">Skipped</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for t in tasks %}
+                    <tr id="row-{{ t.task_id }}">
+                        <td>
+                            <span class="status-badge status-{{ t.status }}">{{ t.get_status_display }}</span>
+                        </td>
+                        <td class="progress-cell">
+                            <span class="mini-progress">
+                                <span class="mini-progress-fill" style="width:{{ t.progress_percent|floatformat:0 }}%; background:{% if t.status == 'completed' %}var(--c-success){% elif t.status == 'failed' %}var(--c-danger){% else %}var(--c-primary){% endif %};"></span>
+                            </span>
+                            {{ t.progress_percent|floatformat:0 }}%
+                        </td>
+                        <td class="msg-cell" title="{{ t.progress_message|default_if_none:'' }}">
+                            {{ t.progress_message|default:"—" }}
+                        </td>
+                        <td class="date-cell">{{ t.created_at|date:"d M Y H:i" }}</td>
+                        <td class="date-cell">
+                            {% if t.completed_at %}
+                                {{ t.completed_at|date:"d M Y H:i" }}
+                            {% else %}
+                                <span style="color:var(--c-text-muted)">—</span>
+                            {% endif %}
+                        </td>
+                        <td class="num-cell">{{ t.total_records_processed }}</td>
+                        <td class="num-cell">{{ t.new_records_added }}</td>
+                        <td class="num-cell">{{ t.existing_records_skipped }}</td>
+                        <td>
+                            <button type="button" class="btn btn-danger" style="padding:5px 12px;font-size:.8em;"
+                                onclick="confirmDelete('{{ t.task_id }}')">
+                                🗑 Delete
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <div class="icon">📭</div>
+            <p>No processing tasks yet.<br>Upload files from the <a href="{% url 'upload:index' %}">Upload</a> page to create a task.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Delete confirmation modal -->
+<div id="deleteModal" class="modal-overlay">
+    <div class="modal-box">
+        <h3>Delete Task?</h3>
+        <p id="deleteMsg">This will permanently remove the task record. CXR study data already saved to the database will <strong>not</strong> be affected.</p>
+        <div class="modal-actions">
+            <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+            <button id="confirmDeleteBtn" class="btn btn-danger" onclick="doDelete()">🗑 Delete</button>
+        </div>
+    </div>
+</div>
+
+<!-- Toast notification -->
+<div id="toast" class="toast"></div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const csrfToken = '{{ csrf_token }}';
+    let pendingDeleteId = null;
+
+    function confirmDelete(taskId) {
+        pendingDeleteId = taskId;
+        document.getElementById('deleteModal').classList.add('show');
+    }
+
+    function closeModal() {
+        pendingDeleteId = null;
+        document.getElementById('deleteModal').classList.remove('show');
+    }
+
+    async function doDelete() {
+        if (!pendingDeleteId) return;
+        const taskId = pendingDeleteId;
+        const btn = document.getElementById('confirmDeleteBtn');
+        btn.disabled = true; btn.textContent = '⏳ Deleting…';
+
+        try {
+            const r = await fetch(`{% url 'upload:index' %}api/tasks/${taskId}/delete`, {
+                method: 'POST',
+                headers: { 'X-CSRFToken': csrfToken }
+            });
+            const d = await r.json();
+
+            if (r.ok) {
+                // Remove row with animation
+                const row = document.getElementById(`row-${taskId}`);
+                if (row) {
+                    row.style.transition = 'opacity .3s';
+                    row.style.opacity = '0';
+                    setTimeout(() => row.remove(), 300);
+                }
+                showToast('Task deleted successfully', 'success');
+                // Update count
+                const remaining = document.querySelectorAll('.tasks-table tbody tr').length - 1;
+                document.querySelector('.task-count').textContent =
+                    `${remaining} task${remaining !== 1 ? 's' : ''}`;
+                if (remaining === 0) setTimeout(() => location.reload(), 400);
+            } else {
+                showToast(d.error || 'Delete failed', 'error');
+            }
+        } catch(e) {
+            showToast(`Error: ${e.message}`, 'error');
+        }
+
+        closeModal();
+        btn.disabled = false; btn.textContent = '🗑 Delete';
+    }
+
+    // Close modal on overlay click
+    document.getElementById('deleteModal').addEventListener('click', function(e) {
+        if (e.target === this) closeModal();
+    });
+
+    function showToast(msg, type) {
+        const t = document.getElementById('toast');
+        t.textContent = msg;
+        t.className = `toast toast-${type} show`;
+        setTimeout(() => t.classList.remove('show'), 3000);
+    }
+</script>
+{% endblock %}

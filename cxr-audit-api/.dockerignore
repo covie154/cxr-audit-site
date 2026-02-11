@@ -1,0 +1,15 @@
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.git/
+.gitignore
+.vscode/
+*.md
+docker-compose.yml
+upload_interface.html
+favicon.png
+intermediate_llm.csv
+data/
+output/
+*-DESKTOP-*.py

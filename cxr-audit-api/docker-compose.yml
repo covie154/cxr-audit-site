@@ -1,0 +1,42 @@
+version: '3.8'
+
+services:
+  cxr-analysis-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: cxr-analysis-server
+    ports:
+      - "1220:1220"  # Static/Upload Interface
+      - "1221:1221"  # API Server
+    environment:
+      # LLM API Configuration (for external Ollama server)
+      # Adjust the OLLAMA_HOST to your Ollama server IP
+      - OLLAMA_HOST=http://host.docker.internal:11434
+      - PYTHONUNBUFFERED=1
+    volumes:
+      # Mount data directory for persistent storage (optional)
+      - ./data:/app/data
+      # Mount output directory for processed files (optional)
+      - ./output:/app/output
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:1221/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    # For accessing host network services (like Ollama running on host)
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - cxr-network
+
+networks:
+  cxr-network:
+    driver: bridge
+
+# Optional: Define volumes for persistent data
+volumes:
+  cxr-data:
+  cxr-output:

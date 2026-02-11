@@ -1,0 +1,629 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Manual GT — PRIMED-LLM{% endblock %}
+{% block nav_gt %}active{% endblock %}
+
+{% block extra_css %}
+/* ══════════ Page layout ══════════ */
+.gt-page {
+    max-width: 740px;
+    margin: 36px auto;
+    padding: 0 20px 40px;
+}
+
+.page-title {
+    font-size: 1.5em;
+    font-weight: 700;
+    margin-bottom: 4px;
+}
+.page-subtitle {
+    color: var(--c-text-muted);
+    font-size: .92em;
+    margin-bottom: 28px;
+}
+
+/* ══════════ Cards ══════════ */
+.gt-card {
+    padding: 28px 32px 32px;
+    margin-bottom: 24px;
+}
+
+.gt-card h2 {
+    font-size: 1.15em;
+    font-weight: 700;
+    margin-bottom: 6px;
+}
+.gt-card .card-desc {
+    color: var(--c-text-muted);
+    font-size: .88em;
+    margin-bottom: 22px;
+}
+
+/* ══════════ Form fields ══════════ */
+.form-row {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 18px;
+}
+.form-group {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+.form-group label {
+    display: block;
+    margin-bottom: 6px;
+    font-weight: 600;
+    font-size: .88em;
+    color: var(--c-text);
+}
+.form-group input {
+    padding: 8px 12px;
+    border: 1px solid var(--c-border);
+    border-radius: 6px;
+    font-size: .92em;
+    font-family: inherit;
+    color: var(--c-text);
+    background: var(--c-surface);
+    transition: border-color .15s;
+}
+.form-group input:focus {
+    outline: none;
+    border-color: var(--c-primary);
+    box-shadow: 0 0 0 3px rgba(59,130,246,.12);
+}
+.form-group input.invalid {
+    border-color: var(--c-danger);
+    box-shadow: 0 0 0 3px rgba(220,38,38,.1);
+}
+
+/* ══════════ Report count info ══════════ */
+.report-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    background: #f0f9ff;
+    border: 1px solid #bae6fd;
+    border-radius: 6px;
+    font-size: .88em;
+    color: #0369a1;
+    margin-bottom: 22px;
+    min-height: 40px;
+}
+.report-info.loading {
+    color: var(--c-text-muted);
+    background: #f8fafc;
+    border-color: var(--c-border);
+}
+.report-info.error {
+    color: var(--c-danger);
+    background: #fef2f2;
+    border-color: #fecaca;
+}
+
+/* ══════════ Actions ══════════ */
+.action-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+/* ══════════ Upload box ══════════ */
+.file-drop {
+    width: 100%;
+    padding: 18px;
+    border: 2px dashed var(--c-border);
+    border-radius: var(--radius);
+    background: #f8fafc;
+    cursor: pointer;
+    text-align: center;
+    font-size: .92em;
+    color: var(--c-text-muted);
+    transition: all .2s;
+    margin-bottom: 16px;
+}
+.file-drop:hover { border-color: var(--c-primary); background: #eff6ff; }
+.file-drop.dragover { border-color: var(--c-primary); background: #dbeafe; transform: scale(1.01); }
+
+.file-selected {
+    margin-bottom: 16px;
+    padding: 10px 12px;
+    background: #f0fdf4;
+    border-radius: 6px;
+    color: #166534;
+    font-weight: 600;
+    display: none;
+    justify-content: space-between;
+    align-items: center;
+    font-size: .9em;
+}
+.file-selected .file-info { flex: 1; }
+.remove-file-btn {
+    background: var(--c-danger);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 3px 8px;
+    font-size: .78em;
+    cursor: pointer;
+}
+.remove-file-btn:hover { background: #b91c1c; }
+
+.help-text {
+    font-size: .82em;
+    color: var(--c-text-muted);
+    margin-top: -10px;
+    margin-bottom: 14px;
+    font-style: italic;
+}
+
+/* ══════════ Column mapping ══════════ */
+.mapping-section { display: none; }
+
+.form-group select {
+    padding: 8px 12px;
+    border: 1px solid var(--c-border);
+    border-radius: 6px;
+    font-size: .92em;
+    font-family: inherit;
+    color: var(--c-text);
+    background: var(--c-surface);
+    transition: border-color .15s;
+}
+.form-group select:focus {
+    outline: none;
+    border-color: var(--c-primary);
+    box-shadow: 0 0 0 3px rgba(59,130,246,.12);
+}
+
+/* ══════════ Validation messages ══════════ */
+.validation-msg {
+    padding: 10px 14px;
+    border-radius: 6px;
+    font-size: .88em;
+    margin-bottom: 16px;
+    display: none;
+}
+.validation-msg.info    { background: #f0f9ff; border: 1px solid #bae6fd; color: #0369a1; }
+.validation-msg.success { background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; }
+.validation-msg.error   { background: #fef2f2; border: 1px solid #fecaca; color: var(--c-danger); }
+
+/* ══════════ Result panel ══════════ */
+.result-panel {
+    display: none;
+    margin-top: 16px;
+    padding: 16px 20px;
+    border-radius: var(--radius);
+    font-size: .9em;
+}
+.result-panel.success { background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; }
+.result-panel.error   { background: #fef2f2; border: 1px solid #fecaca; color: var(--c-danger); }
+.result-panel h3 { margin-bottom: 8px; font-size: 1em; }
+.result-panel ul {
+    max-height: 160px;
+    overflow-y: auto;
+    padding-left: 20px;
+    margin-top: 8px;
+    font-size: .88em;
+    color: var(--c-text-muted);
+}
+
+/* ══════════ Placeholder ══════════ */
+.placeholder-content {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100px;
+    color: var(--c-text-muted);
+    font-size: .95em;
+}
+
+/* ══════════ Responsive ══════════ */
+@media (max-width: 600px) {
+    .form-row { flex-direction: column; gap: 12px; }
+    .gt-page { padding: 0 12px 32px; }
+    .gt-card { padding: 20px; }
+}
+{% endblock %}
+
+{% block body %}
+<div class="gt-page">
+    <h1 class="page-title">📝 Manual Ground Truth</h1>
+    <p class="page-subtitle">Download reports for manual review, or upload labelled results.</p>
+
+    <!-- ══════════ Box 1: Download Reports ══════════ -->
+    <div class="card gt-card">
+        <h2>⬇️ Download Reports</h2>
+        <p class="card-desc">Select a date range and sample size to download CXR reports for manual grading.</p>
+
+        <!-- Date range -->
+        <div class="form-row">
+            <div class="form-group">
+                <label for="startDate">Start Date</label>
+                <input type="date" id="startDate" value="{{ default_start }}">
+            </div>
+            <div class="form-group">
+                <label for="endDate">End Date</label>
+                <input type="date" id="endDate" value="{{ default_end }}">
+            </div>
+        </div>
+
+        <!-- Report count info -->
+        <div class="report-info loading" id="reportInfo">
+            🔄 Checking reports in range…
+        </div>
+
+        <!-- Sample controls -->
+        <div class="form-row">
+            <div class="form-group">
+                <label for="pctInput">Sample Percentage (%)</label>
+                <input type="number" id="pctInput" value="100" min="1" max="100" step="1">
+            </div>
+            <div class="form-group">
+                <label for="countInput">Number of Reports</label>
+                <input type="number" id="countInput" value="0" min="1" step="1">
+            </div>
+        </div>
+
+        <!-- Download button -->
+        <div class="action-row">
+            <button class="btn btn-primary" id="downloadBtn" disabled>
+                📥 Download CSV
+            </button>
+        </div>
+    </div>
+
+    <!-- ══════════ Box 2: Upload Labelled Reports ══════════ -->
+    <div class="card gt-card">
+        <h2>⬆️ Upload Labelled Reports</h2>
+        <p class="card-desc">Upload a CSV/Excel file with accession numbers and manual ground truth labels (0 or 1).</p>
+
+        <!-- File drop zone -->
+        <input type="file" id="gtFileInput" accept=".csv,.xls,.xlsx" hidden>
+        <div class="file-drop" id="gtFileDrop">
+            📁 Drag &amp; drop a file here, or <strong>click to browse</strong><br>
+            <span style="font-size:.82em;color:var(--c-text-muted);">CSV, XLS or XLSX only</span>
+        </div>
+        <div class="file-selected" id="gtFileSelected">
+            <span class="file-info" id="gtFileName"></span>
+            <button class="remove-file-btn" id="gtRemoveFile" type="button">✕ Remove</button>
+        </div>
+
+        <!-- Validate button -->
+        <div class="action-row" style="margin-bottom:16px;">
+            <button class="btn btn-outline" id="validateBtn" disabled>🔍 Validate</button>
+        </div>
+
+        <!-- Validation status message -->
+        <div class="validation-msg" id="validationMsg"></div>
+
+        <!-- Column mapping (shown after validation) -->
+        <div class="mapping-section" id="mappingSection">
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="accColSelect">Accession Number Column</label>
+                    <select id="accColSelect"></select>
+                </div>
+                <div class="form-group">
+                    <label for="gtColSelect">Manual GT Column</label>
+                    <select id="gtColSelect"></select>
+                </div>
+            </div>
+            <p class="help-text">Verify the column mapping, then click Upload to apply labels to the database.</p>
+
+            <!-- Column validation info -->
+            <div class="validation-msg info" id="colValidationMsg" style="display:none;"></div>
+
+            <!-- Upload button -->
+            <div class="action-row">
+                <button class="btn btn-success" id="uploadBtn">📤 Upload to Database</button>
+            </div>
+        </div>
+
+        <!-- Result panel -->
+        <div class="result-panel" id="resultPanel">
+            <h3 id="resultTitle"></h3>
+            <p id="resultSummary"></p>
+            <ul id="resultErrors"></ul>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function() {
+    const startEl   = document.getElementById('startDate');
+    const endEl     = document.getElementById('endDate');
+    const pctEl     = document.getElementById('pctInput');
+    const countEl   = document.getElementById('countInput');
+    const infoEl    = document.getElementById('reportInfo');
+    const dlBtn     = document.getElementById('downloadBtn');
+
+    let totalReports = 0;   // total in range
+    let eligibleReports = 0; // without GT (the pool we sample from)
+    let fetchTimer   = null;
+    let updatingFrom = null;          // guards against recursive updates
+
+    // ── Fetch report count from server ──
+    function fetchReportCount() {
+        const start = startEl.value;
+        const end   = endEl.value;
+        if (!start || !end) return;
+
+        infoEl.className = 'report-info loading';
+        infoEl.textContent = '🔄 Checking reports in range…';
+        dlBtn.disabled = true;
+
+        fetch(`/gt/api/report-count?start=${start}&end=${end}`)
+            .then(r => r.json())
+            .then(data => {
+                if (data.error) {
+                    infoEl.className = 'report-info error';
+                    infoEl.textContent = '⚠️ ' + data.error;
+                    totalReports = 0;
+                    eligibleReports = 0;
+                } else {
+                    totalReports = data.total;
+                    eligibleReports = data.without_gt;
+                    infoEl.className = 'report-info';
+                    infoEl.textContent = `📋 ${totalReports.toLocaleString()} report${totalReports !== 1 ? 's' : ''} found in range, ${eligibleReports.toLocaleString()} without GT.`;
+                }
+                syncFromPct();
+                updateDownloadState();
+            })
+            .catch(() => {
+                infoEl.className = 'report-info error';
+                infoEl.textContent = '⚠️ Failed to fetch report count.';
+                totalReports = 0;
+                eligibleReports = 0;
+                updateDownloadState();
+            });
+    }
+
+    // ── Sync helpers (with guard to avoid recursive loop) ──
+    function syncFromPct() {
+        if (updatingFrom === 'count') return;
+        updatingFrom = 'pct';
+        let pct = parseFloat(pctEl.value);
+        if (isNaN(pct) || pct <= 0 || pct > 100) {
+            pct = 100;
+            pctEl.value = 100;
+        }
+        pct = Math.min(100, Math.max(1, pct));
+        const count = Math.ceil(eligibleReports * pct / 100);
+        countEl.value = count;
+        updateDownloadState();
+        updatingFrom = null;
+    }
+
+    function syncFromCount() {
+        if (updatingFrom === 'pct') return;
+        updatingFrom = 'count';
+        let count = parseInt(countEl.value, 10);
+        if (isNaN(count) || count <= 0 || eligibleReports === 0) {
+            // reset to 100%
+            pctEl.value = 100;
+            countEl.value = eligibleReports;
+            updatingFrom = null;
+            updateDownloadState();
+            return;
+        }
+        count = Math.min(count, eligibleReports);
+        countEl.value = count;
+        const pct = Math.ceil(count / eligibleReports * 100);
+        pctEl.value = pct;
+        updateDownloadState();
+        updatingFrom = null;
+    }
+
+    function updateDownloadState() {
+        const count = parseInt(countEl.value, 10);
+        dlBtn.disabled = !(eligibleReports > 0 && !isNaN(count) && count > 0);
+    }
+
+    // ── Event listeners ──
+    startEl.addEventListener('change', debounceFetch);
+    endEl.addEventListener('change', debounceFetch);
+
+    pctEl.addEventListener('input', syncFromPct);
+    countEl.addEventListener('input', syncFromCount);
+
+    function debounceFetch() {
+        clearTimeout(fetchTimer);
+        fetchTimer = setTimeout(fetchReportCount, 300);
+    }
+
+    dlBtn.addEventListener('click', function() {
+        const start = startEl.value;
+        const end   = endEl.value;
+        const count = parseInt(countEl.value, 10);
+        if (!start || !end || isNaN(count) || count < 1) return;
+        window.location.href = `/gt/api/download-reports?start=${start}&end=${end}&count=${count}`;
+    });
+
+    // ── Init ──
+    fetchReportCount();
+})();
+
+// ═══════════════════════════════════════════════════════════
+//  Box 2: Upload Labelled Reports
+// ═══════════════════════════════════════════════════════════
+(function() {
+    const dropZone    = document.getElementById('gtFileDrop');
+    const fileInput   = document.getElementById('gtFileInput');
+    const fileSelDiv  = document.getElementById('gtFileSelected');
+    const fileNameEl  = document.getElementById('gtFileName');
+    const removeBtn   = document.getElementById('gtRemoveFile');
+    const validateBtn = document.getElementById('validateBtn');
+    const valMsg      = document.getElementById('validationMsg');
+    const mapSection  = document.getElementById('mappingSection');
+    const accSelect   = document.getElementById('accColSelect');
+    const gtSelect    = document.getElementById('gtColSelect');
+    const colValMsg   = document.getElementById('colValidationMsg');
+    const uploadBtn   = document.getElementById('uploadBtn');
+    const resultPanel = document.getElementById('resultPanel');
+    const resultTitle = document.getElementById('resultTitle');
+    const resultSummary = document.getElementById('resultSummary');
+    const resultErrors  = document.getElementById('resultErrors');
+
+    let selectedFile = null;
+    let validatedData = null;   // { columns, row_count, suggested_accession, suggested_gt }
+
+    // ── Drag & drop / click ──
+    dropZone.addEventListener('click', () => fileInput.click());
+    dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+    dropZone.addEventListener('drop', e => {
+        e.preventDefault();
+        dropZone.classList.remove('dragover');
+        if (e.dataTransfer.files.length) pickFile(e.dataTransfer.files[0]);
+    });
+    fileInput.addEventListener('change', () => {
+        if (fileInput.files.length) pickFile(fileInput.files[0]);
+    });
+
+    function pickFile(file) {
+        const ext = file.name.split('.').pop().toLowerCase();
+        if (!['csv', 'xls', 'xlsx'].includes(ext)) {
+            showValMsg('error', '⚠️ Unsupported file type. Only CSV, XLS and XLSX are accepted.');
+            return;
+        }
+        selectedFile = file;
+        fileNameEl.textContent = `📄 ${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+        fileSelDiv.style.display = 'flex';
+        dropZone.style.display = 'none';
+        validateBtn.disabled = false;
+        resetValidation();
+    }
+
+    removeBtn.addEventListener('click', () => {
+        selectedFile = null;
+        fileInput.value = '';
+        fileSelDiv.style.display = 'none';
+        dropZone.style.display = '';
+        validateBtn.disabled = true;
+        resetValidation();
+    });
+
+    function resetValidation() {
+        validatedData = null;
+        mapSection.style.display = 'none';
+        valMsg.style.display = 'none';
+        colValMsg.style.display = 'none';
+        resultPanel.style.display = 'none';
+    }
+
+    function showValMsg(type, text) {
+        valMsg.className = 'validation-msg ' + type;
+        valMsg.textContent = text;
+        valMsg.style.display = 'block';
+    }
+
+    // ── Validate ──
+    validateBtn.addEventListener('click', () => {
+        if (!selectedFile) return;
+        validateBtn.disabled = true;
+        showValMsg('info', '🔄 Validating file…');
+        mapSection.style.display = 'none';
+        resultPanel.style.display = 'none';
+
+        const form = new FormData();
+        form.append('file', selectedFile);
+
+        fetch('/gt/api/validate-upload', { method: 'POST', body: form })
+            .then(r => r.json().then(d => ({ ok: r.ok, data: d })))
+            .then(({ ok, data }) => {
+                validateBtn.disabled = false;
+                if (!ok) {
+                    showValMsg('error', '⚠️ ' + (data.error || 'Validation failed.'));
+                    return;
+                }
+                validatedData = data;
+                showValMsg('success', `✅ ${data.row_count} row${data.row_count !== 1 ? 's' : ''} found across ${data.columns.length} columns.`);
+
+                // Populate selects
+                populateSelect(accSelect, data.columns, data.suggested_accession);
+                populateSelect(gtSelect, data.columns, data.suggested_gt);
+                mapSection.style.display = 'block';
+            })
+            .catch(() => {
+                validateBtn.disabled = false;
+                showValMsg('error', '⚠️ Network error during validation.');
+            });
+    });
+
+    function populateSelect(sel, columns, suggested) {
+        sel.innerHTML = '';
+        columns.forEach(col => {
+            const opt = document.createElement('option');
+            opt.value = col;
+            opt.textContent = col;
+            if (col === suggested) opt.selected = true;
+            sel.appendChild(opt);
+        });
+    }
+
+    // ── Upload ──
+    uploadBtn.addEventListener('click', () => {
+        if (!validatedData) return;
+        uploadBtn.disabled = true;
+        uploadBtn.textContent = '⏳ Uploading…';
+        resultPanel.style.display = 'none';
+
+        fetch('/gt/api/apply-gt', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                accession_col: accSelect.value,
+                gt_col: gtSelect.value,
+            }),
+        })
+            .then(r => r.json().then(d => ({ ok: r.ok, data: d })))
+            .then(({ ok, data }) => {
+                uploadBtn.disabled = false;
+                uploadBtn.textContent = '📤 Upload to Database';
+
+                if (!ok) {
+                    resultPanel.className = 'result-panel error';
+                    resultTitle.textContent = '❌ Upload Failed';
+                    resultSummary.textContent = data.error || 'Unknown error.';
+                    resultErrors.innerHTML = '';
+                    resultPanel.style.display = 'block';
+                    return;
+                }
+
+                const allGood = data.skipped === 0;
+                resultPanel.className = 'result-panel ' + (allGood ? 'success' : 'error');
+                resultTitle.textContent = allGood ? '✅ Upload Complete' : '⚠️ Upload Complete with Issues';
+                resultSummary.textContent = `${data.updated} of ${data.total} rows updated successfully. ${data.skipped} row${data.skipped !== 1 ? 's' : ''} skipped.`;
+
+                resultErrors.innerHTML = '';
+                if (data.errors && data.errors.length) {
+                    data.errors.forEach(err => {
+                        const li = document.createElement('li');
+                        li.textContent = err;
+                        resultErrors.appendChild(li);
+                    });
+                }
+                resultPanel.style.display = 'block';
+
+                // Reset form for another upload
+                validatedData = null;
+                mapSection.style.display = 'none';
+            })
+            .catch(() => {
+                uploadBtn.disabled = false;
+                uploadBtn.textContent = '📤 Upload to Database';
+                resultPanel.className = 'result-panel error';
+                resultTitle.textContent = '❌ Network Error';
+                resultSummary.textContent = 'Failed to reach the server.';
+                resultErrors.innerHTML = '';
+                resultPanel.style.display = 'block';
+            });
+    });
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,6 @@
+__pycache__/
+documentation/
+/django-app/db/db.sqlite3
+*.pyc
+*.pyo
+.env

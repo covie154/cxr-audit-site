@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Report — PRIMED-LLM{% endblock %}
+{% block nav_report %}active{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'report/report.css' %}">
+{% endblock %}
+
+{% block body %}
+<div class="report-page">
+    <h1 class="page-title">Analysis Report</h1>
+    <p class="page-subtitle">Generate accuracy &amp; performance reports from the database</p>
+
+    <!-- ── Date picker ── -->
+    <div class="card picker-card">
+        <div class="date-row">
+            <div class="date-group">
+                <label for="dateFrom">From</label>
+                <input type="date" id="dateFrom" value="{{ default_from }}">
+            </div>
+            <div class="date-group">
+                <label for="dateTo">To</label>
+                <input type="date" id="dateTo" value="{{ default_to }}">
+            </div>
+            <button class="btn btn-primary" id="generateBtn" onclick="generateReport()" style="height:40px;padding:0 28px;">
+                🚀 Generate Report
+            </button>
+        </div>
+        <div class="loading-bar" id="loadingBar">
+            <span class="spinner"></span>
+            <span>Generating report…</span>
+        </div>
+    </div>
+
+    <!-- ── Results ── -->
+    <div class="results-section" id="resultsSection">
+
+        <div class="summary-cards" id="summaryCards"></div>
+
+        <div class="report-block">
+            <h3>📄 Analysis Report</h3>
+            <div class="report-text" id="txtReport"></div>
+        </div>
+
+        <div class="report-block">
+            <h3>📈 Per-Site Breakdown</h3>
+            <div style="overflow-x:auto;">
+                <table class="site-table" id="siteTable">
+                    <thead>
+                        <tr>
+                            <th>Site</th><th>n</th><th>Accuracy</th><th>ROC-AUC</th><th>Sens</th><th>Spec</th>
+                            <th>PPV</th><th>NPV</th><th>TP</th><th>TN</th><th>FP</th><th>FN</th><th>% Normal</th>
+                        </tr>
+                    </thead>
+                    <tbody id="siteTableBody"></tbody>
+                </table>
+            </div>
+            <div id="aucTrendWrap" style="display:none;margin-top:16px;">
+                <div class="card" style="padding:16px;">
+                    <div style="font-weight:700;margin-bottom:8px;font-size:.92em;">Overall ROC-AUC (Weekly)</div>
+                    <canvas id="aucTrendChart" width="900" height="260" style="width:100%;height:260px;"></canvas>
+                </div>
+            </div>
+            <div id="siteCharts" style="display:none;margin-top:16px;">
+                <div class="card" style="padding:16px;margin-bottom:12px;">
+                    <div style="font-weight:700;margin-bottom:8px;font-size:.92em;">Sensitivity by Site (Weekly)</div>
+                    <canvas id="sensChart" width="900" height="260" style="width:100%;height:260px;"></canvas>
+                </div>
+                <div class="card" style="padding:16px;">
+                    <div style="font-weight:700;margin-bottom:8px;font-size:.92em;">Specificity by Site (Weekly)</div>
+                    <canvas id="specChart" width="900" height="260" style="width:100%;height:260px;"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="report-block" id="timeSection" style="display:none;">
+            <h3>⏱️ Time Analysis</h3>
+            <div id="timeCards" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;"></div>
+            <div class="card" style="padding:16px;">
+                <canvas id="boxPlotCanvas" width="900" height="200" style="width:100%;height:200px;"></canvas>
+            </div>
+        </div>
+
+        <div class="report-block" id="gtCompareSection" style="display:none;">
+            <h3>🧪 Manual vs LLM Ground Truth Analysis</h3>
+            <div id="gtCompareInfo" class="fn-summary" style="background:#eff6ff;border-color:#bfdbfe;color:#1e40af;"></div>
+            <div style="overflow-x:auto;margin-bottom:12px;">
+                <div style="font-weight:600;font-size:.9em;margin-bottom:6px;">LLM GT vs Lunit</div>
+                <table class="site-table" id="llmVsLunitTable">
+                    <thead><tr><th>Site</th><th>n</th><th>Acc</th><th>ROC-AUC</th><th>Sens</th><th>Spec</th><th>PPV</th><th>NPV</th><th>TP</th><th>TN</th><th>FP</th><th>FN</th><th>% Norm</th></tr></thead>
+                    <tbody id="llmVsLunitBody"></tbody>
+                </table>
+            </div>
+            <div style="overflow-x:auto;margin-bottom:12px;">
+                <div style="font-weight:600;font-size:.9em;margin-bottom:6px;">Manual GT vs Lunit</div>
+                <table class="site-table" id="manualVsLunitTable">
+                    <thead><tr><th>Site</th><th>n</th><th>Acc</th><th>ROC-AUC</th><th>Sens</th><th>Spec</th><th>PPV</th><th>NPV</th><th>TP</th><th>TN</th><th>FP</th><th>FN</th><th>% Norm</th></tr></thead>
+                    <tbody id="manualVsLunitBody"></tbody>
+                </table>
+            </div>
+            <div id="mcnemarCard" class="card" style="padding:16px;"></div>
+
+            <div id="fnSection" style="display:none;margin-top:16px;">
+                <div style="font-weight:600;font-size:.9em;margin-bottom:6px;">🔍 False Negatives — LLM=0, Manual GT=1</div>
+                <div class="fn-summary" id="fnSummary"></div>
+                <div class="fn-table-wrap">
+                    <table class="fn-table">
+                        <thead>
+                            <tr>
+                                <th>Accession</th><th>Site</th><th>Date</th>
+                                <th>Highest Finding</th><th>Score</th><th>Report</th>
+                            </tr>
+                        </thead>
+                        <tbody id="fnTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="fpSection" style="display:none;margin-top:16px;">
+                <div style="font-weight:600;font-size:.9em;margin-bottom:6px;">🔍 False Positives — LLM=1, Manual GT=0</div>
+                <div class="fn-summary" id="fpSummary"></div>
+                <div class="fn-table-wrap">
+                    <table class="fn-table">
+                        <thead>
+                            <tr>
+                                <th>Accession</th><th>Site</th><th>Date</th>
+                                <th>Highest Finding</th><th>Score</th><th>Report</th>
+                            </tr>
+                        </thead>
+                        <tbody id="fpTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="gtDownloadRow" style="display:none;margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;"></div>
+        </div>
+        
+
+        <div class="download-row" id="downloadRow">
+            <button class="btn btn-primary" onclick="downloadCSV()">📊 Download Full CSV</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Django-generated config (URLs & CSRF token)
+    window.REPORT_CONFIG = {
+        csrfToken:    '{{ csrf_token }}',
+        generateUrl:  '{% url "report:generate" %}',
+        exportCsvUrl: '{% url "report:export_csv" %}',
+        exportFnCsvUrl: '{% url "report:export_fn_csv" %}',
+        exportFpCsvUrl: '{% url "report:export_fp_csv" %}',
+    };
+</script>
+<script src="{% static 'report/charts.js' %}"></script>
+<script src="{% static 'report/report.js' %}"></script>
+{% endblock %}
