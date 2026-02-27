@@ -141,9 +141,9 @@ This starts three containers:
 
 | Container | Port | Description |
 |-----------|------|-------------|
-| `primed-nginx` | 80, 443 | Reverse proxy (HTTPS) |
-| `primed-django` | 8000 (internal) | Web application |
-| `primed-api` | 1221 (internal) | Analysis API |
+| `primer-nginx` | 80, 443 | Reverse proxy (HTTPS) |
+| `primer-django` | 8000 (internal) | Web application |
+| `primer-api` | 1221 (internal) | Analysis API |
 
 ### 4. Access the application
 

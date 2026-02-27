@@ -19,7 +19,7 @@ openssl req -x509 -nodes -days 365 \
     -newkey rsa:2048 \
     -keyout "$CERT_DIR/key.pem" \
     -out "$CERT_DIR/cert.pem" \
-    -subj "/C=SG/ST=Singapore/L=Singapore/O=PRIMED-LLM/CN=localhost"
+    -subj "/C=SG/ST=Singapore/L=Singapore/O=PRIMER-LLM/CN=localhost"
 
 echo "✅ Certificates generated:"
 echo "   $CERT_DIR/cert.pem"

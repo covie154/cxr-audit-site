@@ -226,19 +226,32 @@ function renderGtCompare(mvl) {
 
 // ── Download PDF ──
 
+function captureChartImages() {
+    const charts = {};
+    const ids = ['aucTrendChart', 'sensChart', 'specChart', 'boxPlotCanvas'];
+    ids.forEach(id => {
+        const canvas = document.getElementById(id);
+        if (canvas && canvas.width > 0 && canvas.offsetParent !== null) {
+            try { charts[id] = canvas.toDataURL('image/png'); } catch(e) { /* skip */ }
+        }
+    });
+    return charts;
+}
+
 async function downloadPDF() {
     if (!lastReportData) { alert('Generate a report first.'); return; }
     const btn = document.getElementById('downloadPdfBtn');
     btn.disabled = true;
     btn.textContent = '⏳ Preparing…';
     try {
+        const chartImages = captureChartImages();
         const r = await fetch(window.REPORT_CONFIG.downloadPdfUrl, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'X-CSRFToken': window.REPORT_CONFIG.csrfToken,
             },
-            body: JSON.stringify({ report_data: lastReportData }),
+            body: JSON.stringify({ report_data: lastReportData, chart_images: chartImages }),
         });
         if (!r.ok) throw new Error(`Server error ${r.status}`);
         const blob = await r.blob();

@@ -755,7 +755,7 @@ def email_report(request):
 
     date_from = report_data.get('date_from', '?')
     date_to = report_data.get('date_to', '?')
-    subject = f'PRIMED-LLM CXR Analysis Report \u2014 {date_from} to {date_to}'
+    subject = f'PRIMER-LLM CXR Analysis Report \u2014 {date_from} to {date_to}'
 
     # Render the HTML email template
     html_content = render_to_string('report/email_report.html', {
@@ -798,10 +798,14 @@ def download_pdf(request):
     date_from = report_data.get('date_from', '?')
     date_to = report_data.get('date_to', '?')
 
+    # Chart images captured client-side as base64 data URLs
+    chart_images = body.get('chart_images', {})
+
     html = render_to_string('report/print_report.html', {
         'data': report_data,
         'date_from': date_from,
         'date_to': date_to,
+        'chart_images': chart_images,
     })
 
     response = HttpResponse(html, content_type='text/html')
