@@ -140,6 +140,32 @@
 
         <div class="download-row" id="downloadRow">
             <button class="btn btn-primary" onclick="downloadCSV()">📊 Download Full CSV</button>
+            <button class="btn btn-outline" id="downloadPdfBtn" onclick="downloadPDF()" style="display:none;">📄 Download PDF</button>
+            <button class="btn btn-secondary" id="emailReportBtn" onclick="openEmailModal()" style="display:none;">📧 Email Report</button>
+        </div>
+
+        <!-- ── Email modal ── -->
+        <div class="modal-overlay" id="emailModal">
+            <div class="modal-card">
+                <div class="modal-header">
+                    <h3>📧 Email Report</h3>
+                    <button class="modal-close" onclick="closeEmailModal()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <p style="font-size:.9em;color:var(--c-text-muted);margin-bottom:14px;">
+                        Send the analysis report (summary cards, per-site breakdown, time analysis) as a formatted HTML email.
+                        The monospaced text report block is excluded.
+                    </p>
+                    <label for="emailRecipients" style="font-weight:600;font-size:.88em;">Recipients</label>
+                    <textarea id="emailRecipients" class="email-input" rows="3"
+                        placeholder="Enter email addresses separated by commas or new lines&#10;e.g. alice@example.com, bob@example.com"></textarea>
+                    <div class="email-status" id="emailStatus"></div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn" onclick="closeEmailModal()">Cancel</button>
+                    <button class="btn btn-primary" id="sendEmailBtn" onclick="sendEmailReport()">Send</button>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -154,6 +180,8 @@
         exportCsvUrl: '{% url "report:export_csv" %}',
         exportFnCsvUrl: '{% url "report:export_fn_csv" %}',
         exportFpCsvUrl: '{% url "report:export_fp_csv" %}',
+        emailReportUrl: '{% url "report:email_report" %}',
+        downloadPdfUrl: '{% url "report:download_pdf" %}',
     };
 </script>
 <script src="{% static 'report/charts.js' %}"></script>

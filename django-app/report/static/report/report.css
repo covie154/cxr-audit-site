@@ -177,8 +177,84 @@
     margin-top: 10px;
 }
 
+/* ══════════ Email modal ══════════ */
+.modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    background: rgba(0,0,0,.45);
+    justify-content: center;
+    align-items: center;
+}
+.modal-overlay.open {
+    display: flex;
+}
+.modal-card {
+    background: var(--c-surface, #fff);
+    border-radius: 12px;
+    box-shadow: 0 12px 40px rgba(0,0,0,.18);
+    width: 100%;
+    max-width: 500px;
+    margin: 20px;
+    overflow: hidden;
+    animation: modalIn .2s ease-out;
+}
+@keyframes modalIn { from { opacity: 0; transform: translateY(30px); } }
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 18px 24px;
+    border-bottom: 1px solid var(--c-border);
+}
+.modal-header h3 { margin: 0; font-size: 1.05em; }
+.modal-close {
+    background: none; border: none;
+    font-size: 1.4em; cursor: pointer;
+    color: var(--c-text-muted);
+    line-height: 1;
+    padding: 0 4px;
+}
+.modal-close:hover { color: var(--c-danger, #ef4444); }
+.modal-body { padding: 20px 24px; }
+.modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    padding: 14px 24px;
+    border-top: 1px solid var(--c-border);
+}
+
+.email-input {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--c-border);
+    border-radius: 6px;
+    font-size: .9em;
+    font-family: inherit;
+    resize: vertical;
+    margin-top: 6px;
+    transition: border-color .15s;
+}
+.email-input:focus {
+    outline: none;
+    border-color: var(--c-primary);
+    box-shadow: 0 0 0 3px rgba(59,130,246,.12);
+}
+
+.email-status {
+    margin-top: 10px;
+    font-size: .85em;
+    min-height: 1.3em;
+}
+.email-status.error { color: var(--c-danger, #ef4444); font-weight: 600; }
+.email-status.success { color: var(--c-success, #22c55e); font-weight: 600; }
+.email-status.info { color: var(--c-primary, #3b82f6); }
+
 @media (max-width: 600px) {
     .report-page { padding: 0 10px 30px; margin-top: 20px; }
     .picker-card { padding: 18px; }
     .date-row { flex-direction: column; }
+    .modal-card { margin: 10px; }
 }

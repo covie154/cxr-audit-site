@@ -57,6 +57,31 @@
             letter-spacing: -.02em;
         }
 
+        /* Hamburger toggle (hidden on desktop) */
+        .hamburger {
+            display: none;
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 4px;
+            margin-left: auto;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .hamburger svg {
+            width: 24px;
+            height: 24px;
+            stroke: white;
+            stroke-width: 2;
+            stroke-linecap: round;
+        }
+        .hamburger .line {
+            transition: transform .25s, opacity .2s;
+            transform-origin: center;
+        }
+        .hamburger.open .line1 { transform: translateY(6px) rotate(45deg); }
+        .hamburger.open .line2 { opacity: 0; }
+        .hamburger.open .line3 { transform: translateY(-6px) rotate(-45deg); }
+
         .site-header nav {
             display: flex;
             gap: 2px;
@@ -162,8 +187,48 @@
 
         /* ══════════ Responsive ══════════ */
         @media (max-width: 768px) {
-            .site-header { padding: 0 12px; gap: 12px; }
-            .site-header nav a { padding: 6px 10px; font-size: .82em; }
+            .site-header {
+                padding: 0 14px;
+                gap: 0;
+                flex-wrap: wrap;
+                height: auto;
+                min-height: var(--hdr-h);
+            }
+
+            .hamburger { display: block; }
+
+            .nav-collapse {
+                display: none;
+                width: 100%;
+                flex-direction: column;
+                padding: 6px 0 14px;
+                order: 10; /* push below header row */
+            }
+            .nav-collapse.open { display: flex; }
+
+            .site-header nav {
+                flex-direction: column;
+                gap: 0;
+                margin-left: 0;
+                width: 100%;
+            }
+            .site-header nav a {
+                padding: 10px 14px;
+                border-radius: 6px;
+                font-size: .92em;
+            }
+            .site-header nav a:hover,
+            .site-header nav a.active {
+                background: rgba(255,255,255,.18);
+            }
+
+            .header-right {
+                width: 100%;
+                padding: 10px 14px 4px;
+                margin-left: 0;
+                border-top: 1px solid rgba(255,255,255,.15);
+                gap: 14px;
+            }
         }
 
         {% block extra_css %}{% endblock %}
@@ -176,6 +241,14 @@
 <header class="site-header">
     <a class="brand" href="{% url 'upload:index' %}">🫁 PRIMER-LLM</a>
     {% if user.is_authenticated %}
+    <button class="hamburger" id="menuToggle" aria-label="Toggle menu">
+        <svg viewBox="0 0 24 24" fill="none">
+            <line class="line line1" x1="3" y1="6" x2="21" y2="6"/>
+            <line class="line line2" x1="3" y1="12" x2="21" y2="12"/>
+            <line class="line line3" x1="3" y1="18" x2="21" y2="18"/>
+        </svg>
+    </button>
+    <div class="nav-collapse" id="navCollapse">
     <nav>
         <a href="{% url 'upload:index' %}" class="{% block nav_upload %}{% endblock %}">📤 Upload</a>
         {% if user.is_superuser or is_admin %}
@@ -194,11 +267,32 @@
         </form>
         {% block header_right %}{% endblock %}
     </div>
+    </div>
     {% endif %}
 </header>
 
 {% block body %}{% endblock %}
 
+<script>
+// Hamburger toggle
+const toggle = document.getElementById('menuToggle');
+const collapse = document.getElementById('navCollapse');
+if (toggle && collapse) {
+    toggle.addEventListener('click', () => {
+        toggle.classList.toggle('open');
+        collapse.classList.toggle('open');
+    });
+    // Close menu when a nav link is tapped on mobile
+    collapse.querySelectorAll('nav a').forEach(link => {
+        link.addEventListener('click', () => {
+            if (window.innerWidth <= 768) {
+                toggle.classList.remove('open');
+                collapse.classList.remove('open');
+            }
+        });
+    });
+}
+</script>
 {% block extra_js %}{% endblock %}
 </body>
 </html>

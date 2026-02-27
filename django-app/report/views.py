@@ -17,6 +17,9 @@ from django.http import JsonResponse, HttpResponse
 from django.views.decorators.http import require_http_methods
 from django.db.models import Q, Count, Avg
 from django.contrib.auth.decorators import login_required
+from django.core.mail import EmailMultiAlternatives
+from django.template.loader import render_to_string
+from django.conf import settings
 
 from upload.models import CXRStudy
 
@@ -720,4 +723,86 @@ def export_false_positives_csv(request):
     for s in qs:
         writer.writerow([getattr(s, f, '') for f in fields])
 
+    return response
+
+
+@login_required
+@require_http_methods(["POST"])
+def email_report(request):
+    """Send the generated report as a styled HTML email to the provided addresses."""
+    import re
+
+    try:
+        body = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({'ok': False, 'error': 'Invalid JSON.'}, status=400)
+
+    recipients_raw = body.get('recipients', '')
+    report_data = body.get('report_data')
+
+    if not report_data:
+        return JsonResponse({'ok': False, 'error': 'No report data provided.'}, status=400)
+
+    # Parse comma/semicolon/newline-separated email addresses
+    recipients = [e.strip() for e in re.split(r'[,;\n]+', recipients_raw) if e.strip()]
+    # Basic email validation
+    email_re = re.compile(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
+    invalid = [e for e in recipients if not email_re.match(e)]
+    if invalid:
+        return JsonResponse({'ok': False, 'error': f'Invalid email(s): {", ".join(invalid)}'}, status=400)
+    if not recipients:
+        return JsonResponse({'ok': False, 'error': 'No recipients provided.'}, status=400)
+
+    date_from = report_data.get('date_from', '?')
+    date_to = report_data.get('date_to', '?')
+    subject = f'PRIMED-LLM CXR Analysis Report \u2014 {date_from} to {date_to}'
+
+    # Render the HTML email template
+    html_content = render_to_string('report/email_report.html', {
+        'data': report_data,
+        'date_from': date_from,
+        'date_to': date_to,
+    })
+
+    # Plain-text fallback is just the txt_report
+    text_content = report_data.get('txt_report', 'See HTML version of this email.')
+
+    try:
+        msg = EmailMultiAlternatives(
+            subject=subject,
+            body=text_content,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            to=recipients,
+        )
+        msg.attach_alternative(html_content, 'text/html')
+        msg.send(fail_silently=False)
+    except Exception as exc:
+        return JsonResponse({'ok': False, 'error': f'Email send failed: {exc}'}, status=500)
+
+    return JsonResponse({'ok': True, 'sent_to': recipients})
+
+
+@login_required
+@require_http_methods(["POST"])
+def download_pdf(request):
+    """Render the report as a print-ready HTML page (for browser Save-as-PDF)."""
+    try:
+        body = json.loads(request.body)
+    except json.JSONDecodeError:
+        return HttpResponse('Invalid JSON.', status=400)
+
+    report_data = body.get('report_data')
+    if not report_data:
+        return HttpResponse('No report data provided.', status=400)
+
+    date_from = report_data.get('date_from', '?')
+    date_to = report_data.get('date_to', '?')
+
+    html = render_to_string('report/print_report.html', {
+        'data': report_data,
+        'date_from': date_from,
+        'date_to': date_to,
+    })
+
+    response = HttpResponse(html, content_type='text/html')
     return response

@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PRIMED-LLM Report — {{ date_from }} to {{ date_to }}</title>
+<style>
+    /* ── Base ── */
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        color: #1e293b;
+        background: #fff;
+        padding: 32px 40px;
+        font-size: 13px;
+        line-height: 1.5;
+    }
+
+    /* ── Header ── */
+    .report-header {
+        border-bottom: 3px solid #3b82f6;
+        padding-bottom: 14px;
+        margin-bottom: 28px;
+    }
+    .report-header h1 {
+        font-size: 20px;
+        font-weight: 700;
+        color: #1e40af;
+    }
+    .report-header .subtitle {
+        font-size: 13px;
+        color: #64748b;
+        margin-top: 4px;
+    }
+
+    /* ── Section ── */
+    h2 {
+        font-size: 14px;
+        font-weight: 700;
+        color: #334155;
+        border-bottom: 2px solid #3b82f6;
+        padding-bottom: 5px;
+        margin: 24px 0 12px;
+    }
+
+    /* ── Summary cards ── */
+    .summary-grid {
+        display: flex;
+        gap: 12px;
+        margin-bottom: 20px;
+    }
+    .summary-box {
+        flex: 1;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 12px 8px;
+        text-align: center;
+    }
+    .summary-box .val {
+        font-size: 22px;
+        font-weight: 700;
+        color: #3b82f6;
+    }
+    .summary-box .lbl {
+        font-size: 11px;
+        color: #64748b;
+        margin-top: 2px;
+    }
+    .summary-box.green .val { color: #16a34a; }
+
+    /* ── Tables ── */
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 12px;
+        margin-bottom: 18px;
+    }
+    th, td {
+        padding: 5px 8px;
+        text-align: right;
+        border-bottom: 1px solid #e2e8f0;
+    }
+    th {
+        background: #f8fafc;
+        font-weight: 600;
+        color: #64748b;
+    }
+    th:first-child, td:first-child { text-align: left; }
+    tr.overall td {
+        font-weight: 700;
+        background: #dbeafe;
+        border-top: 2px solid #3b82f6;
+    }
+
+    /* ── Info boxes ── */
+    .info-box {
+        border-radius: 8px;
+        padding: 10px 14px;
+        font-size: 12px;
+        margin-bottom: 10px;
+    }
+    .info-box.blue   { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; }
+    .info-box.yellow { background: #fef9c3; border: 1px solid #fde68a; color: #92400e; }
+    .info-box.red    { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; }
+
+    /* ── Time cards ── */
+    .time-grid {
+        display: flex;
+        gap: 14px;
+        margin-bottom: 18px;
+    }
+    .time-card {
+        flex: 1;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 14px;
+    }
+    .time-card .title { font-weight: 700; font-size: 13px; margin-bottom: 6px; }
+    .time-card .big { font-size: 20px; font-weight: 700; color: #3b82f6; }
+    .time-card .meta { font-size: 11px; color: #64748b; margin-top: 4px; }
+
+    /* ── Footer ── */
+    .report-footer {
+        margin-top: 32px;
+        padding-top: 14px;
+        border-top: 1px solid #e2e8f0;
+        text-align: center;
+        font-size: 11px;
+        color: #94a3b8;
+    }
+
+    /* ── Print styles ── */
+    @media print {
+        body { padding: 0; font-size: 11px; }
+        .summary-grid { gap: 8px; }
+        h2 { break-after: avoid; }
+        table { break-inside: avoid; }
+        .report-footer { break-before: avoid; }
+    }
+</style>
+</head>
+<body>
+
+<div class="report-header">
+    <h1>🫁 PRIMED-LLM — CXR Analysis Report</h1>
+    <div class="subtitle">Reporting period: {{ date_from }} to {{ date_to }}</div>
+</div>
+
+<!-- ── Summary ── -->
+{% if data.overall %}
+<h2>Summary</h2>
+<div class="summary-grid">
+    <div class="summary-box">
+        <div class="val">{{ data.total }}</div>
+        <div class="lbl">Total Studies</div>
+    </div>
+    <div class="summary-box green">
+        <div class="val">{{ data.graded }}</div>
+        <div class="lbl">Graded</div>
+    </div>
+    <div class="summary-box">
+        <div class="val">{{ data.overall.accuracy|floatformat:3 }}</div>
+        <div class="lbl">Accuracy</div>
+    </div>
+    <div class="summary-box">
+        <div class="val">{{ data.overall.sensitivity|floatformat:3 }}</div>
+        <div class="lbl">Sensitivity</div>
+    </div>
+    <div class="summary-box">
+        <div class="val">{{ data.overall.specificity|floatformat:3 }}</div>
+        <div class="lbl">Specificity</div>
+    </div>
+</div>
+{% endif %}
+
+<!-- ── Per-Site Breakdown ── -->
+{% if data.site_metrics %}
+<h2>📈 Per-Site Breakdown</h2>
+<table>
+<thead>
+    <tr>
+        <th>Site</th><th>n</th><th>Acc</th><th>ROC-AUC</th>
+        <th>Sens</th><th>Spec</th><th>PPV</th><th>NPV</th>
+        <th>TP</th><th>TN</th><th>FP</th><th>FN</th><th>%&nbsp;Normal</th>
+    </tr>
+</thead>
+<tbody>
+    {% for site, m in data.site_metrics.items %}
+    <tr>
+        <td style="font-weight:600;">{{ site }}</td>
+        <td>{{ m.n }}</td>
+        <td>{{ m.accuracy|floatformat:3 }}</td>
+        <td>{{ m.roc_auc|floatformat:3 }}</td>
+        <td>{{ m.sensitivity|floatformat:3 }}</td>
+        <td>{{ m.specificity|floatformat:3 }}</td>
+        <td>{{ m.ppv|floatformat:3 }}</td>
+        <td>{{ m.npv|floatformat:3 }}</td>
+        <td>{{ m.tp }}</td><td>{{ m.tn }}</td><td>{{ m.fp }}</td><td>{{ m.fn }}</td>
+        <td>{{ m.pct_normal|floatformat:1 }}%</td>
+    </tr>
+    {% endfor %}
+    {% if data.overall %}
+    <tr class="overall">
+        <td>OVERALL</td>
+        <td>{{ data.overall.n }}</td>
+        <td>{{ data.overall.accuracy|floatformat:3 }}</td>
+        <td>{{ data.overall.roc_auc|floatformat:3 }}</td>
+        <td>{{ data.overall.sensitivity|floatformat:3 }}</td>
+        <td>{{ data.overall.specificity|floatformat:3 }}</td>
+        <td>{{ data.overall.ppv|floatformat:3 }}</td>
+        <td>{{ data.overall.npv|floatformat:3 }}</td>
+        <td>{{ data.overall.tp }}</td><td>{{ data.overall.tn }}</td>
+        <td>{{ data.overall.fp }}</td><td>{{ data.overall.fn }}</td>
+        <td>{{ data.overall.pct_normal|floatformat:1 }}%</td>
+    </tr>
+    {% endif %}
+</tbody>
+</table>
+{% endif %}
+
+<!-- ── Time Analysis ── -->
+{% if data.time_stats.tcd_count or data.time_stats.tee_count %}
+<h2>⏱️ Time Analysis</h2>
+<div class="time-grid">
+    {% if data.time_stats.tcd_count %}
+    <div class="time-card">
+        <div class="title">Time to Clinical Decision</div>
+        <div class="meta">n = {{ data.time_stats.tcd_count }}</div>
+        <div style="margin-top:8px;">
+            <span class="big">{{ data.time_stats.tcd_median|floatformat:0 }}s</span> median
+        </div>
+        <div class="meta">P25: {{ data.time_stats.tcd_p25|floatformat:0 }}s &nbsp;|&nbsp; P75: {{ data.time_stats.tcd_p75|floatformat:0 }}s</div>
+        {% if data.time_stats.tcd_more_than_5mins != None %}
+        <div class="meta" style="color:#dc2626;font-weight:600;">&gt;5 min: {{ data.time_stats.tcd_more_than_5mins }} cases</div>
+        {% endif %}
+    </div>
+    {% endif %}
+    {% if data.time_stats.tee_count %}
+    <div class="time-card">
+        <div class="title">End-to-End Server Time</div>
+        <div class="meta">n = {{ data.time_stats.tee_count }}</div>
+        <div style="margin-top:8px;">
+            <span class="big">{{ data.time_stats.tee_median|floatformat:0 }}s</span> median
+        </div>
+        <div class="meta">P25: {{ data.time_stats.tee_p25|floatformat:0 }}s &nbsp;|&nbsp; P75: {{ data.time_stats.tee_p75|floatformat:0 }}s</div>
+        {% if data.time_stats.tee_more_than_5mins != None %}
+        <div class="meta" style="color:#dc2626;font-weight:600;">&gt;5 min: {{ data.time_stats.tee_more_than_5mins }} cases</div>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+
+<!-- ── Manual vs LLM GT ── -->
+{% if data.manual_vs_llm %}
+<h2>🧪 Manual vs LLM Ground Truth</h2>
+<div class="info-box blue">
+    <strong>{{ data.manual_vs_llm.n }}</strong> studies with manual GT.
+    Agreement: <strong>{{ data.manual_vs_llm.agreement_pct }}%</strong>
+    (Cohen's κ = <strong>{{ data.manual_vs_llm.kappa }}</strong>)
+</div>
+{% if data.manual_vs_llm.fn_count %}
+<div class="info-box yellow">
+    ⚠️ <strong>{{ data.manual_vs_llm.fn_count }}</strong> false negatives (LLM=0, Manual GT=1)
+</div>
+{% endif %}
+{% if data.manual_vs_llm.fp_count %}
+<div class="info-box red">
+    ⚠️ <strong>{{ data.manual_vs_llm.fp_count }}</strong> false positives (LLM=1, Manual GT=0)
+</div>
+{% endif %}
+{% endif %}
+
+<div class="report-footer">
+    Auto-generated by <strong>PRIMED-LLM</strong> on {% now "d M Y, H:i" %}
+</div>
+
+</body>
+</html>

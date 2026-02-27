@@ -7,6 +7,7 @@
  */
 
 let currentFrom = '', currentTo = '';
+let lastReportData = null;
 
 async function generateReport() {
     const dateFrom = document.getElementById('dateFrom').value;
@@ -29,7 +30,10 @@ async function generateReport() {
 }
 
 function renderReport(data) {
+    lastReportData = data;
     document.getElementById('resultsSection').style.display = 'block';
+    document.getElementById('emailReportBtn').style.display = 'inline-flex';
+    document.getElementById('downloadPdfBtn').style.display = 'inline-flex';
     const o = data.overall || {};
 
     // Summary cards
@@ -218,4 +222,100 @@ function renderGtCompare(mvl) {
     if (fps.length > 0) dlHtml += `<button class="btn btn-warning" onclick="downloadFpCSV()">📥 Download False Positives CSV</button>`;
     gtDlRow.innerHTML = dlHtml;
     gtDlRow.style.display = dlHtml ? 'flex' : 'none';
+}
+
+// ── Download PDF ──
+
+async function downloadPDF() {
+    if (!lastReportData) { alert('Generate a report first.'); return; }
+    const btn = document.getElementById('downloadPdfBtn');
+    btn.disabled = true;
+    btn.textContent = '⏳ Preparing…';
+    try {
+        const r = await fetch(window.REPORT_CONFIG.downloadPdfUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': window.REPORT_CONFIG.csrfToken,
+            },
+            body: JSON.stringify({ report_data: lastReportData }),
+        });
+        if (!r.ok) throw new Error(`Server error ${r.status}`);
+        const blob = await r.blob();
+        const url = URL.createObjectURL(blob);
+        const w = window.open(url, '_blank');
+        if (w) {
+            w.addEventListener('afterprint', () => URL.revokeObjectURL(url));
+            // Some browsers need a brief delay before print()
+            w.addEventListener('load', () => setTimeout(() => w.print(), 400));
+        } else {
+            // Popup blocked — fall back to direct download link
+            const a = document.createElement('a');
+            a.href = url; a.target = '_blank'; a.click();
+        }
+    } catch (e) { alert('PDF error: ' + e.message); }
+    finally {
+        btn.disabled = false;
+        btn.textContent = '📄 Download PDF';
+    }
+}
+
+// ── Email modal functions ──
+
+function openEmailModal() {
+    if (!lastReportData) { alert('Generate a report first.'); return; }
+    document.getElementById('emailStatus').textContent = '';
+    document.getElementById('emailStatus').className = 'email-status';
+    document.getElementById('sendEmailBtn').disabled = false;
+    document.getElementById('emailModal').classList.add('open');
+    document.getElementById('emailRecipients').focus();
+}
+
+function closeEmailModal() {
+    document.getElementById('emailModal').classList.remove('open');
+}
+
+async function sendEmailReport() {
+    const recipients = document.getElementById('emailRecipients').value.trim();
+    if (!recipients) {
+        showEmailStatus('Please enter at least one email address.', 'error');
+        return;
+    }
+
+    const btn = document.getElementById('sendEmailBtn');
+    btn.disabled = true;
+    btn.textContent = 'Sending…';
+    showEmailStatus('Sending report…', 'info');
+
+    try {
+        const r = await fetch(window.REPORT_CONFIG.emailReportUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': window.REPORT_CONFIG.csrfToken,
+            },
+            body: JSON.stringify({
+                recipients: recipients,
+                report_data: lastReportData,
+            }),
+        });
+        const result = await r.json();
+        if (result.ok) {
+            showEmailStatus(`Report sent to ${result.sent_to.join(', ')}`, 'success');
+            setTimeout(closeEmailModal, 2500);
+        } else {
+            showEmailStatus(result.error || 'Unknown error.', 'error');
+        }
+    } catch (e) {
+        showEmailStatus('Network error: ' + e.message, 'error');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Send';
+    }
+}
+
+function showEmailStatus(msg, type) {
+    const el = document.getElementById('emailStatus');
+    el.textContent = msg;
+    el.className = 'email-status ' + (type || '');
 }
