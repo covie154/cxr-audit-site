@@ -254,6 +254,7 @@
         <div class="report-info loading" id="reportInfo">
             🔄 Checking reports in range…
         </div>
+        <div class="report-info" id="stratifiedInfo" style="display:none; margin-top:4px; font-size:.88em; color:var(--c-text-muted);"></div>
 
         <!-- Sample controls -->
         <div class="form-row">
@@ -340,10 +341,13 @@
     const pctEl     = document.getElementById('pctInput');
     const countEl   = document.getElementById('countInput');
     const infoEl    = document.getElementById('reportInfo');
+    const stratEl   = document.getElementById('stratifiedInfo');
     const dlBtn     = document.getElementById('downloadBtn');
 
     let totalReports = 0;   // total in range
     let eligibleReports = 0; // without GT (the pool we sample from)
+    let priorityReports = 0; // priority workplaces (TPY/HOU/KHA/AMK)
+    let otherReports = 0;    // all other workplaces
     let fetchTimer   = null;
     let updatingFrom = null;          // guards against recursive updates
 
@@ -365,11 +369,18 @@
                     infoEl.textContent = '⚠️ ' + data.error;
                     totalReports = 0;
                     eligibleReports = 0;
+                    priorityReports = 0;
+                    otherReports = 0;
+                    stratEl.style.display = 'none';
                 } else {
                     totalReports = data.total;
                     eligibleReports = data.without_gt;
+                    priorityReports = data.priority_count || 0;
+                    otherReports = data.other_count || 0;
                     infoEl.className = 'report-info';
                     infoEl.textContent = `📋 ${totalReports.toLocaleString()} report${totalReports !== 1 ? 's' : ''} found in range, ${eligibleReports.toLocaleString()} without GT.`;
+                    stratEl.style.display = '';
+                    stratEl.textContent = `🏥 Sampling pool: ${priorityReports.toLocaleString()} priority (TPY/HOU/KHA/AMK) + ${otherReports.toLocaleString()} other — 50/50 stratified sampling applied.`;
                 }
                 syncFromPct();
                 updateDownloadState();
@@ -379,6 +390,9 @@
                 infoEl.textContent = '⚠️ Failed to fetch report count.';
                 totalReports = 0;
                 eligibleReports = 0;
+                priorityReports = 0;
+                otherReports = 0;
+                stratEl.style.display = 'none';
                 updateDownloadState();
             });
     }

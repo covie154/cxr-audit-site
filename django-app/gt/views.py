@@ -9,9 +9,11 @@ Provides functionality to:
 import csv
 import io
 import math
+import random
 from datetime import date, timedelta
 from difflib import SequenceMatcher
 
+from django.db.models import Q
 from django.shortcuts import render
 from django.http import JsonResponse, HttpResponse
 from django.views.decorators.csrf import csrf_exempt
@@ -19,6 +21,9 @@ from django.views.decorators.http import require_http_methods
 from django.contrib.auth.decorators import login_required
 
 from upload.models import CXRStudy
+
+# Workplaces for stratified 50/50 sampling
+_PRIORITY_PREFIXES = ('TPY', 'HOU', 'KHA', 'AMK')
 
 
 def _default_friday_range():
@@ -77,9 +82,23 @@ def report_count(request):
     ).exclude(text_report='')
 
     total = base_qs.count()
-    without_gt = base_qs.filter(gt_manual__isnull=True).count()
+    eligible_qs = base_qs.filter(gt_manual__isnull=True)
+    without_gt = eligible_qs.count()
 
-    return JsonResponse({'total': total, 'without_gt': without_gt})
+    # Breakdown by priority workplaces (TPY, HOU, KHA, AMK) vs rest
+    priority_q = Q()
+    for prefix in _PRIORITY_PREFIXES:
+        priority_q |= Q(workplace__istartswith=prefix)
+
+    priority_count = eligible_qs.filter(priority_q).count()
+    other_count = eligible_qs.exclude(priority_q).count()
+
+    return JsonResponse({
+        'total': total,
+        'without_gt': without_gt,
+        'priority_count': priority_count,
+        'other_count': other_count,
+    })
 
 
 @login_required
@@ -124,12 +143,33 @@ def download_reports(request):
     # Clamp count to total
     count = min(count, total)
 
-    # Deterministic random sample using seed 42
-    # SQLite doesn't support TABLESAMPLE, so fetch PKs and sample in Python
-    import random
-    all_pks = list(qs.values_list('accession_no', flat=True))
+    # ── Stratified sampling: 50% priority workplaces, 50% rest ──
+    # Priority workplace codes start with these prefixes
+    priority_q = Q()
+    for prefix in _PRIORITY_PREFIXES:
+        priority_q |= Q(workplace__istartswith=prefix)
+
+    priority_pks = list(qs.filter(priority_q).values_list('accession_no', flat=True))
+    other_pks = list(qs.exclude(priority_q).values_list('accession_no', flat=True))
+
     rng = random.Random(42)
-    sampled_pks = rng.sample(all_pks, count)
+
+    # Target 50/50 split; if one group is too small, backfill from the other
+    half = count // 2
+    other_half = count - half  # handles odd counts
+
+    priority_take = min(half, len(priority_pks))
+    other_take = min(other_half, len(other_pks))
+
+    # Compute shortfalls before adjusting
+    priority_shortfall = half - priority_take       # how many priority couldn't fill
+    other_shortfall = other_half - other_take       # how many other couldn't fill
+
+    # Backfill: give each group's shortfall to the other
+    priority_take += min(other_shortfall, len(priority_pks) - priority_take)
+    other_take += min(priority_shortfall, len(other_pks) - other_take)
+
+    sampled_pks = rng.sample(priority_pks, priority_take) + rng.sample(other_pks, other_take)
 
     sampled = CXRStudy.objects.filter(accession_no__in=sampled_pks).order_by('procedure_start_date')
 
