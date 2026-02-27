@@ -260,12 +260,16 @@
         <div class="form-row">
             <div class="form-group">
                 <label for="pctInput">Sample Percentage (%)</label>
-                <input type="number" id="pctInput" value="100" min="1" max="100" step="1">
+                <input type="number" id="pctInput" value="2" min="1" max="100" step="1">
             </div>
             <div class="form-group">
                 <label for="countInput">Number of Reports</label>
                 <input type="number" id="countInput" value="0" min="1" step="1">
             </div>
+        </div>
+        <div class="report-info" id="sampleRationale" style="margin-top:-12px; margin-bottom:18px; font-size:.82em; color:var(--c-text-muted); background:#f0fdf4; border-color:#bbf7d0;">
+            📊 Default 2% — provides ±5% precision on agreement (95% CI), with 80% power for McNemar's and non-inferiority tests.
+            <a href="#" id="rationaleLink" style="margin-left:4px;">Why?</a>
         </div>
 
         <!-- Download button -->
@@ -348,6 +352,8 @@
     let eligibleReports = 0; // without GT (the pool we sample from)
     let priorityReports = 0; // priority workplaces (TPY/HOU/KHA/AMK)
     let otherReports = 0;    // all other workplaces
+    let recommendedPct = 2;  // server-provided recommended %
+    let recommendedCount = 0;
     let fetchTimer   = null;
     let updatingFrom = null;          // guards against recursive updates
 
@@ -377,6 +383,8 @@
                     eligibleReports = data.without_gt;
                     priorityReports = data.priority_count || 0;
                     otherReports = data.other_count || 0;
+                    recommendedPct = data.recommended_pct || 2;
+                    recommendedCount = data.recommended_count || Math.ceil(eligibleReports * 2 / 100);
                     infoEl.className = 'report-info';
                     infoEl.textContent = `📋 ${totalReports.toLocaleString()} report${totalReports !== 1 ? 's' : ''} found in range, ${eligibleReports.toLocaleString()} without GT.`;
                     stratEl.style.display = '';
@@ -457,6 +465,25 @@
         if (!start || !end || isNaN(count) || count < 1) return;
         window.location.href = `/gt/api/download-reports?start=${start}&end=${end}&count=${count}`;
     });
+
+    // ── "Why?" rationale link ──
+    const rationaleLink = document.getElementById('rationaleLink');
+    if (rationaleLink) {
+        rationaleLink.addEventListener('click', function(e) {
+            e.preventDefault();
+            alert(
+                'Sample Size Rationale (Power Analysis)\n\n'
+                + 'Based on 3,899 paired LLM vs human observations:\n'
+                + '• Binary agreement: 89.4%  (Cohen\'s κ = 0.791)\n'
+                + '• LLM sensitivity: 98.2%  |  Specificity: 82.6%\n\n'
+                + 'A 2% sample (~150 per ~7,000 reports) provides:\n'
+                + '• 95% CI for agreement within ±5%\n'
+                + '• 80% power for McNemar\'s test (detects classification bias)\n'
+                + '• 80% power for non-inferiority of sensitivity (δ=5%)\n\n'
+                + 'See documentation/sampling_280226.md for full analysis.'
+            );
+        });
+    }
 
     // ── Init ──
     fetchReportCount();

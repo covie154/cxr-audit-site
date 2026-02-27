@@ -25,6 +25,13 @@ from upload.models import CXRStudy
 # Workplaces for stratified 50/50 sampling
 _PRIORITY_PREFIXES = ('TPY', 'HOU', 'KHA', 'AMK')
 
+# Recommended sample percentage for manual GT audit.
+# Derived from power analysis (see documentation/sampling_280226.md):
+# 2% (~150 per ~7,000 reports) provides ±5% precision on a 95% CI
+# for agreement, and exceeds requirements for McNemar's test and
+# non-inferiority testing of LLM sensitivity.
+RECOMMENDED_SAMPLE_PCT = 2
+
 
 def _default_friday_range():
     """
@@ -93,11 +100,15 @@ def report_count(request):
     priority_count = eligible_qs.filter(priority_q).count()
     other_count = eligible_qs.exclude(priority_q).count()
 
+    recommended_count = max(1, math.ceil(without_gt * RECOMMENDED_SAMPLE_PCT / 100))
+
     return JsonResponse({
         'total': total,
         'without_gt': without_gt,
         'priority_count': priority_count,
         'other_count': other_count,
+        'recommended_pct': RECOMMENDED_SAMPLE_PCT,
+        'recommended_count': recommended_count,
     })
 
 
