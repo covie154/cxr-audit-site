@@ -151,6 +151,10 @@ MEDIA_ROOT = BASE_DIR / "media"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
+# Upload size limits (10 MB)
+DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024   # 10 MB — max request body
+FILE_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024   # 10 MB — max in-memory upload
+
 # CXR Analysis API Configuration
 # The Django app interfaces with the combined_server.py API
 # In Docker, API_IP = "api" (the docker-compose service name)
