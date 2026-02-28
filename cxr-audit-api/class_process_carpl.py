@@ -150,7 +150,9 @@ thresholds_default = {
 }
 
 class ProcessCarpl:
-    def __init__(self, path_carpl_reports, path_ge_reports, processor=processor, supplemental_steps=True, priority_threshold=thresholds_default, passwd="GE_2024_P@55", progress_callback=None):
+    def __init__(self, path_carpl_reports, path_ge_reports, processor=processor, supplemental_steps=True, priority_threshold=thresholds_default, passwd=None, progress_callback=None):
+        if passwd is None:
+            passwd = os.environ.get("XLSX_DECRYPT_PASSWORD", "")
         # Support both single file paths and lists of file paths
         self.path_carpl_reports = path_carpl_reports if isinstance(path_carpl_reports, list) else [path_carpl_reports]
         self.path_ge_reports = path_ge_reports if isinstance(path_ge_reports, list) else [path_ge_reports]
