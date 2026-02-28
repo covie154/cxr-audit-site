@@ -34,8 +34,14 @@ COPY padchest_op.json .
 COPY padchest_tubes_lines.json .
 COPY diagnoses.json .
 
+# Create non-root user
+RUN adduser --disabled-password --no-create-home appuser
+
 # Expose API port
 EXPOSE 1221
+
+# Switch to non-root user
+USER appuser
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
