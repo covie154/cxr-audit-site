@@ -218,10 +218,15 @@ function renderGtCompare(mvl) {
     // Download buttons for FN/FP CSVs
     const gtDlRow = document.getElementById('gtDownloadRow');
     let dlHtml = '';
-    if (fns.length > 0) dlHtml += `<button class="btn btn-warning" onclick="downloadFnCSV()">📥 Download False Negatives CSV</button>`;
-    if (fps.length > 0) dlHtml += `<button class="btn btn-warning" onclick="downloadFpCSV()">📥 Download False Positives CSV</button>`;
+    if (fns.length > 0) dlHtml += `<button class="btn btn-warning" id="downloadFnCsvBtn">📥 Download False Negatives CSV</button>`;
+    if (fps.length > 0) dlHtml += `<button class="btn btn-warning" id="downloadFpCsvBtn">📥 Download False Positives CSV</button>`;
     gtDlRow.innerHTML = dlHtml;
     gtDlRow.style.display = dlHtml ? 'flex' : 'none';
+    // Attach event listeners to dynamically created buttons
+    const fnBtn = document.getElementById('downloadFnCsvBtn');
+    if (fnBtn) fnBtn.addEventListener('click', downloadFnCSV);
+    const fpBtn = document.getElementById('downloadFpCsvBtn');
+    if (fpBtn) fpBtn.addEventListener('click', downloadFpCSV);
 }
 
 // ── Download PDF ──
@@ -332,3 +337,12 @@ function showEmailStatus(msg, type) {
     el.textContent = msg;
     el.className = 'email-status ' + (type || '');
 }
+
+// ── Wire up event listeners (replaces inline onclick) ──
+document.getElementById('generateBtn').addEventListener('click', generateReport);
+document.getElementById('downloadCsvBtn').addEventListener('click', downloadCSV);
+document.getElementById('downloadPdfBtn').addEventListener('click', downloadPDF);
+document.getElementById('emailReportBtn').addEventListener('click', openEmailModal);
+document.getElementById('closeEmailModalBtn').addEventListener('click', closeEmailModal);
+document.getElementById('cancelEmailBtn').addEventListener('click', closeEmailModal);
+document.getElementById('sendEmailBtn').addEventListener('click', sendEmailReport);

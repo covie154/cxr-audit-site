@@ -8,233 +8,8 @@
 <span style="font-size:.85em;">{{ total }} records</span>
 {% endblock %}
 
-{% block extra_css %}
-/* ══════════ Viewer-specific layout ══════════ */
-.page-body {
-    display: flex;
-    flex-direction: column;
-    height: calc(100vh - var(--hdr-h));
-    overflow: hidden;
-}
-
-/* ── Toolbar ── */
-.toolbar {
-    background: var(--c-surface);
-    padding: 12px 24px;
-    display: flex;
-    gap: 10px;
-    align-items: center;
-    flex-wrap: wrap;
-    border-bottom: 1px solid var(--c-border);
-}
-.toolbar input[type="text"] {
-    padding: 7px 12px;
-    border: 1px solid var(--c-border);
-    border-radius: 6px;
-    font-size: .88em;
-    width: 240px;
-}
-.toolbar input[type="text"]:focus {
-    outline: none;
-    border-color: var(--c-primary);
-    box-shadow: 0 0 0 2px rgba(59,130,246,.12);
-}
-.toolbar select {
-    padding: 7px 10px;
-    border: 1px solid var(--c-border);
-    border-radius: 6px;
-    font-size: .85em;
-    background: white;
-}
-.toolbar .spacer { flex: 1; }
-
-/* ── Date range filters ── */
-.date-filter {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    font-size: .82em;
-    color: var(--c-text-muted);
-}
-.date-filter label {
-    font-weight: 600;
-    white-space: nowrap;
-    margin-right: 2px;
-}
-.date-filter input[type="date"] {
-    padding: 5px 8px;
-    border: 1px solid var(--c-border);
-    border-radius: 6px;
-    font-size: .88em;
-    background: white;
-    width: 132px;
-}
-.date-filter input[type="date"]:focus {
-    outline: none;
-    border-color: var(--c-primary);
-    box-shadow: 0 0 0 2px rgba(59,130,246,.12);
-}
-.date-filter .sep { color: #94a3b8; margin: 0 2px; }
-
-/* ── Stats bar ── */
-.stats-bar {
-    padding: 8px 24px;
-    background: #f8fafc;
-    border-bottom: 1px solid var(--c-border);
-    font-size: .82em;
-    color: var(--c-text-muted);
-    display: flex;
-    gap: 22px;
-    flex-wrap: wrap;
-}
-.stat-item b { color: var(--c-text); }
-
-/* ── Table ── */
-.table-wrap {
-    flex: 1;
-    overflow: auto;
-    padding: 0 16px;
-    min-height: 0;
-}
-table {
-    width: 100%;
-    border-collapse: separate;
-    border-spacing: 0;
-    background: var(--c-surface);
-    margin-top: 10px;
-    border-radius: var(--radius);
-    box-shadow: var(--shadow-sm);
-    font-size: .88em;
-}
-thead th {
-    background: #f8fafc;
-    padding: 9px 11px;
-    text-align: left;
-    font-weight: 600;
-    color: var(--c-text-muted);
-    border-bottom: 2px solid var(--c-border);
-    white-space: nowrap;
-    cursor: pointer;
-    user-select: none;
-    position: sticky;
-    top: 0;
-    z-index: 10;
-}
-thead th:hover { background: #f1f5f9; }
-thead th:first-child { border-top-left-radius: var(--radius); }
-thead th:last-child  { border-top-right-radius: var(--radius); }
-thead th .sort-icon { margin-left: 4px; opacity: .35; }
-thead th.sorted .sort-icon { opacity: 1; color: var(--c-primary); }
-tbody td {
-    padding: 8px 11px;
-    border-bottom: 1px solid #f1f5f9;
-    max-width: 200px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-tbody tr:hover { background: #eff6ff; }
-tbody tr.selected { background: #dbeafe; }
-td.cell-actions { white-space: nowrap; width: 80px; }
-td.cell-actions button {
-    background: none; border: none; cursor: pointer;
-    font-size: 1em; padding: 2px 5px; border-radius: 4px; transition: background .15s;
-}
-td.cell-actions button:hover { background: #f1f5f9; }
-
-/* ── Checkbox column ── */
-.cb-col { width: 36px; text-align: center; }
-.cb-col input { width: 15px; height: 15px; cursor: pointer; }
-
-/* ── Pagination ── */
-.pagination {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 5px;
-    padding: 8px 16px;
-    flex-wrap: wrap;
-    flex-shrink: 0;
-    background: var(--c-surface);
-    border-top: 1px solid var(--c-border);
-}
-.pagination a, .pagination span {
-    display: inline-block;
-    padding: 6px 12px;
-    border-radius: 6px;
-    text-decoration: none;
-    font-size: .85em;
-    border: 1px solid var(--c-border);
-    color: var(--c-text-muted);
-    transition: all .15s;
-}
-.pagination a:hover { background: var(--c-primary); color: white; border-color: var(--c-primary); }
-.pagination .current { background: var(--c-primary); color: white; border-color: var(--c-primary); font-weight: 600; }
-.pagination .disabled { opacity: .35; pointer-events: none; }
-
-/* ── Modal ── */
-.modal-overlay {
-    display: none; position: fixed; inset: 0;
-    background: rgba(0,0,0,.4); z-index: 1000;
-    justify-content: center; align-items: flex-start;
-    padding: 40px 20px; overflow-y: auto;
-}
-.modal-overlay.open { display: flex; }
-.modal {
-    background: var(--c-surface);
-    border-radius: 12px;
-    width: 100%; max-width: 760px;
-    box-shadow: 0 12px 40px rgba(0,0,0,.18);
-    animation: slideIn .2s ease;
-}
-@keyframes slideIn { from { opacity:0; transform:translateY(-20px); } to { opacity:1; transform:none; } }
-.modal-header {
-    padding: 16px 22px; border-bottom: 1px solid var(--c-border);
-    display: flex; justify-content: space-between; align-items: center;
-}
-.modal-header h2 { font-size: 1.1em; }
-.modal-close {
-    background: none; border: none; font-size: 1.3em; cursor: pointer;
-    color: #94a3b8; padding: 4px 8px; border-radius: 4px;
-}
-.modal-close:hover { background: #f1f5f9; color: var(--c-text); }
-.modal-body { padding: 18px 22px; max-height: 65vh; overflow-y: auto; }
-.modal-footer {
-    padding: 12px 22px; border-top: 1px solid var(--c-border);
-    display: flex; justify-content: flex-end; gap: 10px;
-}
-
-/* ── Detail form ── */
-.field-group { margin-bottom: 16px; }
-.field-group h3 {
-    font-size: .88em; color: var(--c-primary);
-    border-bottom: 1px solid var(--c-border);
-    padding-bottom: 5px; margin-bottom: 8px;
-}
-.field-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
-    gap: 10px;
-}
-.field-item label { display: block; font-size: .76em; color: #94a3b8; margin-bottom: 2px; }
-.field-item input, .field-item textarea {
-    width: 100%; padding: 6px 9px; border: 1px solid var(--c-border);
-    border-radius: 5px; font-size: .86em; font-family: inherit;
-}
-.field-item input:read-only { background: #f8fafc; color: #94a3b8; }
-.field-item input:focus, .field-item textarea:focus {
-    outline: none; border-color: var(--c-primary);
-    box-shadow: 0 0 0 2px rgba(59,130,246,.12);
-}
-.field-item textarea { min-height: 72px; resize: vertical; }
-.field-item.full-width { grid-column: 1 / -1; }
-
-@media (max-width: 768px) {
-    .toolbar { padding: 10px 12px; }
-    .toolbar input[type="text"] { width: 100%; }
-    .stats-bar { padding: 6px 12px; }
-    .table-wrap { padding: 0 6px; }
-}
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'viewer/viewer.css' %}">
 {% endblock %}
 
 {% block body %}
@@ -245,7 +20,7 @@ td.cell-actions button:hover { background: #f1f5f9; }
     <input type="text" name="q" value="{{ search }}" placeholder="🔍 Search accession, patient, workplace…">
 
     {% for fname, fmeta in filter_options.items %}
-    <select name="f_{{ fname }}" onchange="this.form.submit()">
+    <select name="f_{{ fname }}">
         <option value="">All {{ fmeta.label }}</option>
         {% for v in fmeta.values %}
             {% if v is None %}
@@ -274,7 +49,7 @@ td.cell-actions button:hover { background: #f1f5f9; }
         <input type="date" name="d_created_at_to" value="{{ date_filters.created_at_to|default:'' }}" title="To">
     </div>
 
-    <select name="per_page" onchange="this.form.submit()">
+    <select name="per_page">
         <option value="10" {% if per_page == 10 %}selected{% endif %}>10 / page</option>
         <option value="25" {% if per_page == 25 %}selected{% endif %}>25 / page</option>
         <option value="50" {% if per_page == 50 %}selected{% endif %}>50 / page</option>
@@ -293,16 +68,14 @@ td.cell-actions button:hover { background: #f1f5f9; }
 
     <span class="spacer"></span>
 
-    <button type="button" class="btn btn-outline" id="selectAllFilteredBtn" onclick="selectAllFiltered()">
+    <button type="button" class="btn btn-outline" id="selectAllFilteredBtn">
         ☑ Select all {{ total }}
     </button>
-    <button type="button" class="btn btn-danger" id="bulkDeleteBtn" style="display:none;" onclick="bulkDelete()">
+    <button type="button" class="btn btn-danger" id="bulkDeleteBtn" style="display:none;">
         🗑️ Delete (<span id="selCount">0</span>)
     </button>
     <a href="{% url 'viewer:export_csv' %}?{{ request.GET.urlencode }}" class="btn btn-outline" id="exportBtn">📥 Export CSV</a>
 </form>
-
-<script>const ALL_FILTERED_IDS = {{ all_filtered_ids|safe }};</script>
 
 <!-- ───── Stats ───── -->
 <div class="stats-bar">
@@ -318,10 +91,10 @@ td.cell-actions button:hover { background: #f1f5f9; }
 <table>
     <thead>
         <tr>
-            <th class="cb-col"><input type="checkbox" id="selectAll" onclick="toggleSelectAll(this)"></th>
+            <th class="cb-col"><input type="checkbox" id="selectAll"></th>
             {% for col_name, col_label in columns %}
             <th class="{% if sort == col_name or sort == '-'|add:col_name %}sorted{% endif %}"
-                onclick="setSort('{{ col_name }}')">
+                data-sort="{{ col_name }}">
                 {{ col_label }}
                 <span class="sort-icon">
                     {% if sort == col_name %}▲{% elif sort == '-'|add:col_name %}▼{% else %}⇅{% endif %}
@@ -334,7 +107,7 @@ td.cell-actions button:hover { background: #f1f5f9; }
     <tbody>
         {% for study in page %}
         <tr data-id="{{ study.accession_no }}">
-            <td class="cb-col"><input type="checkbox" class="row-cb" value="{{ study.accession_no }}" onclick="updateSelection()"></td>
+            <td class="cb-col"><input type="checkbox" class="row-cb" value="{{ study.accession_no }}"></td>
             <td><b>{{ study.accession_no }}</b></td>
             <td>{% if study.procedure_start_date %}{{ study.procedure_start_date|date:"d M Y H:i" }}{% else %}—{% endif %}</td>
             <td>{{ study.created_at|date:"d M Y" }}</td>
@@ -365,8 +138,8 @@ td.cell-actions button:hover { background: #f1f5f9; }
             <td>{% if study.pneumoperitoneum != None %}{{ study.pneumoperitoneum|floatformat:1 }}{% else %}—{% endif %}</td>
             <td>{% if study.pneumothorax != None %}{{ study.pneumothorax|floatformat:1 }}{% else %}—{% endif %}</td>
             <td class="cell-actions">
-                <button title="View / Edit" onclick="openDetail({{ study.accession_no }})">📝</button>
-                <button title="Delete" onclick="deleteStudy({{ study.accession_no }})">🗑️</button>
+                <button title="View / Edit" data-action="edit" data-accession="{{ study.accession_no }}">📝</button>
+                <button title="Delete" data-action="delete" data-accession="{{ study.accession_no }}">🗑️</button>
             </td>
         </tr>
         {% empty %}
@@ -416,12 +189,12 @@ td.cell-actions button:hover { background: #f1f5f9; }
     <div class="modal">
         <div class="modal-header">
             <h2 id="modalTitle">Study Detail</h2>
-            <button class="modal-close" onclick="closeModal()">&times;</button>
+            <button class="modal-close" data-action="close-modal">&times;</button>
         </div>
         <div class="modal-body" id="modalBody"></div>
         <div class="modal-footer">
-            <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
-            <button class="btn btn-primary" onclick="saveDetail()">💾 Save Changes</button>
+            <button class="btn btn-outline" data-action="close-modal">Cancel</button>
+            <button class="btn btn-primary" id="saveDetailBtn">💾 Save Changes</button>
         </div>
     </div>
 </div>
@@ -432,150 +205,10 @@ td.cell-actions button:hover { background: #f1f5f9; }
 
 {% block extra_js %}
 <script>
-    const csrfToken = '{{ csrf_token }}';
-    let currentAccession = null;
-
-    // ──── Sorting ────
-    function setSort(field) {
-        const form = document.getElementById('filterForm');
-        const si = form.querySelector('input[name="sort"]');
-        si.value = (si.value === field) ? '-' + field : field;
-        form.submit();
-    }
-
-    // ──── Selection ────
-    let allFilteredSelected = false;
-
-    function toggleSelectAll(master) {
-        document.querySelectorAll('.row-cb').forEach(cb => cb.checked = master.checked);
-        allFilteredSelected = false;
-        updateSelection();
-    }
-
-    function selectAllFiltered() {
-        document.querySelectorAll('.row-cb').forEach(cb => cb.checked = true);
-        document.getElementById('selectAll').checked = true;
-        allFilteredSelected = true;
-        updateSelection();
-    }
-
-    function updateSelection() {
-        const checked = document.querySelectorAll('.row-cb:checked');
-        const btn = document.getElementById('bulkDeleteBtn');
-        const cnt = document.getElementById('selCount');
-        const n = allFilteredSelected ? ALL_FILTERED_IDS.length : checked.length;
-        cnt.textContent = n;
-        btn.style.display = n > 0 ? 'inline-flex' : 'none';
-
-        document.querySelectorAll('tbody tr').forEach(tr => {
-            const cb = tr.querySelector('.row-cb');
-            if (cb) tr.classList.toggle('selected', cb.checked);
-        });
-
-        if (allFilteredSelected && checked.length < document.querySelectorAll('.row-cb').length) {
-            allFilteredSelected = false;
-            cnt.textContent = checked.length;
-            if (!checked.length) btn.style.display = 'none';
-        }
-    }
-
-    // ──── Detail modal ────
-    async function openDetail(accNo) {
-        currentAccession = accNo;
-        document.getElementById('modalTitle').textContent = 'Study ' + accNo;
-        document.getElementById('modalBody').innerHTML = '<p style="text-align:center;padding:30px;color:#94a3b8;">Loading…</p>';
-        document.getElementById('detailModal').classList.add('open');
-
-        try {
-            const r = await fetch(`/view/study/${accNo}/`);
-            if (!r.ok) throw new Error('Not found');
-            renderDetail(await r.json());
-        } catch(e) {
-            document.getElementById('modalBody').innerHTML = `<p style="color:var(--c-danger);">Error: ${e.message}</p>`;
-        }
-    }
-
-    function renderDetail(data) {
-        let html = '';
-        for (const [group, fields] of Object.entries(data.groups)) {
-            html += `<div class="field-group"><h3>${group}</h3><div class="field-grid">`;
-            for (const f of fields) {
-                const ro = f.readonly ? 'readonly' : '';
-                const val = f.value != null ? f.value : '';
-                const isLong = f.type === 'TextField' || f.name.includes('report');
-                const cls = isLong ? ' full-width' : '';
-                html += `<div class="field-item${cls}"><label>${f.label}</label>`;
-                html += isLong
-                    ? `<textarea data-field="${f.name}" ${ro}>${val}</textarea>`
-                    : `<input data-field="${f.name}" value="${String(val).replace(/"/g,'&quot;')}" ${ro}>`;
-                html += '</div>';
-            }
-            html += '</div></div>';
-        }
-        document.getElementById('modalBody').innerHTML = html;
-    }
-
-    function closeModal() { document.getElementById('detailModal').classList.remove('open'); currentAccession = null; }
-    document.getElementById('detailModal').addEventListener('click', function(e) { if (e.target === this) closeModal(); });
-    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
-
-    // ──── Save ────
-    async function saveDetail() {
-        if (!currentAccession) return;
-        const payload = {};
-        document.querySelectorAll('#modalBody [data-field]').forEach(el => {
-            if (el.readOnly) return;
-            payload[el.dataset.field] = el.tagName === 'TEXTAREA' ? el.value : el.value;
-        });
-
-        try {
-            const r = await fetch(`/view/study/${currentAccession}/update/`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
-                body: JSON.stringify(payload),
-            });
-            const res = await r.json();
-            if (res.success) { showToast(`Updated ${res.updated_fields.length} field(s)`, 'success'); closeModal(); setTimeout(() => location.reload(), 600); }
-            else showToast(res.error || 'Update failed', 'error');
-        } catch(e) { showToast('Network error: ' + e.message, 'error'); }
-    }
-
-    // ──── Delete ────
-    async function deleteStudy(accNo) {
-        if (!confirm(`Delete study ${accNo}?`)) return;
-        try {
-            const r = await fetch(`/view/study/${accNo}/delete/`, { method: 'POST', headers: { 'X-CSRFToken': csrfToken } });
-            const res = await r.json();
-            if (res.success) { showToast('Deleted', 'success'); document.querySelector(`tr[data-id="${accNo}"]`)?.remove(); }
-            else showToast(res.error || 'Failed', 'error');
-        } catch(e) { showToast('Network error: ' + e.message, 'error'); }
-    }
-
-    async function bulkDelete() {
-        const ids = allFilteredSelected
-            ? ALL_FILTERED_IDS
-            : Array.from(document.querySelectorAll('.row-cb:checked')).map(cb => Number(cb.value));
-        if (!ids.length) return;
-        if (!confirm(`Delete ${ids.length} record(s)?`)) return;
-
-        try {
-            const r = await fetch('/view/bulk-delete/', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
-                body: JSON.stringify({ accession_nos: ids }),
-            });
-            const res = await r.json();
-            if (res.success) { showToast(`Deleted ${res.deleted}`, 'success'); setTimeout(() => location.reload(), 600); }
-            else showToast(res.error || 'Failed', 'error');
-        } catch(e) { showToast('Network error: ' + e.message, 'error'); }
-    }
-
-    // ──── Toast ────
-    function showToast(msg, type) {
-        const t = document.getElementById('toast');
-        t.textContent = msg;
-        t.className = 'toast toast-' + type + ' show';
-        setTimeout(() => t.classList.remove('show'), 3000);
-    }
+    window.PAGE_CONFIG = {
+        csrfToken: '{{ csrf_token }}',
+        allFilteredIds: {{ all_filtered_ids|safe }},
+    };
 </script>
+<script src="{% static 'viewer/viewer.js' %}"></script>
 {% endblock %}

@@ -4,135 +4,8 @@
 {% block title %}Tasks — PRIMER-LLM{% endblock %}
 {% block nav_tasks %}active{% endblock %}
 
-{% block extra_css %}
-.tasks-page {
-    max-width: 1100px;
-    margin: 36px auto;
-    padding: 0 20px 40px;
-}
-
-.page-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 24px;
-}
-.page-title { font-size: 1.5em; font-weight: 700; }
-.task-count { color: var(--c-text-muted); font-size: .9em; }
-
-/* ══════════ Table ══════════ */
-.tasks-table-wrap {
-    overflow-x: auto;
-}
-
-.tasks-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: .88em;
-}
-.tasks-table th {
-    text-align: left;
-    padding: 10px 14px;
-    background: #f1f5f9;
-    font-weight: 600;
-    font-size: .82em;
-    color: var(--c-text-muted);
-    text-transform: uppercase;
-    letter-spacing: .04em;
-    border-bottom: 2px solid var(--c-border);
-    white-space: nowrap;
-}
-.tasks-table td {
-    padding: 12px 14px;
-    border-bottom: 1px solid var(--c-border);
-    vertical-align: middle;
-}
-.tasks-table tr:last-child td { border-bottom: none; }
-.tasks-table tr:hover td { background: #f8fafc; }
-
-/* ── Status badges ── */
-.status-badge {
-    display: inline-block;
-    padding: 3px 10px;
-    border-radius: 10px;
-    font-size: .82em;
-    font-weight: 600;
-    white-space: nowrap;
-}
-.status-queued     { background: #fef9c3; color: #92400e; }
-.status-processing { background: #dbeafe; color: #1e40af; }
-.status-completed  { background: #dcfce7; color: #166534; }
-.status-failed     { background: #fee2e2; color: #991b1b; }
-
-/* ── Progress bar (inline) ── */
-.mini-progress {
-    width: 80px;
-    height: 6px;
-    background: #e2e8f0;
-    border-radius: 99px;
-    overflow: hidden;
-    display: inline-block;
-    vertical-align: middle;
-    margin-right: 6px;
-}
-.mini-progress-fill {
-    height: 100%;
-    border-radius: 99px;
-    transition: width .3s;
-}
-
-.progress-cell {
-    white-space: nowrap;
-}
-
-/* ── Misc ── */
-.msg-cell {
-    max-width: 220px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    color: var(--c-text-muted);
-    font-size: .9em;
-}
-
-.num-cell { text-align: center; font-variant-numeric: tabular-nums; }
-.date-cell { white-space: nowrap; font-size: .88em; color: var(--c-text-muted); }
-
-.empty-state {
-    text-align: center;
-    padding: 60px 20px;
-    color: var(--c-text-muted);
-}
-.empty-state .icon { font-size: 2.5em; margin-bottom: 12px; }
-
-.delete-form { display: inline; }
-
-/* ── Confirm modal ── */
-.modal-overlay {
-    position: fixed; inset: 0;
-    background: rgba(0,0,0,.35);
-    z-index: 1000;
-    display: flex; align-items: center; justify-content: center;
-    opacity: 0; pointer-events: none;
-    transition: opacity .2s;
-}
-.modal-overlay.show { opacity: 1; pointer-events: auto; }
-.modal-box {
-    background: white;
-    border-radius: var(--radius);
-    padding: 28px 32px;
-    box-shadow: var(--shadow-md);
-    max-width: 400px;
-    width: 90%;
-    text-align: center;
-}
-.modal-box h3 { margin-bottom: 8px; }
-.modal-box p { color: var(--c-text-muted); font-size: .92em; margin-bottom: 20px; }
-.modal-actions { display: flex; gap: 10px; justify-content: center; }
-
-@media (max-width: 768px) {
-    .tasks-page { padding: 0 10px 30px; margin-top: 20px; }
-}
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'upload/tasks.css' %}">
 {% endblock %}
 
 {% block body %}
@@ -189,7 +62,7 @@
                         <td class="num-cell">{{ t.existing_records_skipped }}</td>
                         <td>
                             <button type="button" class="btn btn-danger" style="padding:5px 12px;font-size:.8em;"
-                                onclick="confirmDelete('{{ t.task_id }}')">
+                                data-task-id="{{ t.task_id }}">
                                 🗑 Delete
                             </button>
                         </td>
@@ -213,8 +86,8 @@
         <h3>Delete Task?</h3>
         <p id="deleteMsg">This will permanently remove the task record. CXR study data already saved to the database will <strong>not</strong> be affected.</p>
         <div class="modal-actions">
-            <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
-            <button id="confirmDeleteBtn" class="btn btn-danger" onclick="doDelete()">🗑 Delete</button>
+            <button id="cancelDeleteBtn" class="btn btn-outline">Cancel</button>
+            <button id="confirmDeleteBtn" class="btn btn-danger">🗑 Delete</button>
         </div>
     </div>
 </div>
@@ -225,67 +98,10 @@
 
 {% block extra_js %}
 <script>
-    const csrfToken = '{{ csrf_token }}';
-    let pendingDeleteId = null;
-
-    function confirmDelete(taskId) {
-        pendingDeleteId = taskId;
-        document.getElementById('deleteModal').classList.add('show');
-    }
-
-    function closeModal() {
-        pendingDeleteId = null;
-        document.getElementById('deleteModal').classList.remove('show');
-    }
-
-    async function doDelete() {
-        if (!pendingDeleteId) return;
-        const taskId = pendingDeleteId;
-        const btn = document.getElementById('confirmDeleteBtn');
-        btn.disabled = true; btn.textContent = '⏳ Deleting…';
-
-        try {
-            const r = await fetch(`{% url 'upload:index' %}api/tasks/${taskId}/delete`, {
-                method: 'POST',
-                headers: { 'X-CSRFToken': csrfToken }
-            });
-            const d = await r.json();
-
-            if (r.ok) {
-                // Remove row with animation
-                const row = document.getElementById(`row-${taskId}`);
-                if (row) {
-                    row.style.transition = 'opacity .3s';
-                    row.style.opacity = '0';
-                    setTimeout(() => row.remove(), 300);
-                }
-                showToast('Task deleted successfully', 'success');
-                // Update count
-                const remaining = document.querySelectorAll('.tasks-table tbody tr').length - 1;
-                document.querySelector('.task-count').textContent =
-                    `${remaining} task${remaining !== 1 ? 's' : ''}`;
-                if (remaining === 0) setTimeout(() => location.reload(), 400);
-            } else {
-                showToast(d.error || 'Delete failed', 'error');
-            }
-        } catch(e) {
-            showToast(`Error: ${e.message}`, 'error');
-        }
-
-        closeModal();
-        btn.disabled = false; btn.textContent = '🗑 Delete';
-    }
-
-    // Close modal on overlay click
-    document.getElementById('deleteModal').addEventListener('click', function(e) {
-        if (e.target === this) closeModal();
-    });
-
-    function showToast(msg, type) {
-        const t = document.getElementById('toast');
-        t.textContent = msg;
-        t.className = `toast toast-${type} show`;
-        setTimeout(() => t.classList.remove('show'), 3000);
-    }
+    window.PAGE_CONFIG = {
+        csrfToken: '{{ csrf_token }}',
+        deleteBaseUrl: '{% url "upload:index" %}api/tasks/',
+    };
 </script>
+<script src="{% static 'upload/tasks.js' %}"></script>
 {% endblock %}

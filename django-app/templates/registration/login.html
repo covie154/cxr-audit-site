@@ -1,76 +1,10 @@
 {% extends "base.html" %}
+{% load static %}
 
 {% block title %}Login — PRIMER-LLM{% endblock %}
 
-{% block extra_css %}
-.login-page {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-height: calc(100vh - var(--hdr-h));
-}
-.login-card {
-    width: 100%;
-    max-width: 380px;
-    padding: 36px 32px 32px;
-}
-.login-card h2 {
-    text-align: center;
-    font-size: 1.3em;
-    margin-bottom: 6px;
-}
-.login-subtitle {
-    text-align: center;
-    color: var(--c-text-muted);
-    font-size: .88em;
-    margin-bottom: 24px;
-}
-.login-field {
-    margin-bottom: 16px;
-}
-.login-field label {
-    display: block;
-    font-weight: 600;
-    font-size: .88em;
-    margin-bottom: 5px;
-}
-.login-field input {
-    width: 100%;
-    padding: 10px 12px;
-    border: 1px solid var(--c-border);
-    border-radius: var(--radius);
-    font-size: .95em;
-    transition: border-color .15s;
-}
-.login-field input:focus {
-    outline: none;
-    border-color: var(--c-primary);
-    box-shadow: 0 0 0 3px rgba(59,130,246,.15);
-}
-.login-btn {
-    width: 100%;
-    padding: 12px;
-    margin-top: 4px;
-    background: var(--c-primary);
-    color: white;
-    border: none;
-    border-radius: var(--radius);
-    font-size: 1em;
-    font-weight: 700;
-    cursor: pointer;
-    transition: background .15s;
-}
-.login-btn:hover { background: var(--c-primary-dark); }
-.login-error {
-    background: #fee2e2;
-    color: #991b1b;
-    border: 1px solid #fecaca;
-    border-radius: var(--radius);
-    padding: 10px 14px;
-    margin-bottom: 16px;
-    font-size: .88em;
-    text-align: center;
-}
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'css/login.css' %}">
 {% endblock %}
 
 {% block body %}

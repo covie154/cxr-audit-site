@@ -24,7 +24,7 @@
                 <label for="dateTo">To</label>
                 <input type="date" id="dateTo" value="{{ default_to }}">
             </div>
-            <button class="btn btn-primary" id="generateBtn" onclick="generateReport()" style="height:40px;padding:0 28px;">
+            <button class="btn btn-primary" id="generateBtn" style="height:40px;padding:0 28px;">
                 🚀 Generate Report
             </button>
         </div>
@@ -136,12 +136,12 @@
 
             <div id="gtDownloadRow" style="display:none;margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;"></div>
         </div>
-        
+
 
         <div class="download-row" id="downloadRow">
-            <button class="btn btn-primary" onclick="downloadCSV()">📊 Download Full CSV</button>
-            <button class="btn btn-outline" id="downloadPdfBtn" onclick="downloadPDF()" style="display:none;">📄 Download PDF</button>
-            <button class="btn btn-secondary" id="emailReportBtn" onclick="openEmailModal()" style="display:none;">📧 Email Report</button>
+            <button class="btn btn-primary" id="downloadCsvBtn">📊 Download Full CSV</button>
+            <button class="btn btn-outline" id="downloadPdfBtn" style="display:none;">📄 Download PDF</button>
+            <button class="btn btn-secondary" id="emailReportBtn" style="display:none;">📧 Email Report</button>
         </div>
 
         <!-- ── Email modal ── -->
@@ -149,7 +149,7 @@
             <div class="modal-card">
                 <div class="modal-header">
                     <h3>📧 Email Report</h3>
-                    <button class="modal-close" onclick="closeEmailModal()">&times;</button>
+                    <button class="modal-close" id="closeEmailModalBtn">&times;</button>
                 </div>
                 <div class="modal-body">
                     <p style="font-size:.9em;color:var(--c-text-muted);margin-bottom:14px;">
@@ -162,8 +162,8 @@
                     <div class="email-status" id="emailStatus"></div>
                 </div>
                 <div class="modal-footer">
-                    <button class="btn" onclick="closeEmailModal()">Cancel</button>
-                    <button class="btn btn-primary" id="sendEmailBtn" onclick="sendEmailReport()">Send</button>
+                    <button class="btn" id="cancelEmailBtn">Cancel</button>
+                    <button class="btn btn-primary" id="sendEmailBtn">Send</button>
                 </div>
             </div>
         </div>
