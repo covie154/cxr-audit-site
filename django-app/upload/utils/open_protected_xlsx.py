@@ -9,7 +9,9 @@ import io
 import os
 
 
-def open_protected_xlsx(file_path, password="GE_2024_P@55", sheet_name=None):
+def open_protected_xlsx(file_path, password=None, sheet_name=None):
+    if password is None:
+        password = os.environ.get("XLSX_DECRYPT_PASSWORD", "")
     """
     Open a password-protected Excel file and convert to DataFrame
     
