@@ -24,7 +24,7 @@ urlpatterns = [
     path("", lambda request: redirect("upload:index")),
     path("admin/", admin.site.urls),
     path("login/", auth_views.LoginView.as_view(template_name="registration/login.html"), name="login"),
-    path("logout/", auth_views.LogoutView.as_view(http_method_names=["get", "post", "options"]), name="logout"),
+    path("logout/", auth_views.LogoutView.as_view(http_method_names=["post"]), name="logout"),
     path("upload/", include("upload.urls")),
     path("view/", include("viewer.urls")),
     path("report/", include("report.urls")),
