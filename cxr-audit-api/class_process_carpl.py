@@ -20,7 +20,7 @@ from cxr_audit.grade_batch_async import BatchCXRProcessor
 # ================================
 # LLM / Ollama Configuration (env-var driven)
 # ================================
-OLLAMA_BASE_URL = os.environ.get("OLLAMA_BASE_URL", "http://192.168.1.204:11434/v1")
+OLLAMA_BASE_URL = os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434/v1")
 OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "qwen3:32b-q4_K_M")
 OLLAMA_API_KEY = os.environ.get("OLLAMA_API_KEY", "dummy")
 OLLAMA_MAX_WORKERS = int(os.environ.get("OLLAMA_MAX_WORKERS", "8"))
