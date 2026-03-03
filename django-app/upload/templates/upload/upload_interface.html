@@ -4,6 +4,8 @@
 {% block title %}Upload — PRIMER-LLM{% endblock %}
 {% block nav_upload %}active{% endblock %}
 
+
+
 {% block extra_head %}
 <link rel="stylesheet" href="{% static 'upload/upload.css' %}">
 {% endblock %}
@@ -11,8 +13,8 @@
 {% block body %}
 <div class="upload-page">
     <h1 class="page-title">Upload &amp; Analyze</h1>
-    <span id="apiStatus" class="api-pill checking">🔄 Checking…</span>
     <p class="page-subtitle">Upload Lunit CARPL and RIS Ground Truth files for automated analysis</p>
+    <span id="apiStatus" class="api-pill checking">🔄 Checking…</span>
 
     <div class="card upload-card">
         <form id="uploadForm">

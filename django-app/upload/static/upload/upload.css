@@ -8,9 +8,9 @@
     font-weight: 600;
     margin: 6px 0;
 }
-.api-pill.connected  { background: #dcfce7; color: #16a34a; }
-.api-pill.disconnected { background: #fee2e2; color: #dc2626; }
-.api-pill.checking   { background: #fef9c3; color: #a16207; }
+.api-pill.connected  { background: #bbf7d0; color: #166534; }
+.api-pill.disconnected { background: #fecaca; color: #991b1b; }
+.api-pill.checking   { background: #fde68a; color: #92400e; }
 
 /* ══════════ Page layout ══════════ */
 .upload-page {
