@@ -99,12 +99,12 @@ body {
 }
 
 .header-right {
-    margin-left: auto;
     display: flex;
     align-items: center;
     gap: 12px;
     font-size: .85em;
     color: rgba(255,255,255,.85);
+    margin-left: 12px;
 }
 
 /* ══════════ Shared utility classes ══════════ */

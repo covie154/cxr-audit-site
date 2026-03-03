@@ -10,7 +10,8 @@ WORKDIR /app
 # Environment
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    PYTHONPATH=/app
+    PYTHONPATH=/app \
+    MPLCONFIGDIR=/app/tmp/matplotlib
 
 # System dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -34,8 +35,12 @@ COPY padchest_op.json .
 COPY padchest_tubes_lines.json .
 COPY diagnoses.json .
 
-# Create non-root user
-RUN adduser --disabled-password --no-create-home appuser
+# Create writable directory for intermediate files
+RUN mkdir -p /app/tmp
+
+# Create non-root user and grant ownership of writable dirs
+RUN adduser --disabled-password --no-create-home appuser && \
+    chown -R appuser:appuser /app/tmp
 
 # Expose API port
 EXPOSE 1221

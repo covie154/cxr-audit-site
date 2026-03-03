@@ -6,6 +6,7 @@
     border-radius: 20px;
     font-size: .82em;
     font-weight: 600;
+    margin: 6px 0;
 }
 .api-pill.connected  { background: #dcfce7; color: #16a34a; }
 .api-pill.disconnected { background: #fee2e2; color: #dc2626; }

@@ -429,7 +429,7 @@ class BatchCXRProcessor:
     
     def process_full_pipeline(self, df: pd.DataFrame, report_column: str = 'REPORT',
                             steps: List[str] = ['semialgo', 'hybrid', 'llm', 'judge','lunit'],
-                            save_intermediate: bool = True, gt_present: bool = False, output_dir: str = './') -> pd.DataFrame:
+                            save_intermediate: bool = True, gt_present: bool = False, output_dir: str = '/tmp') -> pd.DataFrame:
         """
         Process the full pipeline: semialgo -> hybrid -> LLM -> judge -> lunit
         
