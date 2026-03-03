@@ -258,8 +258,11 @@ def validate_upload(request):
     except ValueError as e:
         return JsonResponse({'error': str(e)}, status=400)
 
+    MAX_GT_ROWS = 10000
     if len(rows) == 0:
         return JsonResponse({'error': 'The file contains no data rows.'}, status=400)
+    if len(rows) > MAX_GT_ROWS:
+        return JsonResponse({'error': f'File exceeds the maximum of {MAX_GT_ROWS:,} rows.'}, status=400)
 
     # Best-guess column mapping
     acc_guess = _best_column_match(columns, 'accession')

@@ -4,9 +4,10 @@ Combined CXR Analysis Server
 Runs both the API server (port 1221) and static file server (port 1220) in a single Python file.
 """
 
-from fastapi import FastAPI, File, UploadFile, HTTPException, BackgroundTasks
+from fastapi import FastAPI, File, UploadFile, HTTPException, BackgroundTasks, Depends, Security
 from fastapi.responses import FileResponse, JSONResponse, HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import APIKeyHeader
 import pandas as pd
 import numpy as np
 import json
@@ -46,13 +47,29 @@ thresholds = {
 }
 
 # ================================
+# API KEY AUTHENTICATION
+# ================================
+
+API_SECRET_KEY = os.environ.get("API_SECRET_KEY", "")
+
+_api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
+
+async def verify_api_key(api_key: str = Security(_api_key_header)):
+    """Validate the X-API-Key header against the configured secret."""
+    if not API_SECRET_KEY:
+        return  # No key configured; allow requests (development mode)
+    if api_key != API_SECRET_KEY:
+        raise HTTPException(status_code=403, detail="Invalid or missing API key")
+
+# ================================
 # API SERVER (Port 1221)
 # ================================
 
 api_app = FastAPI(
     title="CXR Analysis API",
     description="API for processing chest X-ray reports using Lunit and ground truth data",
-    version="1.0.0"
+    version="1.0.0",
+    dependencies=[Depends(verify_api_key)],
 )
 
 # Add CORS middleware for web frontend access

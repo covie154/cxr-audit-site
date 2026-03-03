@@ -79,7 +79,7 @@ def _background_poll_and_save(task_id, api_url):
 
             # Poll FastAPI
             try:
-                r = requests.get(f"{api_url}/status/{task_id}", timeout=30)
+                r = requests.get(f"{api_url}/status/{task_id}", headers=get_api_headers(), timeout=30)
                 if r.status_code != 200:
                     continue
                 status_data = r.json()
@@ -133,7 +133,7 @@ def _background_poll_and_save(task_id, api_url):
 def _background_fetch_and_save(task_id, api_url, task):
     """Fetch results from FastAPI and save to DB (called from background thread)."""
     try:
-        r = requests.get(f"{api_url}/results/{task_id}", timeout=120)
+        r = requests.get(f"{api_url}/results/{task_id}", headers=get_api_headers(), timeout=120)
         if r.status_code != 200:
             task.status = 'failed'
             task.error_message = f'Failed to fetch results: HTTP {r.status_code}'
@@ -194,6 +194,15 @@ def get_api_url():
     api_ip = settings.CXR_API_CONFIG.get('API_IP', 'localhost')
     api_port = settings.CXR_API_CONFIG.get('API_PORT', 1221)
     return f"http://{api_ip}:{api_port}"
+
+
+def get_api_headers():
+    """Return headers required to authenticate with the FastAPI backend."""
+    headers = {}
+    api_key = os.environ.get("API_SECRET_KEY", "")
+    if api_key:
+        headers["X-API-Key"] = api_key
+    return headers
 
 
 @login_required
@@ -271,6 +280,7 @@ def analyze_auto_sort(request):
             f"{api_url}/analyze-auto-sort",
             files=files_to_send,
             data={'supplemental_steps': supplemental_steps},
+            headers=get_api_headers(),
             timeout=300
         )
         
@@ -340,6 +350,7 @@ def analyze_multiple(request):
             f"{api_url}/analyze-multiple",
             files=files_to_send,
             data={'supplemental_steps': supplemental_steps},
+            headers=get_api_headers(),
             timeout=300
         )
         
@@ -381,7 +392,7 @@ def get_status(request, task_id):
     api_url = get_api_url()
     
     try:
-        response = requests.get(f"{api_url}/status/{task_id}", timeout=30)
+        response = requests.get(f"{api_url}/status/{task_id}", headers=get_api_headers(), timeout=30)
         
         if response.status_code != 200:
             return JsonResponse({'error': response.text}, status=response.status_code)
@@ -424,7 +435,7 @@ def get_results(request, task_id):
     api_url = get_api_url()
     
     try:
-        response = requests.get(f"{api_url}/results/{task_id}", timeout=60)
+        response = requests.get(f"{api_url}/results/{task_id}", headers=get_api_headers(), timeout=60)
         
         if response.status_code != 200:
             return JsonResponse({'error': response.text}, status=response.status_code)
@@ -476,7 +487,7 @@ def check_api_connection(request):
     api_url = get_api_url()
     
     try:
-        response = requests.get(f"{api_url}/", timeout=5)
+        response = requests.get(f"{api_url}/", headers=get_api_headers(), timeout=5)
         return JsonResponse({
             'connected': True,
             'api_url': api_url,
