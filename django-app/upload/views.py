@@ -10,6 +10,7 @@ when the task completes — even if the user leaves the page.
 """
 
 import json
+import os
 import threading
 import traceback
 import requests
@@ -557,7 +558,7 @@ def precheck_files(request):
     import pandas as pd
     from io import BytesIO
 
-    XLSX_PASSWORD = 'GE_2024_P@55'
+    XLSX_PASSWORD = os.environ.get("XLSX_DECRYPT_PASSWORD", "")
 
     def _read_file_to_df(raw_bytes, filename):
         """Read CSV or Excel (with optional decryption) into a DataFrame."""

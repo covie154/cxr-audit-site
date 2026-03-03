@@ -37,11 +37,18 @@ COPY static/ static/
 # Create directories for data that will be volume-mounted
 RUN mkdir -p /app/db /app/media /app/staticfiles
 
+# Create non-root user and grant ownership of writable directories
+RUN adduser --disabled-password --no-create-home appuser && \
+    chown -R appuser:appuser /app/db /app/media /app/staticfiles
+
 # Copy entrypoint
 COPY entrypoint.sh .
 RUN chmod +x entrypoint.sh
 
 # Expose Django/Gunicorn port
 EXPOSE 8000
+
+# Switch to non-root user
+USER appuser
 
 ENTRYPOINT ["./entrypoint.sh"]
