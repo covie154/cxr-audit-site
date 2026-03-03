@@ -275,11 +275,18 @@ async function downloadPDF() {
 
 // ── Email modal functions ──
 
+const EMAIL_STORAGE_KEY = 'primer_email_recipients';
+
 function openEmailModal() {
     if (!lastReportData) { alert('Generate a report first.'); return; }
     document.getElementById('emailStatus').textContent = '';
     document.getElementById('emailStatus').className = 'email-status';
     document.getElementById('sendEmailBtn').disabled = false;
+
+    // Restore saved recipients
+    const saved = localStorage.getItem(EMAIL_STORAGE_KEY);
+    if (saved) document.getElementById('emailRecipients').value = saved;
+
     document.getElementById('emailModal').classList.add('open');
     document.getElementById('emailRecipients').focus();
 }
@@ -294,6 +301,11 @@ async function sendEmailReport() {
         showEmailStatus('Please enter at least one email address.', 'error');
         return;
     }
+
+    // Persist recipients for next time
+    localStorage.setItem(EMAIL_STORAGE_KEY, recipients);
+
+    const note = document.getElementById('emailNote').value.trim();
 
     const btn = document.getElementById('sendEmailBtn');
     btn.disabled = true;
@@ -310,6 +322,7 @@ async function sendEmailReport() {
             body: JSON.stringify({
                 recipients: recipients,
                 report_data: lastReportData,
+                note: note,
             }),
         });
         const result = await r.json();

@@ -21,6 +21,15 @@
 </td>
 </tr>
 
+<!-- Optional note -->
+{% if note %}
+<tr>
+<td style="padding:24px 32px 0;">
+    <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:16px 20px;font-size:14px;color:#334155;line-height:1.6;white-space:pre-line;">{{ note }}</div>
+</td>
+</tr>
+{% endif %}
+
 <!-- Summary cards -->
 {% if data.overall %}
 <tr>

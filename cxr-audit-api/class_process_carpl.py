@@ -20,7 +20,7 @@ from cxr_audit.grade_batch_async import BatchCXRProcessor
 # ================================
 # LLM / Ollama Configuration (env-var driven)
 # ================================
-OLLAMA_BASE_URL = os.environ.get("OLLAMA_BASE_URL", "http://192.168.1.204:11434/v1")
+OLLAMA_BASE_URL = os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434/v1")
 OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "qwen3:32b-q4_K_M")
 OLLAMA_API_KEY = os.environ.get("OLLAMA_API_KEY", "dummy")
 OLLAMA_MAX_WORKERS = int(os.environ.get("OLLAMA_MAX_WORKERS", "8"))
@@ -150,7 +150,9 @@ thresholds_default = {
 }
 
 class ProcessCarpl:
-    def __init__(self, path_carpl_reports, path_ge_reports, processor=processor, supplemental_steps=True, priority_threshold=thresholds_default, passwd="GE_2024_P@55", progress_callback=None):
+    def __init__(self, path_carpl_reports, path_ge_reports, processor=processor, supplemental_steps=True, priority_threshold=thresholds_default, passwd=None, progress_callback=None):
+        if passwd is None:
+            passwd = os.environ.get("XLSX_DECRYPT_PASSWORD", "")
         # Support both single file paths and lists of file paths
         self.path_carpl_reports = path_carpl_reports if isinstance(path_carpl_reports, list) else [path_carpl_reports]
         self.path_ge_reports = path_ge_reports if isinstance(path_ge_reports, list) else [path_ge_reports]

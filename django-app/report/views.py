@@ -739,6 +739,7 @@ def email_report(request):
 
     recipients_raw = body.get('recipients', '')
     report_data = body.get('report_data')
+    note = body.get('note', '').strip()
 
     if not report_data:
         return JsonResponse({'ok': False, 'error': 'No report data provided.'}, status=400)
@@ -762,6 +763,7 @@ def email_report(request):
         'data': report_data,
         'date_from': date_from,
         'date_to': date_to,
+        'note': note,
     })
 
     # Plain-text fallback is just the txt_report

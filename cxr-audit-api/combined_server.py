@@ -135,7 +135,7 @@ async def sort_files_async(file_paths: List[str]) -> Dict[str, List[str]]:
         if ext in ['.xlsx', '.xls']:
             # Attempt to open with protected Excel handler
             try:
-                df = open_protected_xlsx(file_path, password="GE_2024_P@55")
+                df = open_protected_xlsx(file_path, password=os.environ.get("XLSX_DECRYPT_PASSWORD", ""))
             except Exception as e:
                 try:
                     df = pd.read_excel(file_path)
