@@ -48,7 +48,6 @@ RUN chmod +x entrypoint.sh
 # Expose Django/Gunicorn port
 EXPOSE 8000
 
-# Switch to non-root user
-USER appuser
-
+# Entrypoint runs as root to fix volume permissions,
+# then drops to appuser for Gunicorn via gosu / su-exec.
 ENTRYPOINT ["./entrypoint.sh"]
