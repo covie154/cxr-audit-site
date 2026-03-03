@@ -1,5 +1,5 @@
 from string import Template
-from llama_index.core.bridge.pydantic import BaseModel
+from pydantic import BaseModel
 
 sys_role_msg = '''You are a helpful medical assistant.
 Your task is to classify chest X-ray reports according to the following grading system:
