@@ -273,46 +273,49 @@
 {% endif %}
 {% endif %}
 
-{% if chart_images.boxPlotCanvas %}
-<!-- box plot will appear inside Time Analysis below -->
-{% endif %}
-
 <!-- ── Time Analysis ── -->
 {% if data.time_stats.tcd_count or data.time_stats.tee_count %}
 <h2>⏱️ Time Analysis</h2>
-<div class="time-grid">
-    {% if data.time_stats.tcd_count %}
-    <div class="time-card">
-        <div class="title">Time to Clinical Decision</div>
-        <div class="meta">n = {{ data.time_stats.tcd_count }}</div>
-        <div style="margin-top:8px;">
-            <span class="big">{{ data.time_stats.tcd_median|floatformat:0 }}s</span> median
-        </div>
-        <div class="meta">P25: {{ data.time_stats.tcd_p25|floatformat:0 }}s &nbsp;|&nbsp; P75: {{ data.time_stats.tcd_p75|floatformat:0 }}s</div>
-        {% if data.time_stats.tcd_more_than_5mins != None %}
-        <div class="meta" style="color:#dc2626;font-weight:600;">&gt;5 min: {{ data.time_stats.tcd_more_than_5mins }} cases</div>
-        {% endif %}
+
+{% if data.time_stats.tcd_count %}
+<div class="time-card" style="margin-bottom:12px;">
+    <div class="title">Time to Clinical Decision</div>
+    <div class="meta" style="font-style:italic;">AI flag received date − End date for AI normal cases, TAT for all others (AI abnormal/not processed)</div>
+    <div class="meta">n = {{ data.time_stats.tcd_count }}</div>
+    <div style="margin-top:8px;">
+        <span class="big">{{ data.time_stats.tcd_mean|floatformat:0 }}s</span> mean &nbsp;
+        <span class="big">{{ data.time_stats.tcd_median|floatformat:0 }}s</span> median
     </div>
+    <div class="meta">P25: {{ data.time_stats.tcd_p25|floatformat:0 }}s &nbsp;|&nbsp; P75: {{ data.time_stats.tcd_p75|floatformat:0 }}s</div>
+    {% if data.time_stats.tcd_more_than_5mins != None %}
+    <div class="meta" style="color:#dc2626;font-weight:600;">&gt;5 min: {{ data.time_stats.tcd_more_than_5mins }} cases</div>
     {% endif %}
-    {% if data.time_stats.tee_count %}
-    <div class="time-card">
-        <div class="title">End-to-End Server Time</div>
-        <div class="meta">n = {{ data.time_stats.tee_count }}</div>
-        <div style="margin-top:8px;">
-            <span class="big">{{ data.time_stats.tee_median|floatformat:0 }}s</span> median
-        </div>
-        <div class="meta">P25: {{ data.time_stats.tee_p25|floatformat:0 }}s &nbsp;|&nbsp; P75: {{ data.time_stats.tee_p75|floatformat:0 }}s</div>
-        {% if data.time_stats.tee_more_than_5mins != None %}
-        <div class="meta" style="color:#dc2626;font-weight:600;">&gt;5 min: {{ data.time_stats.tee_more_than_5mins }} cases</div>
-        {% endif %}
+    {% if chart_images.tcdBoxPlot %}
+    <div style="margin-top:8px;">
+        <img src="{{ chart_images.tcdBoxPlot }}" alt="Clinical Decision Box Plot" style="width:100%;">
     </div>
     {% endif %}
 </div>
+{% endif %}
 
-{% if chart_images.boxPlotCanvas %}
-<div class="chart-section">
-    <h3 style="font-size:12px;color:#475569;margin-bottom:4px;">Time Distribution (Box Plot)</h3>
-    <img src="{{ chart_images.boxPlotCanvas }}" alt="Time Box Plot">
+{% if data.time_stats.tee_count %}
+<div class="time-card" style="margin-bottom:12px;">
+    <div class="title">End-to-End Server Time</div>
+    <div class="meta" style="font-style:italic;">AI flag received date − End date, if the CXR was processed</div>
+    <div class="meta">n = {{ data.time_stats.tee_count }}</div>
+    <div style="margin-top:8px;">
+        <span class="big">{{ data.time_stats.tee_mean|floatformat:0 }}s</span> mean &nbsp;
+        <span class="big">{{ data.time_stats.tee_median|floatformat:0 }}s</span> median
+    </div>
+    <div class="meta">P25: {{ data.time_stats.tee_p25|floatformat:0 }}s &nbsp;|&nbsp; P75: {{ data.time_stats.tee_p75|floatformat:0 }}s</div>
+    {% if data.time_stats.tee_more_than_5mins != None %}
+    <div class="meta" style="color:#dc2626;font-weight:600;">&gt;5 min: {{ data.time_stats.tee_more_than_5mins }} cases</div>
+    {% endif %}
+    {% if chart_images.teeBoxPlot %}
+    <div style="margin-top:8px;">
+        <img src="{{ chart_images.teeBoxPlot }}" alt="End-to-End Box Plot" style="width:100%;">
+    </div>
+    {% endif %}
 </div>
 {% endif %}
 

@@ -65,35 +65,36 @@ function renderReport(data) {
     // Time analysis
     const ts = data.time_stats || {};
     const timeSec = document.getElementById('timeSection');
-    const timeCards = document.getElementById('timeCards');
     if ((ts.tcd_count && ts.tcd_count > 0) || (ts.tee_count && ts.tee_count > 0)) {
         timeSec.style.display = 'block';
-        let html = '';
+        const tcdCard = document.getElementById('tcdCard');
+        const teeCard = document.getElementById('teeCard');
         if (ts.tcd_count > 0) {
-            html += `<div class="card" style="padding:16px;">
-                <div style="font-weight:700;margin-bottom:4px;">Time to Clinical Decision</div>
+            tcdCard.style.display = 'block';
+            document.getElementById('tcdStats').innerHTML = `
+                <div style="font-size:.78em;color:var(--c-text-muted);margin-bottom:8px;font-style:italic;">AI flag received date − End date for AI normal cases, TAT for all others (AI abnormal/not processed)</div>
                 <div style="font-size:.82em;color:var(--c-text-muted);margin-bottom:12px;">n = ${ts.tcd_count}</div>
                 <div style="display:flex;gap:20px;align-items:baseline;">
+                    <div><span style="font-size:1.4em;font-weight:700;color:var(--c-primary);">${fmtSec(ts.tcd_mean)}</span><br><span style="font-size:.76em;color:var(--c-text-muted);">Mean</span></div>
                     <div><span style="font-size:1.4em;font-weight:700;color:var(--c-primary);">${fmtSec(ts.tcd_median)}</span><br><span style="font-size:.76em;color:var(--c-text-muted);">Median</span></div>
                     <div><span style="font-size:1.1em;font-weight:600;color:var(--c-text-muted);">${fmtSec(ts.tcd_p25)}</span><br><span style="font-size:.76em;color:var(--c-text-muted);">P25</span></div>
                     <div><span style="font-size:1.1em;font-weight:600;color:var(--c-text-muted);">${fmtSec(ts.tcd_p75)}</span><br><span style="font-size:.76em;color:var(--c-text-muted);">P75</span></div>
-                </div>
-            </div>`;
-        }
+                </div>`;
+        } else { tcdCard.style.display = 'none'; }
         if (ts.tee_count > 0) {
-            html += `<div class="card" style="padding:16px;">
-                <div style="font-weight:700;margin-bottom:4px;">End-to-End Server Time</div>
+            teeCard.style.display = 'block';
+            document.getElementById('teeStats').innerHTML = `
+                <div style="font-size:.78em;color:var(--c-text-muted);margin-bottom:8px;font-style:italic;">AI flag received date − End date, if the CXR was processed</div>
                 <div style="font-size:.82em;color:var(--c-text-muted);margin-bottom:12px;">n = ${ts.tee_count}</div>
                 <div style="display:flex;gap:20px;align-items:baseline;">
+                    <div><span style="font-size:1.4em;font-weight:700;color:var(--c-primary);">${fmtSec(ts.tee_mean)}</span><br><span style="font-size:.76em;color:var(--c-text-muted);">Mean</span></div>
                     <div><span style="font-size:1.4em;font-weight:700;color:var(--c-primary);">${fmtSec(ts.tee_median)}</span><br><span style="font-size:.76em;color:var(--c-text-muted);">Median</span></div>
                     <div><span style="font-size:1.1em;font-weight:600;color:var(--c-text-muted);">${fmtSec(ts.tee_p25)}</span><br><span style="font-size:.76em;color:var(--c-text-muted);">P25</span></div>
                     <div><span style="font-size:1.1em;font-weight:600;color:var(--c-text-muted);">${fmtSec(ts.tee_p75)}</span><br><span style="font-size:.76em;color:var(--c-text-muted);">P75</span></div>
                     <div><span style="font-size:1.1em;font-weight:700;color:var(--c-danger);">${ts.tee_more_than_5mins ?? 0}</span><br><span style="font-size:.76em;color:var(--c-text-muted);">&gt; 5 min</span></div>
-                </div>
-            </div>`;
-        }
-        timeCards.innerHTML = html;
-        drawBoxPlot(ts);
+                </div>`;
+        } else { teeCard.style.display = 'none'; }
+        drawBoxPlots(ts);
     } else {
         timeSec.style.display = 'none';
     }
@@ -233,7 +234,7 @@ function renderGtCompare(mvl) {
 
 function captureChartImages() {
     const charts = {};
-    const ids = ['aucTrendChart', 'sensChart', 'specChart', 'boxPlotCanvas'];
+    const ids = ['aucTrendChart', 'sensChart', 'specChart', 'tcdBoxPlot', 'teeBoxPlot'];
     ids.forEach(id => {
         const canvas = document.getElementById(id);
         if (canvas && canvas.width > 0 && canvas.offsetParent !== null) {

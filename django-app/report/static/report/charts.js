@@ -15,8 +15,17 @@ const SITE_COLORS = [
 // ────────────────────────────────────
 // Box plot (time analysis)
 // ────────────────────────────────────
-function drawBoxPlot(ts) {
-    const canvas = document.getElementById('boxPlotCanvas');
+/**
+ * Draw a single horizontal box-and-whisker plot on the given canvas.
+ * @param {string} canvasId   – id of the <canvas> element
+ * @param {number[]} vals     – raw values in seconds
+ * @param {string} color      – CSS colour for the box
+ * @param {number} scaleMaxMins – x-axis maximum in minutes
+ * @param {number|null} refLineMins – optional reference line in minutes (dashed red)
+ */
+function drawSingleBoxPlot(canvasId, vals, color, scaleMaxMins, refLineMins) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas || !vals || vals.length === 0) return;
     const ctx = canvas.getContext('2d');
     const dpr = window.devicePixelRatio || 1;
     const rect = canvas.getBoundingClientRect();
@@ -24,98 +33,88 @@ function drawBoxPlot(ts) {
     canvas.height = rect.height * dpr;
     ctx.scale(dpr, dpr);
     const W = rect.width, H = rect.height;
-
     ctx.clearRect(0, 0, W, H);
 
-    // Collect datasets
-    const datasets = [];
-    if (ts.tcd_vals && ts.tcd_vals.length > 0) datasets.push({ label: 'Clinical Decision', vals: ts.tcd_vals, color: '#3b82f6' });
-    if (ts.tee_vals && ts.tee_vals.length > 0) datasets.push({ label: 'End-to-End', vals: ts.tee_vals, color: '#8b5cf6' });
-    if (datasets.length === 0) return;
+    const mins = vals.map(v => v / 60);
+    const scaleMax = scaleMaxMins;
 
-    // Convert seconds → minutes for display
-    datasets.forEach(d => { d.mins = d.vals.map(v => v / 60); });
-
-    // Global scale (in minutes) — capped at 10 min
-    const scaleMax = 10;
-
-    const leftPad = 140, rightPad = 30, topPad = 20, botPad = 30;
+    const leftPad = 30, rightPad = 30, topPad = 16, botPad = 28;
     const plotW = W - leftPad - rightPad;
     const plotH = H - topPad - botPad;
-    const toX = (mins) => leftPad + (mins / scaleMax) * plotW;
-
-    const rowH = Math.min(50, plotH / datasets.length);
-    const rowGap = (plotH - rowH * datasets.length) / (datasets.length + 1);
+    const toX = (m) => leftPad + (m / scaleMax) * plotW;
 
     // Axis
     ctx.strokeStyle = '#e2e8f0'; ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(leftPad, topPad); ctx.lineTo(leftPad, H - botPad); ctx.lineTo(W - rightPad, H - botPad); ctx.stroke();
 
-    // Tick marks (minutes)
+    // Tick marks
     ctx.fillStyle = '#94a3b8'; ctx.font = '11px system-ui'; ctx.textAlign = 'center';
-    const tickStep = scaleMax <= 10 ? 1 : scaleMax <= 30 ? 5 : scaleMax <= 120 ? 10 : 30;
+    const tickStep = scaleMax <= 5 ? 1 : scaleMax <= 15 ? 2 : scaleMax <= 30 ? 5 : 10;
     for (let m = 0; m <= scaleMax; m += tickStep) {
         const x = toX(m);
         ctx.strokeStyle = '#f1f5f9'; ctx.beginPath(); ctx.moveTo(x, topPad); ctx.lineTo(x, H - botPad); ctx.stroke();
-        ctx.fillText(m + 'min', x, H - botPad + 16);
+        ctx.fillText(m + ' min', x, H - botPad + 16);
     }
 
-    // 5-min reference line
-    const x5 = toX(5);
-    ctx.save();
-    ctx.strokeStyle = '#dc2626'; ctx.lineWidth = 1.5; ctx.setLineDash([6, 4]);
-    ctx.beginPath(); ctx.moveTo(x5, topPad); ctx.lineTo(x5, H - botPad); ctx.stroke();
-    ctx.setLineDash([]);
-    ctx.fillStyle = '#dc2626'; ctx.font = 'bold 11px system-ui'; ctx.textAlign = 'left';
-    ctx.fillText('5 min', x5 + 4, topPad + 12);
-    ctx.restore();
+    // Reference line
+    if (refLineMins != null && refLineMins <= scaleMax) {
+        const xRef = toX(refLineMins);
+        ctx.save();
+        ctx.strokeStyle = '#dc2626'; ctx.lineWidth = 1.5; ctx.setLineDash([6, 4]);
+        ctx.beginPath(); ctx.moveTo(xRef, topPad); ctx.lineTo(xRef, H - botPad); ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = '#dc2626'; ctx.font = 'bold 11px system-ui'; ctx.textAlign = 'left';
+        ctx.fillText(refLineMins + ' min', xRef + 4, topPad + 12);
+        ctx.restore();
+    }
 
-    // Draw each box plot
-    datasets.forEach((d, i) => {
-        const yCenter = topPad + rowGap * (i + 1) + rowH * i + rowH / 2;
-        const sorted = d.mins.slice().sort((a, b) => a - b);
-        const n = sorted.length;
-        const q1 = sorted[Math.floor(n * 0.25)];
-        const med = sorted[Math.floor(n * 0.5)];
-        const q3 = sorted[Math.floor(n * 0.75)];
-        const iqr = q3 - q1;
-        const wLo = Math.max(sorted[0], q1 - 1.5 * iqr);
-        const wHi = Math.min(sorted[n - 1], q3 + 1.5 * iqr);
+    // Statistics
+    const sorted = mins.slice().sort((a, b) => a - b);
+    const n = sorted.length;
+    const q1 = sorted[Math.floor(n * 0.25)];
+    const med = sorted[Math.floor(n * 0.5)];
+    const q3 = sorted[Math.floor(n * 0.75)];
+    const iqr = q3 - q1;
+    const wLo = Math.max(sorted[0], q1 - 1.5 * iqr);
+    const wHi = Math.min(sorted[n - 1], q3 + 1.5 * iqr);
 
-        const boxH = rowH * 0.6;
+    const yCenter = topPad + plotH / 2;
+    const boxH = Math.min(40, plotH * 0.6);
 
-        // Whiskers
-        ctx.strokeStyle = d.color; ctx.lineWidth = 1.5;
-        ctx.beginPath();
-        ctx.moveTo(toX(wLo), yCenter); ctx.lineTo(toX(q1), yCenter);
-        ctx.moveTo(toX(q3), yCenter); ctx.lineTo(toX(wHi), yCenter);
-        // Whisker caps
-        ctx.moveTo(toX(wLo), yCenter - boxH / 4); ctx.lineTo(toX(wLo), yCenter + boxH / 4);
-        ctx.moveTo(toX(wHi), yCenter - boxH / 4); ctx.lineTo(toX(wHi), yCenter + boxH / 4);
-        ctx.stroke();
+    // Whiskers
+    ctx.strokeStyle = color; ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(toX(wLo), yCenter); ctx.lineTo(toX(q1), yCenter);
+    ctx.moveTo(toX(q3), yCenter); ctx.lineTo(toX(wHi), yCenter);
+    ctx.moveTo(toX(wLo), yCenter - boxH / 4); ctx.lineTo(toX(wLo), yCenter + boxH / 4);
+    ctx.moveTo(toX(wHi), yCenter - boxH / 4); ctx.lineTo(toX(wHi), yCenter + boxH / 4);
+    ctx.stroke();
 
-        // Box
-        ctx.fillStyle = d.color + '22';
-        ctx.fillRect(toX(q1), yCenter - boxH / 2, toX(q3) - toX(q1), boxH);
-        ctx.strokeStyle = d.color; ctx.lineWidth = 1.5;
-        ctx.strokeRect(toX(q1), yCenter - boxH / 2, toX(q3) - toX(q1), boxH);
+    // Box
+    ctx.fillStyle = color + '22';
+    ctx.fillRect(toX(q1), yCenter - boxH / 2, toX(q3) - toX(q1), boxH);
+    ctx.strokeStyle = color; ctx.lineWidth = 1.5;
+    ctx.strokeRect(toX(q1), yCenter - boxH / 2, toX(q3) - toX(q1), boxH);
 
-        // Median line
-        ctx.strokeStyle = d.color; ctx.lineWidth = 2.5;
-        ctx.beginPath(); ctx.moveTo(toX(med), yCenter - boxH / 2); ctx.lineTo(toX(med), yCenter + boxH / 2); ctx.stroke();
+    // Median
+    ctx.strokeStyle = color; ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.moveTo(toX(med), yCenter - boxH / 2); ctx.lineTo(toX(med), yCenter + boxH / 2); ctx.stroke();
 
-        // Outliers
-        ctx.fillStyle = d.color;
-        sorted.forEach(v => {
-            if (v < wLo || v > wHi) {
-                ctx.beginPath(); ctx.arc(toX(v), yCenter, 2.5, 0, Math.PI * 2); ctx.fill();
-            }
-        });
-
-        // Label
-        ctx.fillStyle = d.color; ctx.font = 'bold 12px system-ui'; ctx.textAlign = 'right';
-        ctx.fillText(d.label, leftPad - 10, yCenter + 4);
+    // Outliers
+    ctx.fillStyle = color;
+    sorted.forEach(v => {
+        if (v < wLo || v > wHi) {
+            ctx.beginPath(); ctx.arc(toX(Math.min(v, scaleMax)), yCenter, 2.5, 0, Math.PI * 2); ctx.fill();
+        }
     });
+}
+
+/** Legacy wrapper – draws both box plots on separate canvases. */
+function drawBoxPlots(ts) {
+    if (ts.tcd_vals && ts.tcd_vals.length > 0)
+        drawSingleBoxPlot('tcdBoxPlot', ts.tcd_vals, '#3b82f6', 30, null);
+    if (ts.tee_vals && ts.tee_vals.length > 0)
+        drawSingleBoxPlot('teeBoxPlot', ts.tee_vals, '#8b5cf6', 5, 5);
 }
 
 // ────────────────────────────────────
