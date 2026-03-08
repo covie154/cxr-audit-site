@@ -568,7 +568,8 @@ Accuracy Difference (LLM - GT): {mcnemar_result['accuracy_difference']:.3f}
             if row['AI_PRIORITY'] == "5 AI_ROUTINE":
                 return row['AI_FLAG_RECEIVED_DATE'] - row['PROCEDURE_END_DATE']
             else:
-                return row['REPORT_TURN_AROUND_TIME']
+                return row['REPORT_TURN_AROUND_TIME'] * 60  # Convert minutes to seconds
+                # NB: TAT is in minutes, so we convert to seconds to keep consistent units with the other calculation
 
         def time_end_to_end(row):
             if row['AI_PRIORITY'] != "4 URGENT":
