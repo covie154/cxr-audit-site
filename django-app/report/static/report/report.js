@@ -75,7 +75,7 @@ function renderReport(data) {
                 <div style="font-size:.78em;color:var(--c-text-muted);margin-bottom:8px;font-style:italic;">AI flag received date − End date for AI normal cases, TAT for all others (AI abnormal/not processed)</div>
                 <div style="font-size:.82em;color:var(--c-text-muted);margin-bottom:12px;">n = ${ts.tcd_count}</div>
                 <div style="display:flex;gap:20px;align-items:baseline;">
-                    <div><span style="font-size:1.4em;font-weight:700;color:var(--c-primary);">${fmtSec(ts.tcd_mean)}</span><br><span style="font-size:.76em;color:var(--c-text-muted);">Mean</span></div>
+                    <div><span style="font-size:1.4em;font-weight:400;color:var(--c-primary);">${fmtSec(ts.tcd_mean)}</span><br><span style="font-size:.76em;color:var(--c-text-muted);">Mean</span></div>
                     <div><span style="font-size:1.4em;font-weight:700;color:var(--c-primary);">${fmtSec(ts.tcd_median)}</span><br><span style="font-size:.76em;color:var(--c-text-muted);">Median</span></div>
                     <div><span style="font-size:1.1em;font-weight:600;color:var(--c-text-muted);">${fmtSec(ts.tcd_p25)}</span><br><span style="font-size:.76em;color:var(--c-text-muted);">P25</span></div>
                     <div><span style="font-size:1.1em;font-weight:600;color:var(--c-text-muted);">${fmtSec(ts.tcd_p75)}</span><br><span style="font-size:.76em;color:var(--c-text-muted);">P75</span></div>
@@ -87,7 +87,7 @@ function renderReport(data) {
                 <div style="font-size:.78em;color:var(--c-text-muted);margin-bottom:8px;font-style:italic;">AI flag received date − End date, if the CXR was processed</div>
                 <div style="font-size:.82em;color:var(--c-text-muted);margin-bottom:12px;">n = ${ts.tee_count}</div>
                 <div style="display:flex;gap:20px;align-items:baseline;">
-                    <div><span style="font-size:1.4em;font-weight:700;color:var(--c-primary);">${fmtSec(ts.tee_mean)}</span><br><span style="font-size:.76em;color:var(--c-text-muted);">Mean</span></div>
+                    <div><span style="font-size:1.4em;font-weight:400;color:var(--c-primary);">${fmtSec(ts.tee_mean)}</span><br><span style="font-size:.76em;color:var(--c-text-muted);">Mean</span></div>
                     <div><span style="font-size:1.4em;font-weight:700;color:var(--c-primary);">${fmtSec(ts.tee_median)}</span><br><span style="font-size:.76em;color:var(--c-text-muted);">Median</span></div>
                     <div><span style="font-size:1.1em;font-weight:600;color:var(--c-text-muted);">${fmtSec(ts.tee_p25)}</span><br><span style="font-size:.76em;color:var(--c-text-muted);">P25</span></div>
                     <div><span style="font-size:1.1em;font-weight:600;color:var(--c-text-muted);">${fmtSec(ts.tee_p75)}</span><br><span style="font-size:.76em;color:var(--c-text-muted);">P75</span></div>

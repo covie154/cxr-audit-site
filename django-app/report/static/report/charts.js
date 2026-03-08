@@ -112,9 +112,9 @@ function drawSingleBoxPlot(canvasId, vals, color, scaleMaxMins, refLineMins) {
 /** Legacy wrapper – draws both box plots on separate canvases. */
 function drawBoxPlots(ts) {
     if (ts.tcd_vals && ts.tcd_vals.length > 0)
-        drawSingleBoxPlot('tcdBoxPlot', ts.tcd_vals, '#3b82f6', 30, null);
+        drawSingleBoxPlot('tcdBoxPlot', ts.tcd_vals, '#3b82f6', 60, null);
     if (ts.tee_vals && ts.tee_vals.length > 0)
-        drawSingleBoxPlot('teeBoxPlot', ts.tee_vals, '#8b5cf6', 5, 5);
+        drawSingleBoxPlot('teeBoxPlot', ts.tee_vals, '#8b5cf6', 10, 5);
 }
 
 // ────────────────────────────────────
