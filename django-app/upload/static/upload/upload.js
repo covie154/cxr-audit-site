@@ -96,8 +96,8 @@ function handleFiles(input, displayId) {
     if (files.length <= 5) { listHtml = `<div class="file-list">${items.join('')}</div>`; }
     else { listHtml = `<div class="file-list">${items.slice(0,3).join('')}<div class="file-item" style="font-style:italic;color:#94a3b8;"><span>\u2026 and ${files.length - 3} more</span></div></div>`; }
 
-    el.innerHTML = `<div class="file-info">\u2705 ${files.length} file${files.length>1?'s':''} (${fmtSize(total)})${listHtml}</div>
-        <button type="button" class="remove-file-btn" data-input="${input.id}" data-display="${displayId}">\u2715 Remove</button>`;
+    el.innerHTML = `<span class="file-info">\u2705 ${files.length} file${files.length>1?'s':''} (${fmtSize(total)})</span>
+        <button type="button" class="remove-file-btn" data-input="${input.id}" data-display="${displayId}">\u2715 Remove</button>${listHtml}`;
     el.style.display = 'flex';
 
     // Attach remove handler
