@@ -12,9 +12,11 @@
 
 {% block body %}
 <div class="upload-page">
-    <h1 class="page-title">Upload &amp; Analyze</h1>
+    <div class="page-header">
+        <h1 class="page-title">Upload &amp; Analyze</h1>
+        <span id="apiStatus" class="api-pill checking">🔄 Checking…</span>
+    </div>
     <p class="page-subtitle">Upload Lunit CARPL and RIS Ground Truth files for automated analysis</p>
-    <span id="apiStatus" class="api-pill checking">🔄 Checking…</span>
 
     <div class="card upload-card">
         <form id="uploadForm">

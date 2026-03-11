@@ -137,11 +137,11 @@
                 <div style="font-size:10px;color:#94a3b8;font-style:italic;margin-bottom:8px;">AI flag received date − End date for AI normal cases, TAT for all others (AI abnormal/not processed)</div>
                 <div style="font-size:11px;color:#64748b;">n = {{ data.time_stats.tcd_count }}</div>
                 <div style="margin-top:8px;font-size:13px;">
-                    <strong style="font-size:18px;color:#3b82f6;">{{ data.time_stats.tcd_mean|floatformat:0 }}s</strong> mean &nbsp;
-                    <strong style="font-size:18px;color:#3b82f6;">{{ data.time_stats.tcd_median|floatformat:0 }}s</strong> median
+                    <strong style="font-size:18px;color:#3b82f6;">{{ data.time_stats.tcd_mean_fmt }}</strong> mean &nbsp;
+                    <strong style="font-size:18px;color:#3b82f6;">{{ data.time_stats.tcd_median_fmt }}</strong> median
                 </div>
                 <div style="font-size:12px;color:#64748b;margin-top:4px;">
-                    P25: {{ data.time_stats.tcd_p25|floatformat:0 }}s &nbsp;|&nbsp; P75: {{ data.time_stats.tcd_p75|floatformat:0 }}s
+                    P25: {{ data.time_stats.tcd_p25_fmt }} &nbsp;|&nbsp; P75: {{ data.time_stats.tcd_p75_fmt }}
                 </div>
             </div>
         </td>
@@ -153,11 +153,11 @@
                 <div style="font-size:10px;color:#94a3b8;font-style:italic;margin-bottom:8px;">AI flag received date − End date, if the CXR was processed</div>
                 <div style="font-size:11px;color:#64748b;">n = {{ data.time_stats.tee_count }}</div>
                 <div style="margin-top:8px;font-size:13px;">
-                    <strong style="font-size:18px;color:#3b82f6;">{{ data.time_stats.tee_mean|floatformat:0 }}s</strong> mean &nbsp;
-                    <strong style="font-size:18px;color:#3b82f6;">{{ data.time_stats.tee_median|floatformat:0 }}s</strong> median
+                    <strong style="font-size:18px;color:#3b82f6;">{{ data.time_stats.tee_mean_fmt }}</strong> mean &nbsp;
+                    <strong style="font-size:18px;color:#3b82f6;">{{ data.time_stats.tee_median_fmt }}</strong> median
                 </div>
                 <div style="font-size:12px;color:#64748b;margin-top:4px;">
-                    P25: {{ data.time_stats.tee_p25|floatformat:0 }}s &nbsp;|&nbsp; P75: {{ data.time_stats.tee_p75|floatformat:0 }}s
+                    P25: {{ data.time_stats.tee_p25_fmt }} &nbsp;|&nbsp; P75: {{ data.time_stats.tee_p75_fmt }}
                 </div>
             </div>
         </td>
