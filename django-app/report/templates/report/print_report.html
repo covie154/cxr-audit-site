@@ -283,10 +283,10 @@
     <div class="meta" style="font-style:italic;">AI flag received date − End date for AI normal cases, TAT for all others (AI abnormal/not processed)</div>
     <div class="meta">n = {{ data.time_stats.tcd_count }}</div>
     <div style="margin-top:8px;">
-        <span class="big">{{ data.time_stats.tcd_mean|floatformat:0 }}s</span> mean &nbsp;
-        <span class="big">{{ data.time_stats.tcd_median|floatformat:0 }}s</span> median
+        <span class="big">{{ data.time_stats.tcd_mean_fmt }}</span> mean &nbsp;
+        <span class="big">{{ data.time_stats.tcd_median_fmt }}</span> median
     </div>
-    <div class="meta">P25: {{ data.time_stats.tcd_p25|floatformat:0 }}s &nbsp;|&nbsp; P75: {{ data.time_stats.tcd_p75|floatformat:0 }}s</div>
+    <div class="meta">P25: {{ data.time_stats.tcd_p25_fmt }} &nbsp;|&nbsp; P75: {{ data.time_stats.tcd_p75_fmt }}</div>
     {% if data.time_stats.tcd_more_than_5mins != None %}
     <div class="meta" style="color:#dc2626;font-weight:600;">&gt;5 min: {{ data.time_stats.tcd_more_than_5mins }} cases</div>
     {% endif %}
@@ -304,10 +304,10 @@
     <div class="meta" style="font-style:italic;">AI flag received date − End date, if the CXR was processed</div>
     <div class="meta">n = {{ data.time_stats.tee_count }}</div>
     <div style="margin-top:8px;">
-        <span class="big">{{ data.time_stats.tee_mean|floatformat:0 }}s</span> mean &nbsp;
-        <span class="big">{{ data.time_stats.tee_median|floatformat:0 }}s</span> median
+        <span class="big">{{ data.time_stats.tee_mean_fmt }}</span> mean &nbsp;
+        <span class="big">{{ data.time_stats.tee_median_fmt }}</span> median
     </div>
-    <div class="meta">P25: {{ data.time_stats.tee_p25|floatformat:0 }}s &nbsp;|&nbsp; P75: {{ data.time_stats.tee_p75|floatformat:0 }}s</div>
+    <div class="meta">P25: {{ data.time_stats.tee_p25_fmt }} &nbsp;|&nbsp; P75: {{ data.time_stats.tee_p75_fmt }}</div>
     {% if data.time_stats.tee_more_than_5mins != None %}
     <div class="meta" style="color:#dc2626;font-weight:600;">&gt;5 min: {{ data.time_stats.tee_more_than_5mins }} cases</div>
     {% endif %}

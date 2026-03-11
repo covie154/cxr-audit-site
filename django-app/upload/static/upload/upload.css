@@ -6,7 +6,6 @@
     border-radius: 20px;
     font-size: .82em;
     font-weight: 600;
-    margin: 6px 0;
 }
 .api-pill.connected  { background: #bbf7d0; color: #166534; }
 .api-pill.disconnected { background: #fecaca; color: #991b1b; }
@@ -19,10 +18,15 @@
     padding: 0 20px 40px;
 }
 
+.page-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 4px;
+}
 .page-title {
     font-size: 1.5em;
     font-weight: 700;
-    margin-bottom: 4px;
 }
 .page-subtitle {
     color: var(--c-text-muted);
