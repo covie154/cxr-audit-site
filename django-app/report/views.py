@@ -593,6 +593,16 @@ def _build_report(studies, date_from, date_to):
     # ── Manual vs LLM GT analysis (only if manual GT exists) ──
     manual_vs_llm = _compute_manual_vs_llm(study_list)
 
+    # Pre-format time values as min/sec strings for use in email/print templates
+    time_stats['tcd_mean_fmt'] = _fmt_seconds(time_stats.get('tcd_mean'))
+    time_stats['tcd_median_fmt'] = _fmt_seconds(time_stats.get('tcd_median'))
+    time_stats['tcd_p25_fmt'] = _fmt_seconds(time_stats.get('tcd_p25'))
+    time_stats['tcd_p75_fmt'] = _fmt_seconds(time_stats.get('tcd_p75'))
+    time_stats['tee_mean_fmt'] = _fmt_seconds(time_stats.get('tee_mean'))
+    time_stats['tee_median_fmt'] = _fmt_seconds(time_stats.get('tee_median'))
+    time_stats['tee_p25_fmt'] = _fmt_seconds(time_stats.get('tee_p25'))
+    time_stats['tee_p75_fmt'] = _fmt_seconds(time_stats.get('tee_p75'))
+
     return {
         'total': total,
         'date_from': date_from,

@@ -73,6 +73,12 @@ body {
 .hamburger.open .line2 { opacity: 0; }
 .hamburger.open .line3 { transform: translateY(-6px) rotate(-45deg); }
 
+.nav-collapse {
+    display: flex;
+    align-items: center;
+    flex: 1;
+}
+
 .site-header nav {
     display: flex;
     gap: 2px;
@@ -194,6 +200,7 @@ body {
         flex-direction: column;
         padding: 6px 0 14px;
         order: 10; /* push below header row */
+        flex: none;
     }
     .nav-collapse.open { display: flex; }
 
