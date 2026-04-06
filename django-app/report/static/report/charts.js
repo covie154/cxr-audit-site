@@ -109,10 +109,24 @@ function drawSingleBoxPlot(canvasId, vals, color, scaleMaxMins, refLineMins) {
     });
 }
 
-/** Legacy wrapper – draws both box plots on separate canvases. */
+/** Draws both box plots on separate canvases. TCD auto-scales from P95. */
 function drawBoxPlots(ts) {
-    if (ts.tcd_vals && ts.tcd_vals.length > 0)
-        drawSingleBoxPlot('tcdBoxPlot', ts.tcd_vals, '#3b82f6', 60, null);
+    if (ts.tcd_vals && ts.tcd_vals.length > 0) {
+        // Auto-scale TCD: P95 in minutes × 1.3, rounded to nice tick value
+        let tcdMax = 60;
+        if (ts.tcd_p95 != null) {
+            const p95m = ts.tcd_p95 / 60;
+            const raw = p95m * 1.3;
+            if (raw <= 5) tcdMax = 5;
+            else if (raw <= 10) tcdMax = 10;
+            else if (raw <= 15) tcdMax = 15;
+            else if (raw <= 30) tcdMax = 30;
+            else if (raw <= 60) tcdMax = 60;
+            else if (raw <= 120) tcdMax = 120;
+            else tcdMax = Math.ceil(raw / 60) * 60;
+        }
+        drawSingleBoxPlot('tcdBoxPlot', ts.tcd_vals, '#3b82f6', tcdMax, null);
+    }
     if (ts.tee_vals && ts.tee_vals.length > 0)
         drawSingleBoxPlot('teeBoxPlot', ts.tee_vals, '#8b5cf6', 10, 5);
 }

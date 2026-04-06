@@ -158,43 +158,57 @@ def _compute_time_stats(study_list):
 
     if tcd_vals:
         q = statistics.quantiles(tcd_vals, n=4) if len(tcd_vals) >= 2 else [tcd_vals[0]] * 3
+        v20 = statistics.quantiles(tcd_vals, n=20) if len(tcd_vals) >= 2 else [tcd_vals[0]] * 19
         result['tcd_mean'] = statistics.mean(tcd_vals)
+        result['tcd_p5'] = v20[0]
         result['tcd_p25'] = q[0]
         result['tcd_median'] = q[1] if len(q) > 1 else tcd_vals[0]
         result['tcd_p75'] = q[2] if len(q) > 2 else tcd_vals[-1]
+        result['tcd_p95'] = v20[18] if len(v20) > 18 else tcd_vals[-1]
         result['tcd_min'] = min(tcd_vals)
         result['tcd_max'] = max(tcd_vals)
         result['tcd_vals'] = [round(v, 1) for v in tcd_vals]
         result['tcd_more_than_5mins'] = sum(1 for v in tcd_vals if v > 300)
+        result['tcd_above_p95'] = sum(1 for v in tcd_vals if v >= result['tcd_p95'])
     else:
         result['tcd_mean'] = None
+        result['tcd_p5'] = None
         result['tcd_p25'] = None
         result['tcd_median'] = None
         result['tcd_p75'] = None
+        result['tcd_p95'] = None
         result['tcd_min'] = None
         result['tcd_max'] = None
         result['tcd_vals'] = []
         result['tcd_more_than_5mins'] = None
+        result['tcd_above_p95'] = None
 
     if tee_vals:
         q = statistics.quantiles(tee_vals, n=4) if len(tee_vals) >= 2 else [tee_vals[0]] * 3
+        v20 = statistics.quantiles(tee_vals, n=20) if len(tee_vals) >= 2 else [tee_vals[0]] * 19
         result['tee_mean'] = statistics.mean(tee_vals)
+        result['tee_p5'] = v20[0]
         result['tee_p25'] = q[0]
         result['tee_median'] = q[1] if len(q) > 1 else tee_vals[0]
         result['tee_p75'] = q[2] if len(q) > 2 else tee_vals[-1]
+        result['tee_p95'] = v20[18] if len(v20) > 18 else tee_vals[-1]
         result['tee_min'] = min(tee_vals)
         result['tee_max'] = max(tee_vals)
         result['tee_vals'] = [round(v, 1) for v in tee_vals]
         result['tee_more_than_5mins'] = sum(1 for v in tee_vals if v > 300)
+        result['tee_above_p95'] = sum(1 for v in tee_vals if v >= result['tee_p95'])
     else:
         result['tee_mean'] = None
+        result['tee_p5'] = None
         result['tee_p25'] = None
         result['tee_median'] = None
         result['tee_p75'] = None
+        result['tee_p95'] = None
         result['tee_min'] = None
         result['tee_max'] = None
         result['tee_vals'] = []
         result['tee_more_than_5mins'] = None
+        result['tee_above_p95'] = None
 
     return result
 

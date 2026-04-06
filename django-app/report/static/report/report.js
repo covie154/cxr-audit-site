@@ -74,24 +74,36 @@ function renderReport(data) {
             document.getElementById('tcdStats').innerHTML = `
                 <div style="font-size:.78em;color:var(--c-text-muted);margin-bottom:8px;font-style:italic;">AI flag received date − End date for AI normal cases, TAT for all others (AI abnormal/not processed)</div>
                 <div style="font-size:.82em;color:var(--c-text-muted);margin-bottom:12px;">n = ${ts.tcd_count}</div>
-                <div style="display:flex;gap:20px;align-items:baseline;">
-                    <div><span style="font-size:1.4em;font-weight:400;color:var(--c-primary);">${fmtSec(ts.tcd_mean)}</span><br><span style="font-size:.76em;color:var(--c-text-muted);">Mean</span></div>
-                    <div><span style="font-size:1.4em;font-weight:700;color:var(--c-primary);">${fmtSec(ts.tcd_median)}</span><br><span style="font-size:.76em;color:var(--c-text-muted);">Median</span></div>
-                    <div><span style="font-size:1.1em;font-weight:600;color:var(--c-text-muted);">${fmtSec(ts.tcd_p25)}</span><br><span style="font-size:.76em;color:var(--c-text-muted);">P25</span></div>
-                    <div><span style="font-size:1.1em;font-weight:600;color:var(--c-text-muted);">${fmtSec(ts.tcd_p75)}</span><br><span style="font-size:.76em;color:var(--c-text-muted);">P75</span></div>
-                </div>`;
+                <div style="display:flex;gap:20px;align-items:baseline;flex-wrap:wrap;">
+                    <div><span style="font-size:1.5em;font-weight:700;color:var(--c-primary);">${fmtSec(ts.tcd_median)}</span><br><span style="font-size:.76em;color:var(--c-text-muted);">Median</span></div>
+                    <div><span style="font-size:1.3em;font-weight:400;color:var(--c-primary);">${fmtSec(ts.tcd_mean)}</span><br><span style="font-size:.76em;color:var(--c-text-muted);">Mean</span></div>
+                </div>
+                <div style="display:flex;gap:16px;align-items:baseline;margin-top:10px;">
+                    <div><span style="font-size:1.05em;font-weight:600;color:var(--c-text-muted);">${fmtSec(ts.tcd_p25)} – ${fmtSec(ts.tcd_p75)}</span><br><span style="font-size:.76em;color:var(--c-text-muted);">25th – 75th centile</span></div>
+                </div>
+                <div style="display:flex;gap:16px;align-items:baseline;margin-top:6px;">
+                    <div><span style="font-size:.92em;font-weight:400;color:#94a3b8;">${fmtSec(ts.tcd_p5)} – ${fmtSec(ts.tcd_p95)}</span><br><span style="font-size:.72em;color:#94a3b8;">5th – 95th centile</span></div>
+                </div>
+                <div style="margin-top:8px;font-size:.82em;color:var(--c-danger);font-weight:600;">${ts.tcd_above_p95 ?? 0} cases ≥ 95th centile</div>`;
         } else { tcdCard.style.display = 'none'; }
         if (ts.tee_count > 0) {
             teeCard.style.display = 'block';
             document.getElementById('teeStats').innerHTML = `
                 <div style="font-size:.78em;color:var(--c-text-muted);margin-bottom:8px;font-style:italic;">AI flag received date − End date, if the CXR was processed</div>
                 <div style="font-size:.82em;color:var(--c-text-muted);margin-bottom:12px;">n = ${ts.tee_count}</div>
-                <div style="display:flex;gap:20px;align-items:baseline;">
-                    <div><span style="font-size:1.4em;font-weight:400;color:var(--c-primary);">${fmtSec(ts.tee_mean)}</span><br><span style="font-size:.76em;color:var(--c-text-muted);">Mean</span></div>
-                    <div><span style="font-size:1.4em;font-weight:700;color:var(--c-primary);">${fmtSec(ts.tee_median)}</span><br><span style="font-size:.76em;color:var(--c-text-muted);">Median</span></div>
-                    <div><span style="font-size:1.1em;font-weight:600;color:var(--c-text-muted);">${fmtSec(ts.tee_p25)}</span><br><span style="font-size:.76em;color:var(--c-text-muted);">P25</span></div>
-                    <div><span style="font-size:1.1em;font-weight:600;color:var(--c-text-muted);">${fmtSec(ts.tee_p75)}</span><br><span style="font-size:.76em;color:var(--c-text-muted);">P75</span></div>
-                    <div><span style="font-size:1.1em;font-weight:700;color:var(--c-danger);">${ts.tee_more_than_5mins ?? 0}</span><br><span style="font-size:.76em;color:var(--c-text-muted);">&gt; 5 min</span></div>
+                <div style="display:flex;gap:20px;align-items:baseline;flex-wrap:wrap;">
+                    <div><span style="font-size:1.5em;font-weight:700;color:var(--c-primary);">${fmtSec(ts.tee_median)}</span><br><span style="font-size:.76em;color:var(--c-text-muted);">Median</span></div>
+                    <div><span style="font-size:1.3em;font-weight:400;color:var(--c-primary);">${fmtSec(ts.tee_mean)}</span><br><span style="font-size:.76em;color:var(--c-text-muted);">Mean</span></div>
+                </div>
+                <div style="display:flex;gap:16px;align-items:baseline;margin-top:10px;">
+                    <div><span style="font-size:1.05em;font-weight:600;color:var(--c-text-muted);">${fmtSec(ts.tee_p25)} – ${fmtSec(ts.tee_p75)}</span><br><span style="font-size:.76em;color:var(--c-text-muted);">25th – 75th centile</span></div>
+                </div>
+                <div style="display:flex;gap:16px;align-items:baseline;margin-top:6px;">
+                    <div><span style="font-size:.92em;font-weight:400;color:#94a3b8;">${fmtSec(ts.tee_p5)} – ${fmtSec(ts.tee_p95)}</span><br><span style="font-size:.72em;color:#94a3b8;">5th – 95th centile</span></div>
+                </div>
+                <div style="display:flex;gap:16px;align-items:baseline;margin-top:8px;">
+                    <div><span style="font-size:.82em;font-weight:600;color:var(--c-danger);">${ts.tee_above_p95 ?? 0} cases ≥ 95th centile</span></div>
+                    <div><span style="font-size:.82em;font-weight:600;color:var(--c-danger);">${ts.tee_more_than_5mins ?? 0} cases &gt; 5 min</span></div>
                 </div>`;
         } else { teeCard.style.display = 'none'; }
         drawBoxPlots(ts);

@@ -283,12 +283,13 @@
     <div class="meta" style="font-style:italic;">AI flag received date − End date for AI normal cases, TAT for all others (AI abnormal/not processed)</div>
     <div class="meta">n = {{ data.time_stats.tcd_count }}</div>
     <div style="margin-top:8px;">
-        <span class="big">{{ data.time_stats.tcd_mean|floatformat:0 }}s</span> mean &nbsp;
-        <span class="big">{{ data.time_stats.tcd_median|floatformat:0 }}s</span> median
+        <span class="big" style="font-weight:700;">{{ data.time_stats.tcd_median|floatformat:0 }}s</span> median &nbsp;
+        <span class="big">{{ data.time_stats.tcd_mean|floatformat:0 }}s</span> mean
     </div>
-    <div class="meta">P25: {{ data.time_stats.tcd_p25|floatformat:0 }}s &nbsp;|&nbsp; P75: {{ data.time_stats.tcd_p75|floatformat:0 }}s</div>
-    {% if data.time_stats.tcd_more_than_5mins != None %}
-    <div class="meta" style="color:#dc2626;font-weight:600;">&gt;5 min: {{ data.time_stats.tcd_more_than_5mins }} cases</div>
+    <div class="meta">25th–75th centile: {{ data.time_stats.tcd_p25|floatformat:0 }}s – {{ data.time_stats.tcd_p75|floatformat:0 }}s</div>
+    <div class="meta" style="color:#94a3b8;">5th–95th centile: {{ data.time_stats.tcd_p5|floatformat:0 }}s – {{ data.time_stats.tcd_p95|floatformat:0 }}s</div>
+    {% if data.time_stats.tcd_above_p95 != None %}
+    <div class="meta" style="color:#dc2626;font-weight:600;">{{ data.time_stats.tcd_above_p95 }} cases ≥ 95th centile</div>
     {% endif %}
     {% if chart_images.tcdBoxPlot %}
     <div style="margin-top:8px;">
@@ -304,12 +305,13 @@
     <div class="meta" style="font-style:italic;">AI flag received date − End date, if the CXR was processed</div>
     <div class="meta">n = {{ data.time_stats.tee_count }}</div>
     <div style="margin-top:8px;">
-        <span class="big">{{ data.time_stats.tee_mean|floatformat:0 }}s</span> mean &nbsp;
-        <span class="big">{{ data.time_stats.tee_median|floatformat:0 }}s</span> median
+        <span class="big" style="font-weight:700;">{{ data.time_stats.tee_median|floatformat:0 }}s</span> median &nbsp;
+        <span class="big">{{ data.time_stats.tee_mean|floatformat:0 }}s</span> mean
     </div>
-    <div class="meta">P25: {{ data.time_stats.tee_p25|floatformat:0 }}s &nbsp;|&nbsp; P75: {{ data.time_stats.tee_p75|floatformat:0 }}s</div>
-    {% if data.time_stats.tee_more_than_5mins != None %}
-    <div class="meta" style="color:#dc2626;font-weight:600;">&gt;5 min: {{ data.time_stats.tee_more_than_5mins }} cases</div>
+    <div class="meta">25th–75th centile: {{ data.time_stats.tee_p25|floatformat:0 }}s – {{ data.time_stats.tee_p75|floatformat:0 }}s</div>
+    <div class="meta" style="color:#94a3b8;">5th–95th centile: {{ data.time_stats.tee_p5|floatformat:0 }}s – {{ data.time_stats.tee_p95|floatformat:0 }}s</div>
+    {% if data.time_stats.tee_above_p95 != None %}
+    <div class="meta" style="color:#dc2626;font-weight:600;">{{ data.time_stats.tee_above_p95 }} cases ≥ 95th centile &nbsp;|&nbsp; {{ data.time_stats.tee_more_than_5mins }} cases &gt; 5 min</div>
     {% endif %}
     {% if chart_images.teeBoxPlot %}
     <div style="margin-top:8px;">
