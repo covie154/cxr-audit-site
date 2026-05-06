@@ -49,6 +49,7 @@ WORKPLACE_MAP = {
     'HOUCR01': 'HOU', 'AMKCR01': 'AMK', 'YISCR01': 'YIS',
     'SERCR01': 'SER',
 }
+WORKPLACE_MAP_REVERSE = {v: k for k, v in WORKPLACE_MAP.items()}
 
 DIAGNOSIS_FIELDS = [
     'atelectasis', 'calcification', 'cardiomegaly', 'consolidation',
@@ -65,6 +66,23 @@ DEFAULT_FROM_DATE = '2025-12-12'
 
 def _short_site(workplace):
     return WORKPLACE_MAP.get(workplace, 'OTH')
+
+
+def _apply_site_filter(qs, sites_param):
+    """Filter queryset by comma-separated short site names. No-op if param is empty."""
+    if not sites_param:
+        return qs
+    sites = [s.strip() for s in sites_param.split(',') if s.strip()]
+    if not sites:
+        return qs
+    codes = [WORKPLACE_MAP_REVERSE[s] for s in sites if s in WORKPLACE_MAP_REVERSE]
+    include_oth = 'OTH' in sites
+    if include_oth:
+        known_codes = list(WORKPLACE_MAP.keys())
+        q = Q(workplace__in=codes) | ~Q(workplace__in=known_codes)
+    else:
+        q = Q(workplace__in=codes)
+    return qs.filter(q)
 
 
 def _get_site_thresholds(site_short):
@@ -607,6 +625,8 @@ def _build_report(studies, date_from, date_to):
         'total': total,
         'date_from': date_from,
         'date_to': date_to,
+        'actual_from': actual_from,
+        'actual_to': actual_to,
         'overall': overall,
         'site_metrics': site_metrics,
         'weekly_site_metrics': weekly_metrics,
@@ -637,18 +657,26 @@ def index(request):
 
 @login_required
 @require_http_methods(["GET"])
+def get_sites(request):
+    """Return sorted list of distinct site short names present in the DB."""
+    workplaces = CXRStudy.objects.values_list('workplace', flat=True).distinct()
+    sites = sorted({WORKPLACE_MAP.get(wp, 'OTH') for wp in workplaces if wp})
+    return JsonResponse({'sites': sites})
+
+
+@login_required
+@require_http_methods(["GET"])
 def generate_report(request):
-    """Generate report JSON for the given date range."""
+    """Generate report JSON for the given date range and optional site filter."""
     date_from = request.GET.get('date_from', DEFAULT_FROM_DATE)
     date_to = request.GET.get('date_to', date.today().isoformat())
+    sites_param = request.GET.get('sites', '')
 
-    qs = CXRStudy.objects.all()
-
-    # Filter by procedure_start_date if available, else created_at
-    qs = qs.filter(
+    qs = CXRStudy.objects.filter(
         Q(procedure_start_date__date__gte=date_from) &
         Q(procedure_start_date__date__lte=date_to)
     )
+    qs = _apply_site_filter(qs, sites_param)
 
     report = _build_report(qs, date_from, date_to)
     return JsonResponse(report)
@@ -660,11 +688,13 @@ def export_report_csv(request):
     """Export the filtered studies as CSV."""
     date_from = request.GET.get('date_from', DEFAULT_FROM_DATE)
     date_to = request.GET.get('date_to', date.today().isoformat())
+    sites_param = request.GET.get('sites', '')
 
     qs = CXRStudy.objects.filter(
         procedure_start_date__date__gte=date_from,
         procedure_start_date__date__lte=date_to,
-    ).order_by('procedure_start_date')
+    )
+    qs = _apply_site_filter(qs, sites_param).order_by('procedure_start_date')
 
     response = HttpResponse(content_type='text/csv')
     response['Content-Disposition'] = f'attachment; filename="cxr_report_{date_from}_to_{date_to}.csv"'
@@ -692,13 +722,15 @@ def export_false_negatives_csv(request):
     """Export false negative cases (LLM=0, manual_gt=1) as CSV."""
     date_from = request.GET.get('date_from', DEFAULT_FROM_DATE)
     date_to = request.GET.get('date_to', date.today().isoformat())
+    sites_param = request.GET.get('sites', '')
 
     qs = CXRStudy.objects.filter(
         procedure_start_date__date__gte=date_from,
         procedure_start_date__date__lte=date_to,
         gt_llm=0,
         gt_manual=1,
-    ).order_by('procedure_start_date')
+    )
+    qs = _apply_site_filter(qs, sites_param).order_by('procedure_start_date')
 
     response = HttpResponse(content_type='text/csv')
     response['Content-Disposition'] = f'attachment; filename="false_negatives_{date_from}_to_{date_to}.csv"'
@@ -726,13 +758,15 @@ def export_false_positives_csv(request):
     """Export false positive cases (LLM=1, manual_gt=0) as CSV."""
     date_from = request.GET.get('date_from', DEFAULT_FROM_DATE)
     date_to = request.GET.get('date_to', date.today().isoformat())
+    sites_param = request.GET.get('sites', '')
 
     qs = CXRStudy.objects.filter(
         procedure_start_date__date__gte=date_from,
         procedure_start_date__date__lte=date_to,
         gt_llm=1,
         gt_manual=0,
-    ).order_by('procedure_start_date')
+    )
+    qs = _apply_site_filter(qs, sites_param).order_by('procedure_start_date')
 
     response = HttpResponse(content_type='text/csv')
     response['Content-Disposition'] = f'attachment; filename="false_positives_{date_from}_to_{date_to}.csv"'
@@ -782,8 +816,8 @@ def email_report(request):
     if not recipients:
         return JsonResponse({'ok': False, 'error': 'No recipients provided.'}, status=400)
 
-    date_from = report_data.get('date_from', '?')
-    date_to = report_data.get('date_to', '?')
+    date_from = report_data.get('actual_from', report_data.get('date_from', '?'))
+    date_to = report_data.get('actual_to', report_data.get('date_to', '?'))
     subject = f'PRIMER-LLM CXR Analysis Report \u2014 {date_from} to {date_to}'
 
     # Render the HTML email template
@@ -825,8 +859,8 @@ def download_pdf(request):
     if not report_data:
         return HttpResponse('No report data provided.', status=400)
 
-    date_from = report_data.get('date_from', '?')
-    date_to = report_data.get('date_to', '?')
+    date_from = report_data.get('actual_from', report_data.get('date_from', '?'))
+    date_to = report_data.get('actual_to', report_data.get('date_to', '?'))
 
     # Chart images captured client-side as base64 data URLs
     chart_images = body.get('chart_images', {})

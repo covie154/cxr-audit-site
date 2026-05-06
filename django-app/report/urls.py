@@ -9,6 +9,7 @@ app_name = 'report'
 
 urlpatterns = [
     path('', views.index, name='index'),
+    path('sites/', views.get_sites, name='sites'),
     path('generate/', views.generate_report, name='generate'),
     path('export-csv/', views.export_report_csv, name='export_csv'),
     path('export-fn-csv/', views.export_false_negatives_csv, name='export_fn_csv'),

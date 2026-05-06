@@ -34,6 +34,12 @@
         </div>
     </div>
 
+    <!-- ── Site filter ── -->
+    <div class="card sites-card" id="sitesCard" style="display:none;">
+        <div class="sites-label">Sites</div>
+        <div class="sites-checkboxes" id="sitesCheckboxes"></div>
+    </div>
+
     <!-- ── Results ── -->
     <div class="results-section" id="resultsSection">
 
@@ -185,6 +191,7 @@
     // Django-generated config (URLs & CSRF token)
     window.REPORT_CONFIG = {
         csrfToken:    '{{ csrf_token }}',
+        sitesUrl:     '{% url "report:sites" %}',
         generateUrl:  '{% url "report:generate" %}',
         exportCsvUrl: '{% url "report:export_csv" %}',
         exportFnCsvUrl: '{% url "report:export_fn_csv" %}',

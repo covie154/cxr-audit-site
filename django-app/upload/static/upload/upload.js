@@ -363,8 +363,6 @@ function showResults(res) {
         </div>
         <div class="download-row" style="margin-top:20px;">
             <a href="${window.PAGE_CONFIG.reportUrl}" class="btn btn-primary" style="text-decoration:none;">\u{1F4CA} View Reports</a>
-            <a href="${window.PAGE_CONFIG.viewerUrl}" class="btn btn-success" style="text-decoration:none;">\u{1F5C3}\uFE0F Browse Database</a>
-            ${res.csv_data ? '<button class="btn" style="background:#64748b;color:#fff;" id="downloadCsvBtn">\u{1F4E5} Download CSV</button>' : ''}
         </div>`;
     rc.style.display = 'block';
 

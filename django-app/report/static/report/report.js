@@ -6,15 +6,83 @@
  *   - drawBoxPlot, drawSiteTrendCharts  (from charts.js)
  */
 
-let currentFrom = '', currentTo = '';
+let currentFrom = '', currentTo = '', currentSites = null;
 let lastReportData = null;
+
+// ── Site filter ──
+
+async function loadSites() {
+    try {
+        const r = await fetch(window.REPORT_CONFIG.sitesUrl);
+        if (!r.ok) return;
+        const data = await r.json();
+        const sites = data.sites || [];
+        if (sites.length === 0) return;
+        buildSiteCheckboxes(sites);
+        document.getElementById('sitesCard').style.display = 'block';
+    } catch (e) { /* silently skip if endpoint unavailable */ }
+}
+
+function buildSiteCheckboxes(sites) {
+    const container = document.getElementById('sitesCheckboxes');
+    let html = `<label class="site-checkbox-item all-cb">
+        <input type="checkbox" id="siteAll" checked> All
+    </label>
+    <div class="sites-divider"></div>`;
+    sites.forEach(s => {
+        html += `<label class="site-checkbox-item">
+            <input type="checkbox" class="site-cb" data-site="${s}" checked> ${s}
+        </label>`;
+    });
+    container.innerHTML = html;
+    document.getElementById('siteAll').addEventListener('change', onAllChange);
+    document.querySelectorAll('.site-cb').forEach(cb => cb.addEventListener('change', onSiteChange));
+}
+
+function onAllChange(e) {
+    e.target.indeterminate = false;
+    document.querySelectorAll('.site-cb').forEach(cb => { cb.checked = e.target.checked; });
+}
+
+function onSiteChange() {
+    const all = document.querySelectorAll('.site-cb');
+    const checkedCount = [...all].filter(cb => cb.checked).length;
+    const allCb = document.getElementById('siteAll');
+    if (!allCb) return;
+    if (checkedCount === 0) {
+        allCb.checked = false; allCb.indeterminate = false;
+    } else if (checkedCount === all.length) {
+        allCb.checked = true; allCb.indeterminate = false;
+    } else {
+        allCb.checked = false; allCb.indeterminate = true;
+    }
+}
+
+function getSelectedSites() {
+    const all = [...document.querySelectorAll('.site-cb')];
+    if (all.length === 0) return null;
+    const checked = all.filter(cb => cb.checked).map(cb => cb.dataset.site);
+    return checked.length === all.length ? null : checked;
+}
+
+function sitesQueryParam() {
+    const sites = getSelectedSites();
+    return sites ? `&sites=${encodeURIComponent(sites.join(','))}` : '';
+}
+
+// ── Report generation ──
 
 async function generateReport() {
     const dateFrom = document.getElementById('dateFrom').value;
     const dateTo   = document.getElementById('dateTo').value;
     if (!dateFrom || !dateTo) { alert('Please select both dates.'); return; }
 
-    currentFrom = dateFrom; currentTo = dateTo;
+    const selectedSites = getSelectedSites();
+    if (selectedSites !== null && selectedSites.length === 0) {
+        alert('Please select at least one site.'); return;
+    }
+
+    currentFrom = dateFrom; currentTo = dateTo; currentSites = selectedSites;
     const btn = document.getElementById('generateBtn');
     const loading = document.getElementById('loadingBar');
     const results = document.getElementById('resultsSection');
@@ -22,7 +90,8 @@ async function generateReport() {
     btn.disabled = true; loading.style.display = 'block'; results.style.display = 'none';
 
     try {
-        const r = await fetch(`${window.REPORT_CONFIG.generateUrl}?date_from=${dateFrom}&date_to=${dateTo}`);
+        const url = `${window.REPORT_CONFIG.generateUrl}?date_from=${dateFrom}&date_to=${dateTo}${sitesQueryParam()}`;
+        const r = await fetch(url);
         if (!r.ok) throw new Error(`Server error ${r.status}`);
         renderReport(await r.json());
     } catch(e) { alert('Error: ' + e.message); }
@@ -142,17 +211,17 @@ function fmtSec(s) {
 
 function downloadCSV() {
     if (!currentFrom || !currentTo) return;
-    window.location.href = `${window.REPORT_CONFIG.exportCsvUrl}?date_from=${currentFrom}&date_to=${currentTo}`;
+    window.location.href = `${window.REPORT_CONFIG.exportCsvUrl}?date_from=${currentFrom}&date_to=${currentTo}${sitesQueryParam()}`;
 }
 
 function downloadFnCSV() {
     if (!currentFrom || !currentTo) return;
-    window.location.href = `${window.REPORT_CONFIG.exportFnCsvUrl}?date_from=${currentFrom}&date_to=${currentTo}`;
+    window.location.href = `${window.REPORT_CONFIG.exportFnCsvUrl}?date_from=${currentFrom}&date_to=${currentTo}${sitesQueryParam()}`;
 }
 
 function downloadFpCSV() {
     if (!currentFrom || !currentTo) return;
-    window.location.href = `${window.REPORT_CONFIG.exportFpCsvUrl}?date_from=${currentFrom}&date_to=${currentTo}`;
+    window.location.href = `${window.REPORT_CONFIG.exportFpCsvUrl}?date_from=${currentFrom}&date_to=${currentTo}${sitesQueryParam()}`;
 }
 
 function renderGtCompare(mvl) {
@@ -365,6 +434,7 @@ function showEmailStatus(msg, type) {
 }
 
 // ── Wire up event listeners (replaces inline onclick) ──
+loadSites();
 document.getElementById('generateBtn').addEventListener('click', generateReport);
 document.getElementById('downloadCsvBtn').addEventListener('click', downloadCSV);
 document.getElementById('downloadPdfBtn').addEventListener('click', downloadPDF);

@@ -47,6 +47,43 @@
     box-shadow: 0 0 0 3px rgba(59,130,246,.12);
 }
 
+/* ══════════ Site filter ══════════ */
+.sites-card { padding: 14px 28px 18px; margin-top: 10px; }
+.sites-label {
+    font-weight: 600;
+    font-size: .88em;
+    color: var(--c-text);
+    margin-bottom: 10px;
+}
+.sites-checkboxes {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 20px;
+}
+.sites-divider {
+    width: 100%;
+    height: 1px;
+    background: var(--c-border);
+    margin: 4px 0;
+}
+.site-checkbox-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: .9em;
+    cursor: pointer;
+    user-select: none;
+}
+.site-checkbox-item input[type="checkbox"] {
+    width: 15px;
+    height: 15px;
+    cursor: pointer;
+    accent-color: var(--c-primary);
+    flex-shrink: 0;
+}
+.site-checkbox-item.all-cb { font-weight: 600; }
+
 /* ── Loading ── */
 .loading-bar {
     display: none;
@@ -255,6 +292,7 @@
 @media (max-width: 600px) {
     .report-page { padding: 0 10px 30px; margin-top: 20px; }
     .picker-card { padding: 18px; }
-    .date-row { flex-direction: column; }
+    .date-row { flex-direction: column; align-items: stretch; }
+    .sites-card { padding: 14px 18px 18px; }
     .modal-card { margin: 10px; }
 }
