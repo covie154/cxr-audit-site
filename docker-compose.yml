@@ -3,6 +3,8 @@
 # Three services: nginx (HTTPS), django (Gunicorn), api (FastAPI)
 # ================================
 
+name: cxr-audit-site
+
 services:
 
   # ── Nginx reverse proxy (HTTPS termination) ──────────────
