@@ -132,6 +132,7 @@ class ProcessingTask(models.Model):
         ('processing', 'Processing'),
         ('completed', 'Completed'),
         ('failed', 'Failed'),
+        ('cancelled', 'Cancelled'),
     ]
     
     task_id = models.CharField(max_length=36, primary_key=True, verbose_name="Task ID")

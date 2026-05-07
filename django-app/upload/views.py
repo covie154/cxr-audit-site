@@ -72,8 +72,8 @@ def _background_poll_and_save(task_id, api_url):
                 print(f"[BG Worker] Task {task_id} not found in DB, stopping.")
                 break
 
-            # If task was already marked completed/failed externally, stop
-            if task.status in ('completed', 'failed'):
+            # If task was already marked completed/failed/cancelled externally, stop
+            if task.status in ('completed', 'failed', 'cancelled'):
                 print(f"[BG Worker] Task {task_id} already {task.status}, stopping.")
                 break
 
@@ -246,6 +246,27 @@ def delete_task(request, task_id):
         )
 
     task.delete()
+    return JsonResponse({'ok': True})
+
+
+@login_required
+@csrf_exempt
+@require_http_methods(["POST"])
+def cancel_task(request, task_id):
+    """Cancel a running task by marking it as cancelled in the DB.
+    The background worker will stop polling on its next cycle."""
+    try:
+        task = ProcessingTask.objects.get(task_id=task_id)
+    except ProcessingTask.DoesNotExist:
+        return JsonResponse({'error': 'Task not found'}, status=404)
+
+    if task.status not in ('queued', 'processing'):
+        return JsonResponse({'error': 'Task is not running'}, status=409)
+
+    task.status = 'cancelled'
+    task.completed_at = timezone.now()
+    task.error_message = 'Cancelled by user'
+    task.save()
     return JsonResponse({'ok': True})
 
 

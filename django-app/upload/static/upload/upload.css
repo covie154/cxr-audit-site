@@ -207,6 +207,22 @@
 
 #progressText { font-size: .84em; color: var(--c-text-muted); }
 
+/* ── Stop task button ── */
+.stop-task-btn {
+    margin-top: 12px;
+    padding: 7px 16px;
+    background: #dc2626;
+    color: white;
+    border: none;
+    border-radius: var(--radius);
+    font-size: .88em;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background .15s;
+}
+.stop-task-btn:hover { background: #b91c1c; }
+.stop-task-btn:disabled { background: #94a3b8; cursor: not-allowed; }
+
 /* ══════════ Results ══════════ */
 .results-container {
     margin-top: 20px;

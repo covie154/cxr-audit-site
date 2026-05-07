@@ -56,6 +56,7 @@
 .status-processing { background: #dbeafe; color: #1e40af; }
 .status-completed  { background: #dcfce7; color: #166534; }
 .status-failed     { background: #fee2e2; color: #991b1b; }
+.status-cancelled  { background: #f1f5f9; color: #475569; }
 
 /* ── Progress bar (inline) ── */
 .mini-progress {

@@ -291,11 +291,42 @@ async function uploadFiles(lunit, gt, supp) {
 }
 
 // ══════════ Status monitoring ══════════
+function stopTask() {
+    if (!currentTaskId) return;
+    if (!confirm('Stop the current task? Results processed so far will not be saved.')) return;
+    const btn = document.getElementById('stopTaskBtn');
+    btn.disabled = true;
+    btn.textContent = '\u23f3 Stopping\u2026';
+    fetch(`${API_BASE_URL}/tasks/${currentTaskId}/cancel`, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': csrfToken }
+    }).then(r => r.json().then(d => ({ ok: r.ok, d }))).then(({ ok, d }) => {
+        if (ok) {
+            clearInterval(statusCheckInterval);
+            btn.style.display = 'none';
+            showError('Task stopped by user.');
+        } else {
+            btn.disabled = false;
+            btn.textContent = '\u25a0 Stop Task';
+            alert(d.error || 'Failed to stop task.');
+        }
+    }).catch(e => {
+        btn.disabled = false;
+        btn.textContent = '\u25a0 Stop Task';
+        alert(`Error: ${e.message}`);
+    });
+}
+
 function startMonitoring() {
     updateProgress(6, 'Upload complete, starting analysis\u2026');
     const sc = document.getElementById('statusContainer');
     sc.className = 'status-container status-processing';
     document.getElementById('statusMessage').textContent = '\u{1F504} Processing\u2026';
+    const stopBtn = document.getElementById('stopTaskBtn');
+    stopBtn.style.display = 'block';
+    stopBtn.disabled = false;
+    stopBtn.textContent = '\u25a0 Stop Task';
+    stopBtn.onclick = stopTask;
     checkStatus();
     statusCheckInterval = setInterval(checkStatus, 1000);
 }
@@ -383,6 +414,7 @@ function showResults(res) {
     const dlBtn = document.getElementById('downloadCsvBtn');
     if (dlBtn) dlBtn.addEventListener('click', downloadCSV);
 
+    document.getElementById('stopTaskBtn').style.display = 'none';
     unlockForm();
 }
 
@@ -392,6 +424,7 @@ function showError(msg) {
     sc.className = 'status-container status-error';
     document.getElementById('statusMessage').innerHTML = `\u274C ${msg}`;
     updateProgress(0, 'Error');
+    document.getElementById('stopTaskBtn').style.display = 'none';
     unlockForm();
     if (statusCheckInterval) clearInterval(statusCheckInterval);
 }
