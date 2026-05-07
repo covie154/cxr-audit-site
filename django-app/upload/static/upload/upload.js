@@ -7,6 +7,7 @@ let currentResults = null;
 // ══════════ Initialization ══════════
 document.addEventListener('DOMContentLoaded', async () => {
     await checkApiConnection();
+    checkLlmConnection();
     await checkForActiveTask();
 });
 
@@ -78,6 +79,18 @@ async function checkApiConnection() {
         if (d.connected) { el.className = 'api-pill connected'; el.textContent = '\u2705 API Connected'; }
         else              { el.className = 'api-pill disconnected'; el.textContent = '\u274C Disconnected'; }
     } catch { el.className = 'api-pill disconnected'; el.textContent = '\u274C Error'; }
+}
+
+// \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 LLM connection \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
+async function checkLlmConnection() {
+    const el = document.getElementById('llmStatus');
+    el.className = 'api-pill checking'; el.textContent = '\u{1F504} LLM\u2026';
+    try {
+        const r = await fetch(`${API_BASE_URL}/check-llm`, { headers: { 'X-CSRFToken': csrfToken } });
+        const d = await r.json();
+        if (d.connected) { el.className = 'api-pill connected'; el.textContent = '\u2705 LLM Connected'; }
+        else              { el.className = 'api-pill disconnected'; el.textContent = '\u274C LLM Offline'; }
+    } catch { el.className = 'api-pill disconnected'; el.textContent = '\u274C LLM Error'; }
 }
 
 // ══════════ File inputs ══════════

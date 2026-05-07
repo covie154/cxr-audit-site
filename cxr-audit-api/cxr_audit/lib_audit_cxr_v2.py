@@ -81,7 +81,7 @@ class CXRClassifier():
     
     @property
     def sys_role_chat_msg(self):
-        return self.create_chat_message(role="developer", content=self.sys_role_msg)
+        return self.create_chat_message(role="system", content=self.sys_role_msg)
 
     ##################################
     ### METHOD 1: SEMI-ALGORITHMIC ###

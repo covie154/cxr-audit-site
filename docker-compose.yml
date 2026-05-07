@@ -105,6 +105,4 @@ networks:
 # ── Persistent Volumes ────────────────────────────────────
 volumes:
   django-db:
-    driver: local
   django-media:
-    driver: local

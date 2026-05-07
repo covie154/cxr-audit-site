@@ -163,6 +163,9 @@ CXR_API_CONFIG = {
     "API_PORT": int(os.environ.get("CXR_API_PORT", "1221")),
 }
 
+# LLM (Ollama / OpenAI-compatible) Configuration
+LLM_BASE_URL = os.environ.get("OLLAMA_BASE_URL", "http://host.docker.internal:11434/v1")
+
 # HTTPS / Security settings (applied when DEBUG=False)
 if not DEBUG:
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")

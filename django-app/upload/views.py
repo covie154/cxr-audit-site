@@ -485,7 +485,7 @@ def check_api_connection(request):
     Check connection to the API server.
     """
     api_url = get_api_url()
-    
+
     try:
         response = requests.get(f"{api_url}/", headers=get_api_headers(), timeout=5)
         return JsonResponse({
@@ -505,6 +505,38 @@ def check_api_connection(request):
             'connected': False,
             'api_url': api_url,
             'error': str(e)
+        })
+
+
+@login_required
+@require_http_methods(["GET"])
+def check_llm_connection(request):
+    """
+    Check connection to the LLM server (OpenAI-compatible API).
+    Sends a GET to {LLM_BASE_URL}/models and checks for a 200 response.
+    """
+    llm_base_url = settings.LLM_BASE_URL.rstrip('/')
+
+    try:
+        response = requests.get(f"{llm_base_url}/models", timeout=5)
+        connected = response.status_code == 200
+        return JsonResponse({
+            'connected': connected,
+            'llm_url': llm_base_url,
+            'status_code': response.status_code,
+        })
+    except (ConnectionError, Timeout):
+        return JsonResponse({
+            'connected': False,
+            'llm_url': llm_base_url,
+            'error': 'Cannot connect to LLM server',
+        })
+    except Exception as e:
+        traceback.print_exc()
+        return JsonResponse({
+            'connected': False,
+            'llm_url': llm_base_url,
+            'error': str(e),
         })
 
 

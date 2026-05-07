@@ -22,6 +22,9 @@ urlpatterns = [
     
     # API server health check
     path('api/check-connection', views.check_api_connection, name='check_api_connection'),
+
+    # LLM server health check
+    path('api/check-llm', views.check_llm_connection, name='check_llm_connection'),
     
     # Pre-check files against database
     path('api/precheck', views.precheck_files, name='precheck_files'),
