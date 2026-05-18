@@ -370,4 +370,18 @@ python manage.py shell
 
 ## 📄 License
 
-This project is for internal research use. All rights reserved.
+PRIMER is released under the **GNU Affero General Public License v3.0 (AGPL-3.0)**.
+The full license text is available in the [LICENSE](../LICENSE) file at the project root, or at <https://www.gnu.org/licenses/agpl-3.0.html>.
+
+In short:
+- You are free to use, modify, and redistribute this software.
+- If you distribute modified versions — or run a modified version as a network service (e.g. hosting the FastAPI server or Django app for third parties) — you **must** make the complete corresponding source code of your modified version available to its users under the same AGPL-3.0 terms.
+- The software is provided "as is", without warranty of any kind.
+
+If the AGPL-3.0 is not compatible with your intended use (e.g. integration into proprietary clinical software), please contact the authors to discuss alternative licensing arrangements.
+
+### Citation
+
+If you use PRIMER in academic work, please cite us!
+
+
