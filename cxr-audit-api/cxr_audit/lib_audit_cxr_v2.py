@@ -1,4 +1,7 @@
 #%%
+# PRIMER — LLM-based Chest X-Ray Audit Tool
+# Copyright (C) 2026 Goh Shu Wen
+# Licensed under AGPL-3.0-or-later. See LICENSE at the repository root.
 # Initial settings & imports
 ##############################
 ### LLM CXR GRADING SCRIPT ###

@@ -1,4 +1,7 @@
-#%% 
+#%%
+# PRIMER — LLM-based Chest X-Ray Audit Tool
+# Copyright (C) 2026 Goh Shu Wen
+# Licensed under AGPL-3.0-or-later. See LICENSE at the repository root.
 import pandas as pd
 import numpy as np
 import os

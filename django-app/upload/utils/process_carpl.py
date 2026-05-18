@@ -1,3 +1,6 @@
+# PRIMER — LLM-based Chest X-Ray Audit Tool
+# Copyright (C) 2026 Goh Shu Wen
+# Licensed under AGPL-3.0-or-later. See LICENSE at the repository root.
 """
 ProcessCarpl wrapper for Django.
 This module wraps the original class_process_carpl.py from scripts_lunit_review.

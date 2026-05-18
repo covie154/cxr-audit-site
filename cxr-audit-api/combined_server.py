@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# PRIMER — LLM-based Chest X-Ray Audit Tool
+# Copyright (C) 2026 Goh Shu Wen
+# Licensed under AGPL-3.0-or-later. See LICENSE at the repository root.
 """
 Combined CXR Analysis Server
 Runs both the API server (port 1221) and static file server (port 1220) in a single Python file.

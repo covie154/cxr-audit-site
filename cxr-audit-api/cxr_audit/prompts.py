@@ -1,3 +1,6 @@
+# PRIMER — LLM-based Chest X-Ray Audit Tool
+# Copyright (C) 2026 Goh Shu Wen
+# Licensed under AGPL-3.0-or-later. See LICENSE at the repository root.
 from string import Template
 from pydantic import BaseModel
 
