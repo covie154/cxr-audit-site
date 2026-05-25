@@ -35,7 +35,13 @@ def getLLMJSON(message_lst, client, model_name, response_format, **kwargs):
             model=model_name,
             messages=message_lst,
             response_format=response_format,
-            temperature=0.2,
+            temperature=0.7,
+            top_p=0.8,
+            presence_penalty=1.5,
+            extra_body={
+                "top_k": 20,
+                "thinking_token_budget": 500,
+            }, 
             **kwargs
         )
         
