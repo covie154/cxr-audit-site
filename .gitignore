@@ -1,6 +1,9 @@
 __pycache__/
 documentation/
 /django-app/db/db.sqlite3
+/django-app/db/audit.sqlite3
+/django-app/db/*.sqlite3-*
+/django-app/audit_artifacts/
 *.pyc
 *.pyo
 .env

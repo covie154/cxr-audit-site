@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     # Local apps
+    "audit.apps.AuditConfig",
     "upload.apps.UploadConfig",
     "viewer.apps.ViewerConfig",
     "report.apps.ReportConfig",
@@ -91,8 +92,14 @@ DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
         "NAME": BASE_DIR / "db" / "db.sqlite3",
+    },
+    "audit": {
+        "ENGINE": os.environ.get("AUDIT_DB_ENGINE", "django.db.backends.sqlite3"),
+        "NAME": os.environ.get("AUDIT_DB_NAME", str(BASE_DIR / "db" / "audit.sqlite3")),
     }
 }
+
+DATABASE_ROUTERS = ["lunit_audit.dbrouters.AuditRouter"]
 
 
 # Password validation
@@ -148,6 +155,11 @@ STORAGES = {
 # Media files (user uploads)
 MEDIA_URL = "media/"
 MEDIA_ROOT = BASE_DIR / "media"
+
+# Audit logging storage
+AUDIT_ARTIFACT_ROOT = Path(os.environ.get("AUDIT_ARTIFACT_ROOT", str(BASE_DIR / "audit_artifacts")))
+AUDIT_EVENT_RETENTION_DAYS = int(os.environ.get("AUDIT_EVENT_RETENTION_DAYS", "2190"))
+AUDIT_ARTIFACT_RETENTION_DAYS = int(os.environ.get("AUDIT_ARTIFACT_RETENTION_DAYS", "2190"))
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/6.0/ref/settings/#default-auto-field
