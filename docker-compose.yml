@@ -28,7 +28,8 @@ services:
           memory: 512M
           pids: 100
     networks:
-      - primer-net
+      - primer-public
+      - primer-app
 
   # ── Django web app (Gunicorn + WhiteNoise) ───────────────
   django:
@@ -64,7 +65,8 @@ services:
           memory: 2G
           pids: 200
     networks:
-      - primer-net
+      - primer-app
+      - primer-data
 
   # ── FastAPI analysis API (Uvicorn) ───────────────────────
   api:
@@ -97,11 +99,20 @@ services:
           memory: 4G
           pids: 200
     networks:
-      - primer-net
+      - primer-app
+      - primer-inference
 
 # ── Networks ──────────────────────────────────────────────
 networks:
-  primer-net:
+  primer-public:
+    driver: bridge
+  primer-app:
+    driver: bridge
+    internal: true
+  primer-data:
+    driver: bridge
+    internal: true
+  primer-inference:
     driver: bridge
 
 # ── Persistent Volumes ────────────────────────────────────
