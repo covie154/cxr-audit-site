@@ -180,14 +180,35 @@ CXR_API_CONFIG = {
 
 # LLM (Ollama / OpenAI-compatible) Configuration
 LLM_BASE_URL = os.environ.get("OLLAMA_BASE_URL", "http://host.docker.internal:11434/v1")
+LLM_ALLOW_INSECURE_TRANSPORT = os.environ.get(
+    "LLM_ALLOW_INSECURE_TRANSPORT", "False"
+).lower() in ("true", "1", "yes")
 
 # HTTPS / Security settings (applied when DEBUG=False)
 if not DEBUG:
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+    SECURE_SSL_REDIRECT = os.environ.get("DJANGO_SECURE_SSL_REDIRECT", "True").lower() in (
+        "true",
+        "1",
+        "yes",
+    )
+    SECURE_HSTS_SECONDS = int(os.environ.get("DJANGO_SECURE_HSTS_SECONDS", "31536000"))
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = os.environ.get(
+        "DJANGO_SECURE_HSTS_INCLUDE_SUBDOMAINS", "True"
+    ).lower() in ("true", "1", "yes")
+    SECURE_HSTS_PRELOAD = os.environ.get("DJANGO_SECURE_HSTS_PRELOAD", "False").lower() in (
+        "true",
+        "1",
+        "yes",
+    )
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
     SECURE_BROWSER_XSS_FILTER = True
     SECURE_CONTENT_TYPE_NOSNIFF = True
+    SECURE_REFERRER_POLICY = os.environ.get(
+        "DJANGO_SECURE_REFERRER_POLICY", "same-origin"
+    )
+    X_FRAME_OPTIONS = os.environ.get("DJANGO_X_FRAME_OPTIONS", "SAMEORIGIN")
 
 # Trusted origins for CSRF (required when behind a reverse proxy with HTTPS)
 CSRF_TRUSTED_ORIGINS = os.environ.get(
@@ -239,3 +260,6 @@ LOGGING = {
 LOGIN_URL = "login"
 LOGIN_REDIRECT_URL = "/upload/"
 LOGOUT_REDIRECT_URL = "/login/"
+
+# Import project-level system checks.
+import lunit_audit.checks  # noqa: E402,F401

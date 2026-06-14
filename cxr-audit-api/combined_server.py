@@ -7,7 +7,7 @@ Combined CXR Analysis Server
 Runs both the API server (port 1221) and static file server (port 1220) in a single Python file.
 """
 
-from fastapi import FastAPI, File, UploadFile, HTTPException, BackgroundTasks, Depends, Security
+from fastapi import FastAPI, File, UploadFile, HTTPException, BackgroundTasks, Depends, Request, Security
 from fastapi.responses import FileResponse, JSONResponse, HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import APIKeyHeader
@@ -53,15 +53,40 @@ thresholds = {
 # API KEY AUTHENTICATION
 # ================================
 
-API_SECRET_KEY = os.environ.get("API_SECRET_KEY", "")
-
 _api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
 
-async def verify_api_key(api_key: str = Security(_api_key_header)):
+def _env_flag(name: str, default: str = "False") -> bool:
+    return os.environ.get(name, default).lower() in ("true", "1", "yes")
+
+
+def api_auth_required() -> bool:
+    """Return whether service API authentication is required for this process."""
+    return _env_flag("API_REQUIRE_AUTH") or not _env_flag("DJANGO_DEBUG", "False")
+
+
+def configured_api_secret() -> str:
+    return os.environ.get("API_SECRET_KEY", "")
+
+
+def configured_cors_origins() -> List[str]:
+    raw_origins = os.environ.get("FASTAPI_CORS_ORIGINS", "")
+    if raw_origins:
+        return [origin.strip() for origin in raw_origins.split(",") if origin.strip()]
+    if api_auth_required():
+        return []
+    return ["*"]
+
+
+async def verify_api_key(request: Request, api_key: str = Security(_api_key_header)):
     """Validate the X-API-Key header against the configured secret."""
-    if not API_SECRET_KEY:
-        return  # No key configured; allow requests (development mode)
-    if api_key != API_SECRET_KEY:
+    if request.url.path == "/health":
+        return
+    secret = configured_api_secret()
+    if not api_auth_required() and not secret:
+        return  # Local development mode without a configured key.
+    if not secret:
+        raise HTTPException(status_code=503, detail="API authentication is required but API_SECRET_KEY is not configured")
+    if api_key != secret:
         raise HTTPException(status_code=403, detail="Invalid or missing API key")
 
 # ================================
@@ -78,7 +103,7 @@ api_app = FastAPI(
 # Add CORS middleware for web frontend access
 api_app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Configure this properly in production
+    allow_origins=configured_cors_origins(),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -639,6 +664,11 @@ async def root():
             "docs": "GET /docs - Interactive API documentation"
         }
     }
+
+@api_app.get("/health")
+async def health():
+    """Unauthenticated container health check with no PHI-bearing payload."""
+    return {"status": "healthy"}
 
 # ================================
 # STATIC SERVER (Port 1220)
