@@ -74,6 +74,7 @@ The requested implementation order is deliberate:
 | Generalize the LLM tier as OpenAI-compatible rather than Ollama-specific | The backend has changed to vLLM-compatible deployment while code still uses legacy env var names | Pending |
 | Implement audit logging first | Audit controls are central to HIPAA technical safeguards and cross-cut all ePHI workflows | Pending |
 | Add PostgreSQL as a production option after initial security hardening | Database migration should be planned after audit, transport, network, and container boundaries are clearer | Pending |
+| Target technical controls for internal review | This milestone should produce demonstrable technical controls and documented gaps, not claim complete production HIPAA compliance | Pending |
 
 ## Evolution
 
