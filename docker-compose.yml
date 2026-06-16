@@ -60,7 +60,9 @@ services:
       postgres:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/login/')"]
+      # allow_redirects=False so the SECURE_SSL_REDIRECT 301 (http->https) is not
+      # chased to the https URL on the http-only gunicorn port (which fails TLS).
+      test: ["CMD", "python", "-c", "import requests,sys; sys.exit(0 if requests.get('http://localhost:8000/login/', allow_redirects=False).status_code < 500 else 1)"]
       interval: 30s
       timeout: 10s
       retries: 3

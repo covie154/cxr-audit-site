@@ -50,9 +50,12 @@ COPY static/ static/
 # Create directories for data that will be volume-mounted
 RUN mkdir -p /app/db /app/media /app/staticfiles /app/audit_artifacts
 
-# Create non-root user and grant ownership of writable directories
+# Create non-root user and grant ownership of writable directories.
+# A writable home is provided because `su` sets HOME=/home/appuser from
+# /etc/passwd; gunicorn's control server writes there on startup.
 RUN adduser --disabled-password --no-create-home appuser && \
-    chown -R appuser:appuser /app/db /app/media /app/staticfiles /app/audit_artifacts
+    mkdir -p /home/appuser && \
+    chown -R appuser:appuser /app/db /app/media /app/staticfiles /app/audit_artifacts /home/appuser
 
 # Copy entrypoint
 COPY entrypoint.sh .
