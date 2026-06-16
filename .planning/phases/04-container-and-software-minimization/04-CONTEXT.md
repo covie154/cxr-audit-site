@@ -16,7 +16,7 @@ This phase minimizes runtime container software and adds practical Compose harde
 - **D-03:** Django may start as root only for volume ownership, then drops to `appuser`.
 - **D-04:** FastAPI runs as non-root `appuser`.
 - **D-05:** Harden Nginx through Compose first, not a custom image.
-- **D-06:** Add no-new-privileges and capability drops for Django/FastAPI.
+- **D-06:** Add no-new-privileges for Django/FastAPI, drop all capabilities for FastAPI, and defer Django capability drops until the root startup volume ownership pattern is replaced.
 - **D-07:** Document required writable paths.
 - **D-08:** Do not enable read-only root filesystems in this phase.
 - **D-09:** Keep FastAPI `/app/tmp` writable.

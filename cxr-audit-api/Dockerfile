@@ -3,7 +3,7 @@
 # Runs combined_server.py --api-only on port 1221
 # ================================
 
-FROM python:3.11-slim
+FROM python:3.11-slim AS builder
 
 WORKDIR /app
 
@@ -22,7 +22,20 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Python dependencies (cached layer)
 COPY api_requirements.txt requirements.txt
 RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt
+    pip install --no-cache-dir --prefix=/install -r requirements.txt
+
+FROM python:3.11-slim AS runtime
+
+WORKDIR /app
+
+# Environment
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONPATH=/app \
+    MPLCONFIGDIR=/app/tmp/matplotlib
+
+# Copy installed Python dependencies from the builder stage.
+COPY --from=builder /install /usr/local
 
 # Copy application code
 COPY cxr_audit/ cxr_audit/
@@ -50,7 +63,7 @@ USER appuser
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
-    CMD python -c "import requests; requests.get('http://localhost:1221/')" || exit 1
+    CMD python -c "import requests; requests.get('http://localhost:1221/health').raise_for_status()" || exit 1
 
 # Run API-only mode
 CMD ["python", "combined_server.py", "--api-only"]

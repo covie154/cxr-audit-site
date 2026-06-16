@@ -5,7 +5,7 @@ echo "🫁 PRIMER-LLM Django — Starting up..."
 
 # Fix volume permissions (volumes may be created as root)
 echo "🔒 Fixing volume permissions..."
-chown -R appuser:appuser /app/db /app/media /app/staticfiles
+chown -R appuser:appuser /app/db /app/media /app/staticfiles /app/audit_artifacts
 
 # Run migrations (as appuser)
 echo "📦 Running database migrations..."

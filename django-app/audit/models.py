@@ -27,6 +27,7 @@ class AuditEvent(models.Model):
         blank=True,
         on_delete=models.SET_NULL,
         related_name="audit_events",
+        db_constraint=False,
     )
     category = models.CharField(max_length=32, choices=Category.choices, db_index=True)
     action = models.TextField()
