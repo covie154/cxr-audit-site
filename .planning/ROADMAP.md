@@ -124,11 +124,17 @@ Plans:
   5. The migration plan covers backup, export/import, execution, validation beyond row counts, rollback, and cutover.
 
 **Plans**: 3 plans
-
 Plans:
+**Wave 1**
 
 - [ ] 05-01: Environment-driven Django database settings and PostgreSQL dependencies
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 05-02: Docker PostgreSQL services, volumes, credentials, and audit database support
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
 - [ ] 05-03: SQLite-to-PostgreSQL migration plan and synthetic validation checklist
 
 ### Phase 6: Remaining HIPAA Controls Plan
