@@ -45,12 +45,12 @@ Requirements for this milestone. Each maps to roadmap phases.
 
 ### PostgreSQL And Migration
 
-- [ ] **DB-01**: Docker deployment can use PostgreSQL for production application data.
-- [ ] **DB-02**: Audit logging can use a separate PostgreSQL-backed audit database or database name from production data.
-- [ ] **DB-03**: SQLite remains available for simple local development.
-- [ ] **DB-04**: Database configuration is environment-driven and documented for Docker deployment.
-- [ ] **DB-05**: A SQLite-to-PostgreSQL migration plan covers backup, export/import, migration execution, validation, rollback, and cutover.
-- [ ] **DB-06**: Migration validation uses synthetic or approved non-PHI data and checks more than row counts.
+- [x] **DB-01**: Docker deployment can use PostgreSQL for production application data.
+- [x] **DB-02**: Audit logging can use a separate PostgreSQL-backed audit database or database name from production data.
+- [x] **DB-03**: SQLite remains available for simple local development.
+- [x] **DB-04**: Database configuration is environment-driven and documented for Docker deployment.
+- [x] **DB-05**: A SQLite-to-PostgreSQL migration plan covers backup, export/import, migration execution, validation, rollback, and cutover.
+- [x] **DB-06**: Migration validation uses synthetic or approved non-PHI data and checks more than row counts.
 
 ### Remaining Controls Planning
 
@@ -115,17 +115,18 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CONT-02 | Phase 4 | Pending |
 | CONT-03 | Phase 4 | Pending |
 | CONT-04 | Phase 4 | Pending |
-| DB-01 | Phase 5 | Pending |
-| DB-02 | Phase 5 | Pending |
-| DB-03 | Phase 5 | Pending |
-| DB-04 | Phase 5 | Pending |
-| DB-05 | Phase 5 | Pending |
-| DB-06 | Phase 5 | Pending |
+| DB-01 | Phase 5 | Complete |
+| DB-02 | Phase 5 | Complete |
+| DB-03 | Phase 5 | Complete |
+| DB-04 | Phase 5 | Complete |
+| DB-05 | Phase 5 | Complete |
+| DB-06 | Phase 5 | Complete |
 | PLAN-01 | Phase 6 | Pending |
 | PLAN-02 | Phase 6 | Pending |
 | PLAN-03 | Phase 6 | Pending |
 
 **Coverage:**
+
 - v1 requirements: 33 total
 - Mapped to phases: 33
 - Unmapped: 0

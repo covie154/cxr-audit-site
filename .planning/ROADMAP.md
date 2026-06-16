@@ -17,7 +17,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 2: Transmission Security** - Enforce production transport posture, service authentication, and OpenAI-compatible endpoint transport expectations.
 - [ ] **Phase 3: Network Segmentation** - Split Docker Compose into intended public, app, data, and inference network boundaries.
 - [ ] **Phase 4: Container And Software Minimization** - Remove avoidable runtime software and apply practical container execution hardening.
-- [ ] **Phase 5: PostgreSQL And Migration Plan** - Add Docker-hosted PostgreSQL support and write the SQLite-to-PostgreSQL migration plan.
+- [x] **Phase 5: PostgreSQL And Migration Plan** - Add Docker-hosted PostgreSQL support and write the SQLite-to-PostgreSQL migration plan. (completed 2026-06-16)
 - [ ] **Phase 6: Remaining HIPAA Controls Plan** - Write the follow-on ordering document for remaining HIPAA technical and operational controls.
 
 ## Phase Details
@@ -127,15 +127,15 @@ Plans:
 Plans:
 **Wave 1**
 
-- [ ] 05-01: Environment-driven Django database settings and PostgreSQL dependencies
+- [x] 05-01: Environment-driven Django database settings and PostgreSQL dependencies
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 05-02: Docker PostgreSQL services, volumes, credentials, and audit database support
+- [x] 05-02: Docker PostgreSQL services, volumes, credentials, and audit database support
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 05-03: SQLite-to-PostgreSQL migration plan and synthetic validation checklist
+- [x] 05-03: SQLite-to-PostgreSQL migration plan and synthetic validation checklist
 
 ### Phase 6: Remaining HIPAA Controls Plan
 
@@ -166,5 +166,5 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
 | 2. Transmission Security | 0/3 | Not started | - |
 | 3. Network Segmentation | 0/2 | Not started | - |
 | 4. Container And Software Minimization | 0/3 | Not started | - |
-| 5. PostgreSQL And Migration Plan | 0/3 | Not started | - |
+| 5. PostgreSQL And Migration Plan | 3/3 | Complete    | 2026-06-16 |
 | 6. Remaining HIPAA Controls Plan | 0/2 | Not started | - |
