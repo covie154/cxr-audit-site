@@ -88,15 +88,74 @@ WSGI_APPLICATION = "lunit_audit.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db" / "db.sqlite3",
-    },
-    "audit": {
-        "ENGINE": os.environ.get("AUDIT_DB_ENGINE", "django.db.backends.sqlite3"),
-        "NAME": os.environ.get("AUDIT_DB_NAME", str(BASE_DIR / "db" / "audit.sqlite3")),
+
+def _env_bool(name, default=False):
+    return os.environ.get(name, str(default)).lower() in ("true", "1", "yes")
+
+
+def _env_int(name, default):
+    return int(os.environ.get(name, str(default)))
+
+
+def _database_engine(prefix, default):
+    value = os.environ.get(f"{prefix}DATABASE_ENGINE", default)
+    normalized = value.lower()
+    if normalized in ("sqlite", "sqlite3"):
+        return "django.db.backends.sqlite3"
+    if normalized in ("postgres", "postgresql"):
+        return "django.db.backends.postgresql"
+    return value
+
+
+def _database_setting(prefix, name, default=""):
+    return os.environ.get(f"{prefix}DATABASE_{name}", default)
+
+
+def database_config(prefix="", sqlite_name="db.sqlite3", default_engine="sqlite"):
+    """Build a Django database config from env while preserving SQLite defaults."""
+
+    engine = _database_engine(prefix, default_engine)
+    if engine == "django.db.backends.sqlite3":
+        return {
+            "ENGINE": engine,
+            "NAME": _database_setting(prefix, "NAME", str(BASE_DIR / "db" / sqlite_name)),
+        }
+
+    config = {
+        "ENGINE": engine,
+        "NAME": _database_setting(prefix, "NAME"),
+        "USER": _database_setting(prefix, "USER"),
+        "PASSWORD": _database_setting(prefix, "PASSWORD"),
+        "HOST": _database_setting(prefix, "HOST", "localhost"),
+        "PORT": _database_setting(prefix, "PORT", "5432"),
+        "CONN_MAX_AGE": _env_int(f"{prefix}DATABASE_CONN_MAX_AGE", 0),
+        "CONN_HEALTH_CHECKS": _env_bool(f"{prefix}DATABASE_CONN_HEALTH_CHECKS", False),
     }
+    sslmode = _database_setting(prefix, "SSLMODE")
+    if sslmode:
+        config["OPTIONS"] = {"sslmode": sslmode}
+    return config
+
+
+def audit_database_config():
+    """Build audit DB config with legacy AUDIT_DB_* fallbacks."""
+
+    if "AUDIT_DATABASE_ENGINE" not in os.environ and "AUDIT_DB_ENGINE" in os.environ:
+        engine = os.environ["AUDIT_DB_ENGINE"]
+        if engine == "django.db.backends.sqlite3":
+            return {
+                "ENGINE": engine,
+                "NAME": os.environ.get("AUDIT_DB_NAME", str(BASE_DIR / "db" / "audit.sqlite3")),
+            }
+        os.environ.setdefault("AUDIT_DATABASE_ENGINE", engine)
+        os.environ.setdefault("AUDIT_DATABASE_NAME", os.environ.get("AUDIT_DB_NAME", ""))
+
+    return database_config(prefix="AUDIT_", sqlite_name="audit.sqlite3", default_engine="sqlite")
+
+
+DATABASES = {
+    "default": database_config(),
+    "audit": audit_database_config(),
 }
 
 DATABASE_ROUTERS = ["lunit_audit.dbrouters.AuditRouter"]
