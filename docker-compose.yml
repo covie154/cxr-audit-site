@@ -45,6 +45,10 @@ services:
       - DJANGO_SETTINGS_MODULE=lunit_audit.settings
       - CXR_API_IP=api
       - CXR_API_PORT=1221
+      # Set DATABASE_ENGINE=postgres and AUDIT_DATABASE_ENGINE=postgres in .env
+      # to use the postgres service below. SQLite remains the default otherwise.
+      - DATABASE_HOST=${DATABASE_HOST:-postgres}
+      - AUDIT_DATABASE_HOST=${AUDIT_DATABASE_HOST:-postgres}
     volumes:
       - django-db:/app/db
       - django-media:/app/media
@@ -52,6 +56,8 @@ services:
       - django-audit-artifacts:/app/audit_artifacts
     depends_on:
       api:
+        condition: service_healthy
+      postgres:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/login/')"]
@@ -70,6 +76,43 @@ services:
           pids: 200
     networks:
       - primer-app
+      - primer-data
+
+  # ── PostgreSQL database (optional via DATABASE_ENGINE=postgres) ─────
+  postgres:
+    image: postgres:16-alpine
+    container_name: primer-postgres
+    env_file:
+      - .env
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB:-primer_admin}
+      - POSTGRES_USER=${POSTGRES_USER:-primer_admin}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-change-me-postgres-admin-password}
+      - POSTGRES_APP_DB=${POSTGRES_APP_DB:-primer_app}
+      - POSTGRES_APP_USER=${POSTGRES_APP_USER:-primer_app_user}
+      - POSTGRES_APP_PASSWORD=${POSTGRES_APP_PASSWORD:-change-me-app-db-password}
+      - POSTGRES_AUDIT_DB=${POSTGRES_AUDIT_DB:-primer_audit}
+      - POSTGRES_AUDIT_USER=${POSTGRES_AUDIT_USER:-primer_audit_user}
+      - POSTGRES_AUDIT_PASSWORD=${POSTGRES_AUDIT_PASSWORD:-change-me-audit-db-password}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1G
+          pids: 200
+    networks:
       - primer-data
 
   # ── FastAPI analysis API (Uvicorn) ───────────────────────
@@ -129,3 +172,4 @@ volumes:
   django-media:
   django-staticfiles:
   django-audit-artifacts:
+  postgres-data:
