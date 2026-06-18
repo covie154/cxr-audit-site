@@ -25,6 +25,7 @@ import uvicorn
 import argparse
 import threading
 import time
+import requests
 
 # Import your existing class
 from class_process_carpl import ProcessCarpl
@@ -669,6 +670,32 @@ async def root():
 async def health():
     """Unauthenticated container health check with no PHI-bearing payload."""
     return {"status": "healthy"}
+
+@api_app.get("/llm-health")
+async def llm_health():
+    """
+    Probe the LLM (OpenAI-compatible) server from within this container.
+
+    The django container sits on internal-only networks and cannot reach the
+    LLM host directly, so it proxies this check through the api container,
+    which is the only service permitted to reach the inference network.
+    """
+    base_url = os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434/v1").rstrip("/")
+    api_key = os.environ.get("OLLAMA_API_KEY", "")
+    headers = {"Authorization": f"Bearer {api_key}"} if api_key else {}
+    try:
+        response = requests.get(f"{base_url}/models", headers=headers, timeout=5)
+        return {
+            "connected": response.status_code == 200,
+            "llm_url": base_url,
+            "status_code": response.status_code,
+        }
+    except requests.exceptions.RequestException as e:
+        return {
+            "connected": False,
+            "llm_url": base_url,
+            "error": str(e),
+        }
 
 # ================================
 # STATIC SERVER (Port 1220)

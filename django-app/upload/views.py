@@ -537,29 +537,35 @@ def check_api_connection(request):
 def check_llm_connection(request):
     """
     Check connection to the LLM server (OpenAI-compatible API).
-    Sends a GET to {LLM_BASE_URL}/models and checks for a 200 response.
+
+    The django container is on internal-only networks and cannot reach the LLM
+    host directly, so this proxies the check through the api container's
+    /llm-health endpoint. The api is the only service on the inference network
+    and holds the LLM API key.
     """
-    llm_base_url = settings.LLM_BASE_URL.rstrip('/')
+    api_url = get_api_url()
 
     try:
-        response = requests.get(f"{llm_base_url}/models", timeout=5)
-        connected = response.status_code == 200
+        response = requests.get(
+            f"{api_url}/llm-health", headers=get_api_headers(), timeout=10
+        )
+        response.raise_for_status()
+        payload = response.json()
         return JsonResponse({
-            'connected': connected,
-            'llm_url': llm_base_url,
-            'status_code': response.status_code,
+            'connected': bool(payload.get('connected')),
+            'llm_url': payload.get('llm_url'),
+            'status_code': payload.get('status_code'),
+            'error': payload.get('error'),
         })
     except (ConnectionError, Timeout):
         return JsonResponse({
             'connected': False,
-            'llm_url': llm_base_url,
-            'error': 'Cannot connect to LLM server',
+            'error': 'Cannot reach API server to check LLM status',
         })
     except Exception as e:
         traceback.print_exc()
         return JsonResponse({
             'connected': False,
-            'llm_url': llm_base_url,
             'error': str(e),
         })
 
