@@ -7,9 +7,12 @@ echo "🫁 PRIMER-LLM Django — Starting up..."
 echo "🔒 Fixing volume permissions..."
 chown -R appuser:appuser /app/db /app/media /app/staticfiles /app/audit_artifacts
 
-# Run migrations (as appuser)
+# Run migrations (as appuser). The audit app is routed to a separate "audit"
+# database (AuditRouter), so it must be migrated explicitly with --database=audit;
+# a plain migrate only touches the default database.
 echo "📦 Running database migrations..."
 su -s /bin/bash appuser -c "python manage.py migrate --noinput"
+su -s /bin/bash appuser -c "python manage.py migrate --noinput --database=audit"
 
 # Collect static files (WhiteNoise serves them from STATIC_ROOT)
 echo "📁 Collecting static files..."
