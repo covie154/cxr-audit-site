@@ -16,8 +16,6 @@ import statistics
 from collections import defaultdict
 from datetime import date, datetime, timedelta
 from email.mime.image import MIMEImage
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
 from email.utils import formatdate, make_msgid
 
 from django.shortcuts import render
@@ -26,6 +24,7 @@ from django.views.decorators.http import require_http_methods
 from django.db.models import Q, Count, Avg
 from django.contrib.auth.decorators import login_required
 from django.core.mail import EmailMessage
+from django.core.mail.message import SafeMIMEMultipart, SafeMIMEText
 from django.template.loader import render_to_string
 from django.conf import settings
 
@@ -886,17 +885,18 @@ def email_report(request):
     text_content = report_data.get('txt_report', 'See HTML version of this email.')
 
     try:
-        # Build multipart/related so inline images are recognised by all major clients
-        related = MIMEMultipart('related')
+        # Build multipart/related so inline images are recognised by all major clients.
+        # Use Django's Safe* variants — they support as_bytes(linesep=...) required by the SMTP backend.
+        related = SafeMIMEMultipart('related')
         related['Subject'] = subject
         related['From'] = settings.DEFAULT_FROM_EMAIL
         related['To'] = ', '.join(recipients)
         related['Date'] = formatdate(localtime=True)
         related['Message-ID'] = make_msgid(domain='primer-llm')
 
-        alt = MIMEMultipart('alternative')
-        alt.attach(MIMEText(text_content, 'plain', 'utf-8'))
-        alt.attach(MIMEText(html_content, 'html', 'utf-8'))
+        alt = SafeMIMEMultipart('alternative')
+        alt.attach(SafeMIMEText(text_content, 'plain', 'utf-8'))
+        alt.attach(SafeMIMEText(html_content, 'html', 'utf-8'))
         related.attach(alt)
         for img_part in mime_images:
             related.attach(img_part)
