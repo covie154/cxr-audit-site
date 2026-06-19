@@ -791,6 +791,31 @@ def export_false_positives_csv(request):
     return response
 
 
+def _compute_ci_status(report_data):
+    """Return CI status dict for the latest week's ROC-AUC, or None if unavailable."""
+    if not isinstance(report_data, dict):
+        return None
+    wa = report_data.get('weekly_auc') or {}
+    auc_list = wa.get('auc') or []
+    weeks_list = wa.get('weeks') or []
+    ci_lower = wa.get('ci_lower')
+    ci_upper = wa.get('ci_upper')
+    if not auc_list or ci_lower is None or ci_upper is None:
+        return None
+    last_auc = auc_list[-1]
+    if last_auc is None:
+        return None
+    last_week = weeks_list[-1] if weeks_list else '?'
+    in_ci = ci_lower <= last_auc <= ci_upper
+    return {
+        'last_auc': last_auc,
+        'last_week': last_week,
+        'ci_lower': ci_lower,
+        'ci_upper': ci_upper,
+        'in_ci': in_ci,
+    }
+
+
 @login_required
 @require_http_methods(["POST"])
 def email_report(request):
@@ -805,6 +830,7 @@ def email_report(request):
     recipients_raw = body.get('recipients', '')
     report_data = body.get('report_data')
     note = body.get('note', '').strip()
+    chart_images = body.get('chart_images', {})
 
     if not report_data:
         return JsonResponse({'ok': False, 'error': 'No report data provided.'}, status=400)
@@ -829,6 +855,8 @@ def email_report(request):
         'date_from': date_from,
         'date_to': date_to,
         'note': note,
+        'chart_images': chart_images,
+        'ci_status': _compute_ci_status(report_data),
     })
 
     # Plain-text fallback is just the txt_report
@@ -873,6 +901,7 @@ def download_pdf(request):
         'date_from': date_from,
         'date_to': date_to,
         'chart_images': chart_images,
+        'ci_status': _compute_ci_status(report_data),
     })
 
     response = HttpResponse(html, content_type='text/html')

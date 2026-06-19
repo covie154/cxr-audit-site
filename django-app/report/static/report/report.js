@@ -410,6 +410,7 @@ async function sendEmailReport() {
                 recipients: recipients,
                 report_data: lastReportData,
                 note: note,
+                chart_images: captureChartImages(),
             }),
         });
         const result = await r.json();
