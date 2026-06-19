@@ -79,6 +79,7 @@ services:
     networks:
       - primer-app
       - primer-data
+      - primer-egress
 
   # ── PostgreSQL database (optional via DATABASE_ENGINE=postgres) ─────
   postgres:
@@ -166,6 +167,8 @@ networks:
     driver: bridge
     internal: true
   primer-inference:
+    driver: bridge
+  primer-egress:
     driver: bridge
 
 # ── Persistent Volumes ────────────────────────────────────
