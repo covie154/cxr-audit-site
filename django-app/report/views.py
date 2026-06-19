@@ -9,18 +9,23 @@ computing the same metrics as the upload processing pipeline:
 accuracy, confusion matrix, sensitivity/specificity, false negatives.
 """
 
+import base64
 import csv
 import json
 import statistics
 from collections import defaultdict
 from datetime import date, datetime, timedelta
+from email.mime.image import MIMEImage
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from email.utils import formatdate, make_msgid
 
 from django.shortcuts import render
 from django.http import JsonResponse, HttpResponse
 from django.views.decorators.http import require_http_methods
 from django.db.models import Q, Count, Avg
 from django.contrib.auth.decorators import login_required
-from django.core.mail import EmailMultiAlternatives
+from django.core.mail import EmailMessage
 from django.template.loader import render_to_string
 from django.conf import settings
 
@@ -849,28 +854,64 @@ def email_report(request):
     date_to = report_data.get('actual_to', report_data.get('date_to', '?'))
     subject = f'PRIMER-LLM CXR Analysis Report \u2014 {date_from} to {date_to}'
 
-    # Render the HTML email template
+    # Convert base64 data URLs \u2192 CID refs for the template + MIME image parts for the message
+    chart_cid_refs = {}
+    mime_images = []
+    for name, data_url in (chart_images or {}).items():
+        if not data_url or not data_url.startswith('data:image/'):
+            continue
+        try:
+            header, b64data = data_url.split(',', 1)
+            img_bytes = base64.b64decode(b64data)
+            subtype = header.split('/')[1].split(';')[0]  # e.g. 'png'
+        except Exception:
+            continue
+        cid = f'{name}@primer-llm'
+        chart_cid_refs[name] = f'cid:{cid}'
+        img_part = MIMEImage(img_bytes, _subtype=subtype)
+        img_part.add_header('Content-ID', f'<{cid}>')
+        img_part.add_header('Content-Disposition', 'inline', filename=f'{name}.{subtype}')
+        mime_images.append(img_part)
+
+    # Render HTML with cid: src values so email clients load images from the attachment
     html_content = render_to_string('report/email_report.html', {
         'data': report_data,
         'date_from': date_from,
         'date_to': date_to,
         'note': note,
-        'chart_images': chart_images,
+        'chart_images': chart_cid_refs,
         'ci_status': _compute_ci_status(report_data),
     })
 
-    # Plain-text fallback is just the txt_report
     text_content = report_data.get('txt_report', 'See HTML version of this email.')
 
     try:
-        msg = EmailMultiAlternatives(
+        # Build multipart/related so inline images are recognised by all major clients
+        related = MIMEMultipart('related')
+        related['Subject'] = subject
+        related['From'] = settings.DEFAULT_FROM_EMAIL
+        related['To'] = ', '.join(recipients)
+        related['Date'] = formatdate(localtime=True)
+        related['Message-ID'] = make_msgid(domain='primer-llm')
+
+        alt = MIMEMultipart('alternative')
+        alt.attach(MIMEText(text_content, 'plain', 'utf-8'))
+        alt.attach(MIMEText(html_content, 'html', 'utf-8'))
+        related.attach(alt)
+        for img_part in mime_images:
+            related.attach(img_part)
+
+        # Thin EmailMessage subclass so Django's configured backend handles delivery
+        class _CIDEmail(EmailMessage):
+            def message(self_inner):
+                return related
+
+        _CIDEmail(
             subject=subject,
             body=text_content,
             from_email=settings.DEFAULT_FROM_EMAIL,
             to=recipients,
-        )
-        msg.attach_alternative(html_content, 'text/html')
-        msg.send(fail_silently=False)
+        ).send(fail_silently=False)
     except Exception as exc:
         return JsonResponse({'ok': False, 'error': f'Email send failed: {exc}'}, status=500)
 

@@ -125,7 +125,8 @@ function renderReport(data) {
     // Site trend charts (weekly)
     drawSiteTrendCharts(data.weekly_site_metrics);
 
-    // Overall ROC-AUC trend chart
+    // Overall ROC-AUC trend chart + CI status banner
+    renderCiBanner(data.weekly_auc);
     drawAucTrendChart(data.weekly_auc);
 
     // Manual vs LLM GT comparison
@@ -181,6 +182,29 @@ function renderReport(data) {
     }
 
     document.getElementById('resultsSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function renderCiBanner(wa) {
+    const banner = document.getElementById('ciBanner');
+    if (!wa || !wa.auc || !wa.auc.length || wa.ci_lower == null || wa.ci_upper == null) {
+        banner.style.display = 'none';
+        return;
+    }
+    const lastAuc = wa.auc[wa.auc.length - 1];
+    if (lastAuc == null) { banner.style.display = 'none'; return; }
+    const inCi = lastAuc >= wa.ci_lower && lastAuc <= wa.ci_upper;
+    banner.style.display = 'block';
+    if (inCi) {
+        banner.style.background = '#dcfce7';
+        banner.style.border = '1px solid #86efac';
+        banner.style.color = '#14532d';
+        banner.textContent = `✅ Performance on track — this week's ROC-AUC (${lastAuc}%) is within the expected 95% range (${wa.ci_lower}%–${wa.ci_upper}%)`;
+    } else {
+        banner.style.background = '#fef2f2';
+        banner.style.border = '1px solid #fca5a5';
+        banner.style.color = '#7f1d1d';
+        banner.textContent = `⚠️ Performance deviation detected — this week's ROC-AUC (${lastAuc}%) is outside the expected 95% range (${wa.ci_lower}%–${wa.ci_upper}%). Please review.`;
+    }
 }
 
 function siteRow(site, m, overall) {
