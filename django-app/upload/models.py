@@ -167,6 +167,12 @@ class ProcessingTask(models.Model):
     
     # Configuration
     supplemental_steps = models.BooleanField(default=False, verbose_name="Supplemental Steps Enabled")
+
+    TASK_TYPE_CHOICES = [
+        ('upload', 'Upload'),
+        ('backfill', 'Backfill'),
+    ]
+    task_type = models.CharField(max_length=20, choices=TASK_TYPE_CHOICES, default='upload', verbose_name="Task Type")
     
     class Meta:
         verbose_name = "Processing Task"

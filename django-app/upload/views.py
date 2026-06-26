@@ -189,6 +189,166 @@ def _start_background_worker(task_id):
     print(f"[BG Worker] Started background thread for task {task_id}")
 
 
+# ============ Backfill Worker ============
+
+_SUPPLEMENTAL_FIELDS = [
+    'atelectasis_llm', 'calcification_llm', 'cardiomegaly_llm', 'consolidation_llm',
+    'fibrosis_llm', 'mediastinal_widening_llm', 'nodule_llm', 'pleural_effusion_llm',
+    'pneumoperitoneum_llm', 'pneumothorax_llm', 'tb_llm',
+]
+
+_BACKFILL_BATCH_SIZE = 20
+
+
+def _background_backfill(task_id, date_from, date_to):
+    """
+    Background thread for the supplemental-analysis backfill.
+    Queries CXRStudy records missing *_llm fields in the given date range,
+    sends them to the FastAPI /grade-supplemental-batch endpoint in batches,
+    and writes the results back to the DB.
+
+    Holds _active_worker_task_id for its entire duration, so upload endpoints
+    get the same 409 they would for a running upload task.
+    """
+    import time
+    import django.db
+    global _active_worker_task_id
+
+    try:
+        django.db.connections.close_all()
+        api_url = get_api_url()
+
+        task = ProcessingTask.objects.get(task_id=task_id)
+        task.update_progress('backfill', 0, 0, 'Querying records to backfill…', percent=2)
+
+        qs = CXRStudy.objects.filter(
+            atelectasis_llm__isnull=True,
+            text_report__isnull=False,
+        ).exclude(text_report='')
+        if date_from:
+            qs = qs.filter(procedure_start_date__date__gte=date_from)
+        if date_to:
+            qs = qs.filter(procedure_start_date__date__lte=date_to)
+
+        records = list(qs.values_list('accession_no', 'text_report'))
+        total = len(records)
+
+        if total == 0:
+            task.status = 'completed'
+            task.completed_at = timezone.now()
+            task.progress_percent = 100
+            task.progress_message = 'No records need backfilling in this date range.'
+            task.total_records_processed = 0
+            task.new_records_added = 0
+            task.existing_records_skipped = 0
+            task.save()
+            print(f"[Backfill] Task {task_id}: no records to process.")
+            return
+
+        task.update_progress('backfill', 0, total,
+                             f'Found {total} records. Starting backfill…', percent=5)
+
+        updated = 0
+        failed = 0
+
+        for batch_start in range(0, total, _BACKFILL_BATCH_SIZE):
+            # Respect cancellation
+            task.refresh_from_db(fields=['status'])
+            if task.status == 'cancelled':
+                print(f"[Backfill] Task {task_id} cancelled by user.")
+                break
+
+            batch = records[batch_start:batch_start + _BACKFILL_BATCH_SIZE]
+            payload = {
+                'reports': [
+                    {'accession_no': int(acc), 'text_report': rpt}
+                    for acc, rpt in batch
+                ]
+            }
+
+            try:
+                r = requests.post(
+                    f"{api_url}/grade-supplemental-batch",
+                    json=payload,
+                    headers=get_api_headers(),
+                    timeout=300,
+                )
+                if r.status_code != 200:
+                    print(f"[Backfill] API error {r.status_code} on batch at {batch_start}")
+                    failed += len(batch)
+                else:
+                    for result in r.json().get('results', []):
+                        acc_no = result.get('accession_no')
+                        if not acc_no:
+                            continue
+                        update_kwargs = {f: result[f] for f in _SUPPLEMENTAL_FIELDS
+                                         if f in result and result[f] is not None}
+                        if update_kwargs:
+                            CXRStudy.objects.filter(accession_no=acc_no).update(**update_kwargs)
+                            updated += 1
+                        else:
+                            failed += 1
+
+            except Exception as e:
+                print(f"[Backfill] Batch error at {batch_start}: {e}")
+                failed += len(batch)
+
+            completed_so_far = min(batch_start + _BACKFILL_BATCH_SIZE, total)
+            task.update_progress(
+                'backfill', completed_so_far, total,
+                f'Backfilling: {completed_so_far}/{total} — {updated} updated, {failed} failed',
+                percent=5 + (completed_so_far / total) * 90,
+            )
+
+        task.status = 'completed'
+        task.completed_at = timezone.now()
+        task.progress_percent = 100
+        task.progress_message = (
+            f'Backfill complete: {updated} records updated'
+            + (f', {failed} failed' if failed else '')
+        )
+        task.total_records_processed = total
+        task.new_records_added = updated
+        task.existing_records_skipped = failed
+        task.save()
+        print(f"[Backfill] Task {task_id}: {updated} updated, {failed} failed out of {total}.")
+
+    except Exception as e:
+        print(f"[Backfill] Unhandled error for {task_id}: {e}")
+        traceback.print_exc()
+        try:
+            task = ProcessingTask.objects.get(task_id=task_id)
+            if task.status not in ('completed', 'failed'):
+                task.mark_failed(f'Backfill error: {e}')
+        except Exception:
+            pass
+    finally:
+        with _active_worker_lock:
+            if _active_worker_task_id == task_id:
+                _active_worker_task_id = None
+        django.db.connections.close_all()
+
+
+def _start_backfill_worker(task_id, date_from, date_to):
+    """Launch the backfill background thread, if no other worker is running."""
+    global _active_worker_task_id
+
+    with _active_worker_lock:
+        if _active_worker_task_id is not None:
+            return False  # another task is already running
+        _active_worker_task_id = task_id
+
+    t = threading.Thread(
+        target=_background_backfill,
+        args=(task_id, date_from, date_to),
+        daemon=True,
+        name=f'cxr-backfill-{task_id[:8]}'
+    )
+    t.start()
+    print(f"[Backfill] Started thread for task {task_id} ({date_from} → {date_to})")
+    return True
+
+
 def get_api_url():
     """
     Get the API URL from Django settings.
@@ -227,6 +387,71 @@ def tasks_list(request):
     """List all processing tasks."""
     tasks = ProcessingTask.objects.all()  # ordered by -created_at via Meta
     return render(request, 'upload/tasks.html', {'tasks': tasks})
+
+
+@login_required
+@admin_required
+@csrf_exempt
+@require_http_methods(["POST"])
+def backfill_supplemental(request):
+    """
+    Start a supplemental-analysis backfill over a date range.
+
+    Checks for any currently running task and returns 409 if one exists,
+    so backfill and upload analysis are mutually exclusive.
+    """
+    import uuid
+    from datetime import date
+
+    active = _get_active_task()
+    if active:
+        return JsonResponse({
+            'error': (
+                f'A task is already running (ID: {active.task_id}). '
+                f'Please wait for it to complete before starting a backfill.'
+            )
+        }, status=409)
+
+    date_from_str = request.POST.get('date_from', '').strip()
+    date_to_str = request.POST.get('date_to', '').strip()
+
+    try:
+        date_from = date.fromisoformat(date_from_str) if date_from_str else None
+    except ValueError:
+        return JsonResponse({'error': f'Invalid date_from: {date_from_str!r}'}, status=400)
+
+    try:
+        date_to = date.fromisoformat(date_to_str) if date_to_str else None
+    except ValueError:
+        return JsonResponse({'error': f'Invalid date_to: {date_to_str!r}'}, status=400)
+
+    task_id = str(uuid.uuid4())
+
+    task = ProcessingTask.objects.create(
+        task_id=task_id,
+        task_type='backfill',
+        status='processing',
+        supplemental_steps=True,
+        progress_message='Backfill queued…',
+        progress_percent=0,
+    )
+
+    started = _start_backfill_worker(task_id, date_from, date_to)
+    if not started:
+        # Lock was grabbed by another worker between the DB check and the lock acquisition
+        task.mark_failed('Could not start: another task began simultaneously.')
+        return JsonResponse({'error': 'Another task started simultaneously. Please retry.'}, status=409)
+
+    return JsonResponse({
+        'ok': True,
+        'task_id': task_id,
+        'message': (
+            f'Backfill started'
+            + (f' from {date_from}' if date_from else '')
+            + (f' to {date_to}' if date_to else '')
+            + '.'
+        ),
+    })
 
 
 @login_required

@@ -28,7 +28,7 @@ import time
 import requests
 
 # Import your existing class
-from class_process_carpl import ProcessCarpl
+from class_process_carpl import ProcessCarpl, processor as _batch_processor
 from open_protected_xlsx import open_protected_xlsx
 
 thresholds = {
@@ -136,6 +136,13 @@ class AnalysisResults(BaseModel):
     data_output: Any  # This can be more specifically typed if needed
     csv_data: str
     filename: str
+
+class BackfillReportItem(BaseModel):
+    accession_no: int
+    text_report: str
+
+class BackfillRequest(BaseModel):
+    reports: List[BackfillReportItem]
 
 def save_uploaded_file(upload_file: UploadFile) -> str:
     """Save uploaded file to temporary location and return path"""
@@ -696,6 +703,44 @@ async def llm_health():
             "llm_url": base_url,
             "error": str(e),
         }
+
+@api_app.post("/grade-supplemental-batch")
+async def grade_supplemental_batch(body: BackfillRequest):
+    """
+    Run per-finding supplemental LLM extraction on a batch of existing reports.
+    Used by the Django backfill feature to populate *_llm fields on historical records.
+    Accepts up to ~30 reports per call; processes them concurrently via the shared
+    BatchCXRProcessor worker pool. Returns binary (0/1) findings for each accession.
+    """
+    if not body.reports:
+        return {"results": []}
+
+    df = pd.DataFrame([
+        {"ACCESSION_NO": r.accession_no, "TEXT_REPORT": r.text_report}
+        for r in body.reports
+    ])
+
+    df_result = _batch_processor.process_lunit_batch(df, report_column="TEXT_REPORT")
+
+    _finding_cols = [
+        "atelectasis_llm", "calcification_llm", "cardiomegaly_llm", "consolidation_llm",
+        "fibrosis_llm", "mediastinal_widening_llm", "nodule_llm", "pleural_effusion_llm",
+        "pneumoperitoneum_llm", "pneumothorax_llm",
+    ]
+
+    results = []
+    for _, row in df_result.iterrows():
+        r = {"accession_no": int(row["ACCESSION_NO"])}
+        for col in _finding_cols:
+            val = row.get(col)
+            r[col] = None if (pd.isna(val) if not isinstance(val, bool) else False) or val == "" else int(bool(val))
+        # tb column → tb_llm key so Django can use it directly
+        tb_val = row.get("tb")
+        r["tb_llm"] = None if (pd.isna(tb_val) if not isinstance(tb_val, bool) else False) or tb_val == "" else int(bool(tb_val))
+        results.append(r)
+
+    return {"results": results}
+
 
 # ================================
 # STATIC SERVER (Port 1220)

@@ -17,12 +17,39 @@
         </div>
     </div>
 
+    <!-- Backfill Panel -->
+    <div class="card" style="margin-bottom:1.5rem;">
+        <div style="padding:1rem 1.25rem;">
+            <h2 style="font-size:1rem;font-weight:600;margin:0 0 .75rem;">🔄 Backfill Supplemental Analysis</h2>
+            <p style="font-size:.85rem;color:var(--c-text-muted);margin:0 0 1rem;">
+                Re-runs per-finding LLM extraction on existing records that have no supplemental data.
+                Any running upload will block the backfill (and vice versa).
+            </p>
+            <form id="backfillForm" style="display:flex;flex-wrap:wrap;gap:.75rem;align-items:flex-end;">
+                <div>
+                    <label style="display:block;font-size:.8rem;margin-bottom:.3rem;">From</label>
+                    <input type="date" name="date_from" id="backfillDateFrom"
+                           style="padding:.4rem .6rem;border:1px solid var(--c-border);border-radius:6px;font-size:.875rem;">
+                </div>
+                <div>
+                    <label style="display:block;font-size:.8rem;margin-bottom:.3rem;">To</label>
+                    <input type="date" name="date_to" id="backfillDateTo"
+                           style="padding:.4rem .6rem;border:1px solid var(--c-border);border-radius:6px;font-size:.875rem;">
+                </div>
+                <button type="submit" id="backfillBtn" class="btn btn-primary" style="padding:.45rem 1rem;">
+                    Run Backfill
+                </button>
+            </form>
+        </div>
+    </div>
+
     <div class="card">
         {% if tasks %}
         <div class="tasks-table-wrap">
             <table class="tasks-table">
                 <thead>
                     <tr>
+                        <th>Type</th>
                         <th>Status</th>
                         <th>Progress</th>
                         <th>Message</th>
@@ -37,6 +64,13 @@
                 <tbody>
                     {% for t in tasks %}
                     <tr id="row-{{ t.task_id }}">
+                        <td>
+                            {% if t.task_type == 'backfill' %}
+                                <span style="font-size:.75rem;background:#f0f4ff;color:#3b5bdb;padding:2px 7px;border-radius:4px;font-weight:600;">Backfill</span>
+                            {% else %}
+                                <span style="font-size:.75rem;background:#f0fff4;color:#2f9e44;padding:2px 7px;border-radius:4px;font-weight:600;">Upload</span>
+                            {% endif %}
+                        </td>
                         <td>
                             <span class="status-badge status-{{ t.status }}">{{ t.get_status_display }}</span>
                         </td>
@@ -104,4 +138,48 @@
     };
 </script>
 <script src="{% static 'upload/tasks.js' %}"></script>
+<script>
+(function () {
+    const form = document.getElementById('backfillForm');
+    const btn = document.getElementById('backfillBtn');
+    const toast = document.getElementById('toast');
+
+    function showToast(msg, ok) {
+        toast.textContent = msg;
+        toast.className = 'toast ' + (ok ? 'toast-success' : 'toast-error');
+        toast.style.display = 'block';
+        setTimeout(() => { toast.style.display = 'none'; }, 5000);
+    }
+
+    form.addEventListener('submit', async function (e) {
+        e.preventDefault();
+        btn.disabled = true;
+        btn.textContent = 'Starting…';
+
+        const body = new FormData(form);
+
+        try {
+            const resp = await fetch('{% url "upload:backfill_supplemental" %}', {
+                method: 'POST',
+                headers: { 'X-CSRFToken': window.PAGE_CONFIG.csrfToken },
+                body,
+            });
+            const data = await resp.json();
+
+            if (resp.ok) {
+                showToast(data.message || 'Backfill started.', true);
+                setTimeout(() => location.reload(), 1500);
+            } else {
+                showToast(data.error || 'Failed to start backfill.', false);
+                btn.disabled = false;
+                btn.textContent = 'Run Backfill';
+            }
+        } catch (err) {
+            showToast('Network error: ' + err.message, false);
+            btn.disabled = false;
+            btn.textContent = 'Run Backfill';
+        }
+    });
+}());
+</script>
 {% endblock %}

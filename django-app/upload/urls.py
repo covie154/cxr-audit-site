@@ -18,6 +18,7 @@ urlpatterns = [
     path('tasks/', views.tasks_list, name='tasks_list'),
     path('api/tasks/<str:task_id>/delete', views.delete_task, name='delete_task'),
     path('api/tasks/<str:task_id>/cancel', views.cancel_task, name='cancel_task'),
+    path('api/backfill-supplemental', views.backfill_supplemental, name='backfill_supplemental'),
     
     # Import historical data
     path('import/', views.import_data, name='import_data'),
