@@ -622,8 +622,12 @@ input::placeholder, textarea::placeholder {
     }
 
     .topbar-brand img {
-        width: 24px;
-        height: 24px;
+        width: 30px;
+        height: 30px;
+        padding: 6px;
+        border-radius: 8px;
+        background: var(--c-primary);
+        filter: invert(1);
     }
 
     .nav-backdrop {

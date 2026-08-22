@@ -8,8 +8,8 @@
 
 // ── Colour palette for site lines ──
 const SITE_COLORS = [
-    '#3b82f6', '#8b5cf6', '#f59e0b', '#10b981', '#ef4444',
-    '#ec4899', '#06b6d4', '#84cc16', '#f97316', '#6366f1',
+    '#0e7c86', '#2563c9', '#5a6478', '#0a5a62', '#64748b',
+    '#2d6a73', '#3b718c', '#718096', '#4a7c85', '#345c75',
 ];
 
 // ────────────────────────────────────
@@ -44,15 +44,15 @@ function drawSingleBoxPlot(canvasId, vals, color, scaleMaxMins, refLineMins) {
     const toX = (m) => leftPad + (m / scaleMax) * plotW;
 
     // Axis
-    ctx.strokeStyle = '#e2e8f0'; ctx.lineWidth = 1;
+    ctx.strokeStyle = '#dce3ec'; ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(leftPad, topPad); ctx.lineTo(leftPad, H - botPad); ctx.lineTo(W - rightPad, H - botPad); ctx.stroke();
 
     // Tick marks
-    ctx.fillStyle = '#94a3b8'; ctx.font = '11px system-ui'; ctx.textAlign = 'center';
+    ctx.fillStyle = '#5a6478'; ctx.font = '11px "IBM Plex Sans", sans-serif'; ctx.textAlign = 'center';
     const tickStep = scaleMax <= 5 ? 1 : scaleMax <= 15 ? 2 : scaleMax <= 30 ? 5 : 10;
     for (let m = 0; m <= scaleMax; m += tickStep) {
         const x = toX(m);
-        ctx.strokeStyle = '#f1f5f9'; ctx.beginPath(); ctx.moveTo(x, topPad); ctx.lineTo(x, H - botPad); ctx.stroke();
+        ctx.strokeStyle = '#edf1f6'; ctx.beginPath(); ctx.moveTo(x, topPad); ctx.lineTo(x, H - botPad); ctx.stroke();
         ctx.fillText(m + ' min', x, H - botPad + 16);
     }
 
@@ -60,10 +60,10 @@ function drawSingleBoxPlot(canvasId, vals, color, scaleMaxMins, refLineMins) {
     if (refLineMins != null && refLineMins <= scaleMax) {
         const xRef = toX(refLineMins);
         ctx.save();
-        ctx.strokeStyle = '#dc2626'; ctx.lineWidth = 1.5; ctx.setLineDash([6, 4]);
+        ctx.strokeStyle = '#c5303b'; ctx.lineWidth = 1.5; ctx.setLineDash([6, 4]);
         ctx.beginPath(); ctx.moveTo(xRef, topPad); ctx.lineTo(xRef, H - botPad); ctx.stroke();
         ctx.setLineDash([]);
-        ctx.fillStyle = '#dc2626'; ctx.font = 'bold 11px system-ui'; ctx.textAlign = 'left';
+        ctx.fillStyle = '#c5303b'; ctx.font = 'bold 11px "IBM Plex Sans", sans-serif'; ctx.textAlign = 'left';
         ctx.fillText(refLineMins + ' min', xRef + 4, topPad + 12);
         ctx.restore();
     }
@@ -125,10 +125,10 @@ function drawBoxPlots(ts) {
             else if (raw <= 120) tcdMax = 120;
             else tcdMax = Math.ceil(raw / 60) * 60;
         }
-        drawSingleBoxPlot('tcdBoxPlot', ts.tcd_vals, '#3b82f6', tcdMax, null);
+        drawSingleBoxPlot('tcdBoxPlot', ts.tcd_vals, '#0e7c86', tcdMax, null);
     }
     if (ts.tee_vals && ts.tee_vals.length > 0)
-        drawSingleBoxPlot('teeBoxPlot', ts.tee_vals, '#8b5cf6', 10, 5);
+        drawSingleBoxPlot('teeBoxPlot', ts.tee_vals, '#2563c9', 10, 5);
 }
 
 // ────────────────────────────────────
@@ -169,8 +169,8 @@ function drawAucTrendChart(wa) {
     const toY = (v) => topPad + plotH - (v / 100) * plotH;
 
     // Grid lines
-    ctx.strokeStyle = '#f1f5f9'; ctx.lineWidth = 1;
-    ctx.fillStyle = '#94a3b8'; ctx.font = '10px system-ui'; ctx.textAlign = 'right';
+    ctx.strokeStyle = '#edf1f6'; ctx.lineWidth = 1;
+    ctx.fillStyle = '#5a6478'; ctx.font = '10px "IBM Plex Sans", sans-serif'; ctx.textAlign = 'right';
     for (let pct = 0; pct <= 100; pct += 20) {
         const y = toY(pct);
         ctx.beginPath(); ctx.moveTo(leftPad, y); ctx.lineTo(leftPad + plotW, y); ctx.stroke();
@@ -178,14 +178,14 @@ function drawAucTrendChart(wa) {
     }
 
     // Axes
-    ctx.strokeStyle = '#e2e8f0'; ctx.lineWidth = 1;
+    ctx.strokeStyle = '#dce3ec'; ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(leftPad, topPad); ctx.lineTo(leftPad, H - botPad); ctx.lineTo(leftPad + plotW, H - botPad); ctx.stroke();
 
     // X-axis week labels
-    ctx.fillStyle = '#94a3b8'; ctx.font = '10px system-ui'; ctx.textAlign = 'center';
+    ctx.fillStyle = '#5a6478'; ctx.font = '10px "IBM Plex Sans", sans-serif'; ctx.textAlign = 'center';
     weeks.forEach((label, i) => {
         const x = toX(i);
-        ctx.strokeStyle = '#e2e8f0'; ctx.beginPath(); ctx.moveTo(x, H - botPad); ctx.lineTo(x, H - botPad + 5); ctx.stroke();
+        ctx.strokeStyle = '#dce3ec'; ctx.beginPath(); ctx.moveTo(x, H - botPad); ctx.lineTo(x, H - botPad + 5); ctx.stroke();
         ctx.fillText(label, x, H - botPad + 18);
     });
 
@@ -193,7 +193,7 @@ function drawAucTrendChart(wa) {
     if (wa.ci_lower != null && wa.ci_upper != null) {
         ctx.save();
         ctx.setLineDash([6, 4]);
-        ctx.strokeStyle = '#f59e0b'; ctx.lineWidth = 1.5;
+        ctx.strokeStyle = '#c05621'; ctx.lineWidth = 1.5;
         const yLo = toY(wa.ci_lower);
         const yHi = toY(wa.ci_upper);
         ctx.beginPath(); ctx.moveTo(leftPad, yHi); ctx.lineTo(leftPad + plotW, yHi); ctx.stroke();
@@ -203,14 +203,14 @@ function drawAucTrendChart(wa) {
         ctx.fillRect(leftPad, yHi, plotW, yLo - yHi);
         // Labels
         ctx.setLineDash([]);
-        ctx.fillStyle = '#f59e0b'; ctx.font = '10px system-ui'; ctx.textAlign = 'left';
+        ctx.fillStyle = '#c05621'; ctx.font = '10px "IBM Plex Sans", sans-serif'; ctx.textAlign = 'left';
         ctx.fillText('95% CI ' + wa.ci_upper.toFixed(1) + '%', leftPad + plotW + 4, yHi + 3);
         ctx.fillText('95% CI ' + wa.ci_lower.toFixed(1) + '%', leftPad + plotW + 4, yLo + 3);
         ctx.restore();
     }
 
     // Data line
-    const color = '#3b82f6';
+    const color = '#0e7c86';
     const points = [];
     auc.forEach((v, i) => { if (v != null) points.push({ x: toX(i), y: toY(v), v: v }); });
     if (points.length > 0) {
@@ -224,7 +224,7 @@ function drawAucTrendChart(wa) {
         points.forEach(p => {
             ctx.beginPath(); ctx.arc(p.x, p.y, 4, 0, Math.PI * 2); ctx.fill();
             // Value label above dot
-            ctx.fillStyle = '#1e3a5f'; ctx.font = 'bold 10px system-ui'; ctx.textAlign = 'center';
+            ctx.fillStyle = '#111a2b'; ctx.font = 'bold 10px "IBM Plex Sans", sans-serif'; ctx.textAlign = 'center';
             ctx.fillText(p.v.toFixed(1) + '%', p.x, p.y - 10);
             ctx.fillStyle = color;
         });
@@ -251,8 +251,8 @@ function drawLineChart(canvasId, weeks, sites, dataMap) {
     const toY = (v) => topPad + plotH - (v / 100) * plotH;
 
     // Grid lines
-    ctx.strokeStyle = '#f1f5f9'; ctx.lineWidth = 1;
-    ctx.fillStyle = '#94a3b8'; ctx.font = '10px system-ui'; ctx.textAlign = 'right';
+    ctx.strokeStyle = '#edf1f6'; ctx.lineWidth = 1;
+    ctx.fillStyle = '#5a6478'; ctx.font = '10px "IBM Plex Sans", sans-serif'; ctx.textAlign = 'right';
     for (let pct = 0; pct <= 100; pct += 20) {
         const y = toY(pct);
         ctx.beginPath(); ctx.moveTo(leftPad, y); ctx.lineTo(leftPad + plotW, y); ctx.stroke();
@@ -260,15 +260,15 @@ function drawLineChart(canvasId, weeks, sites, dataMap) {
     }
 
     // Axes
-    ctx.strokeStyle = '#e2e8f0'; ctx.lineWidth = 1;
+    ctx.strokeStyle = '#dce3ec'; ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(leftPad, topPad); ctx.lineTo(leftPad, H - botPad); ctx.lineTo(leftPad + plotW, H - botPad); ctx.stroke();
 
     // X-axis week labels
-    ctx.fillStyle = '#94a3b8'; ctx.font = '10px system-ui'; ctx.textAlign = 'center';
+    ctx.fillStyle = '#5a6478'; ctx.font = '10px "IBM Plex Sans", sans-serif'; ctx.textAlign = 'center';
     weeks.forEach((label, i) => {
         const x = toX(i);
         // Tick mark
-        ctx.strokeStyle = '#e2e8f0'; ctx.beginPath(); ctx.moveTo(x, H - botPad); ctx.lineTo(x, H - botPad + 5); ctx.stroke();
+        ctx.strokeStyle = '#dce3ec'; ctx.beginPath(); ctx.moveTo(x, H - botPad); ctx.lineTo(x, H - botPad + 5); ctx.stroke();
         ctx.fillText(label, x, H - botPad + 18);
     });
 
@@ -301,7 +301,7 @@ function drawLineChart(canvasId, weeks, sites, dataMap) {
         // Line sample
         ctx.strokeStyle = color; ctx.lineWidth = 2;
         ctx.beginPath(); ctx.moveTo(legendX + 8, legendY); ctx.lineTo(legendX + 24, legendY); ctx.stroke();
-        ctx.fillStyle = color; ctx.font = '11px system-ui'; ctx.textAlign = 'left';
+        ctx.fillStyle = color; ctx.font = '11px "IBM Plex Sans", sans-serif'; ctx.textAlign = 'left';
         ctx.fillText(site, legendX + 28, legendY + 4);
     });
 }
