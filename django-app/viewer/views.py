@@ -328,8 +328,22 @@ def export_csv(request):
         if val != '':
             if val == '__null__':
                 qs = qs.filter(**{f'{field_name}__isnull': True})
+            elif val == '__notnull__':
+                qs = qs.filter(**{f'{field_name}__isnull': False})
             else:
                 qs = qs.filter(**{field_name: val})
+
+    DATE_RANGE_FIELDS = [
+        ('procedure_start_date', 'Procedure Date'),
+        ('created_at', 'Date Added'),
+    ]
+    for field_name, _ in DATE_RANGE_FIELDS:
+        from_val = request.GET.get(f'd_{field_name}_from', '').strip()
+        to_val = request.GET.get(f'd_{field_name}_to', '').strip()
+        if from_val:
+            qs = qs.filter(**{f'{field_name}__date__gte': from_val})
+        if to_val:
+            qs = qs.filter(**{f'{field_name}__date__lte': to_val})
 
     sort = request.GET.get('sort', '-created_at')
     sort_field = sort.lstrip('-')
