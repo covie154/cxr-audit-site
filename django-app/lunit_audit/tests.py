@@ -124,6 +124,88 @@ class VisualShellTemplateTests(TestCase):
         self.assertNotIn('id="primaryNavigation"', html)
         self.assertIn('id="mainContent"', html)
 
+@override_settings(
+    SECURE_SSL_REDIRECT=False,
+    MIDDLEWARE=[
+        middleware
+        for middleware in settings.MIDDLEWARE
+        if middleware != "whitenoise.middleware.WhiteNoiseMiddleware"
+    ],
+    STORAGES={
+        "staticfiles": {
+            "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"
+        }
+    },
+)
+class VisualPageRenderTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.reviewer = User.objects.create_user(
+            username="visual-reviewer", password="test-password"
+        )
+        cls.admin = User.objects.create_superuser(
+            username="visual-admin",
+            email="visual-admin@example.invalid",
+            password="test-password",
+        )
+
+    def assert_page_contains(self, url, markers, user=None):
+        if user is not None:
+            self.client.force_login(user)
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        for marker in markers:
+            self.assertContains(response, marker, html=False)
+        self.client.logout()
+
+    def test_login_page_renders_current_form_copy(self):
+        self.assert_page_contains(
+            "/login/",
+            ("PRIMER-LLM", "Sign in to continue", 'id="id_username"'),
+        )
+
+    def test_upload_page_keeps_interaction_targets(self):
+        self.assert_page_contains(
+            "/upload/",
+            ("Upload &amp; Analyze", 'id="uploadForm"', 'id="statusContainer"'),
+            self.reviewer,
+        )
+
+    def test_tasks_page_keeps_interaction_targets(self):
+        self.assert_page_contains(
+            "/upload/tasks/",
+            ("Processing Tasks", 'id="backfillForm"', 'id="deleteModal"'),
+            self.admin,
+        )
+
+    def test_import_page_keeps_interaction_targets(self):
+        self.assert_page_contains(
+            "/upload/import/",
+            ("Import Historical Data", 'id="uploadZone"', 'id="previewCard"'),
+            self.admin,
+        )
+
+    def test_viewer_page_keeps_interaction_targets(self):
+        self.assert_page_contains(
+            "/view/",
+            ('id="filterForm"', 'class="table-wrap"', 'id="detailModal"'),
+            self.admin,
+        )
+
+    def test_report_page_keeps_dashboard_targets(self):
+        self.assert_page_contains(
+            "/report/",
+            ('id="generateBtn"', 'id="resultsSection"', 'id="emailModal"'),
+            self.reviewer,
+        )
+
+    def test_manual_gt_page_keeps_interaction_targets(self):
+        self.assert_page_contains(
+            "/gt/",
+            ('id="downloadBtn"', 'id="gtFileDrop"', 'id="resultPanel"'),
+            self.reviewer,
+        )
+
 class override_environ:
     def __init__(self, values):
         self.values = values
