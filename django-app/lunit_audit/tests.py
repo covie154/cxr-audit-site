@@ -1,5 +1,9 @@
+from django.contrib.auth.models import AnonymousUser, User
 from django.core.checks import run_checks
-from django.test import SimpleTestCase, override_settings
+from django.template import engines
+from django.test import RequestFactory, SimpleTestCase, TestCase, override_settings
+
+from django.urls import resolve
 
 from . import settings
 
@@ -77,6 +81,48 @@ class DatabaseSettingsTests(SimpleTestCase):
         self.assertEqual(config["USER"], "audit_user")
         self.assertEqual(config["HOST"], "postgres")
 
+
+@override_settings(
+    STORAGES={
+        "staticfiles": {
+            "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"
+        }
+    }
+)
+class VisualShellTemplateTests(TestCase):
+    def _render_shell(self, user, is_admin=False):
+        template = engines["django"].from_string(
+            "{% extends 'base.html' %}{% block nav_report %}active{% endblock %}"
+            "{% block body %}<p>Shell probe</p>{% endblock %}"
+        )
+        request = RequestFactory().get("/report/")
+        request.user = user
+        request.resolver_match = resolve("/report/")
+        return template.render(
+            {"user": user, "is_admin": is_admin}, request=request
+        )
+
+    def test_authenticated_shell_has_sidebar_landmarks_and_active_page(self):
+        html = self._render_shell(User.objects.create_user(username="reviewer"))
+
+        self.assertIn('id="primaryNavigation"', html)
+        self.assertIn('id="mainContent"', html)
+        self.assertIn('aria-current="page"', html)
+        self.assertIn("Shell probe", html)
+
+    def test_admin_shell_retains_admin_only_destinations(self):
+        html = self._render_shell(
+            User.objects.create_user(username="admin", is_superuser=True), is_admin=True
+        )
+
+        for label in ("Tasks", "Import", "Database"):
+            self.assertIn(label, html)
+
+    def test_unauthenticated_shell_omits_application_navigation(self):
+        html = self._render_shell(AnonymousUser())
+
+        self.assertNotIn('id="primaryNavigation"', html)
+        self.assertIn('id="mainContent"', html)
 
 class override_environ:
     def __init__(self, values):
