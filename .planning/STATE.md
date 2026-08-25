@@ -80,6 +80,7 @@ None yet.
 |---|-------------|------|--------|-----------|
 | 260822-ww5 | Apply the approved PRIMER visual system and responsive navigation across all existing Django screens without changing copy or behavior | 2026-08-23 | 6d30d69 | [260822-ww5](./quick/260822-ww5-apply-the-approved-primer-visual-system-/) |
 | 260825-x95 | Polish PRIMER UI, remove decorative emoji, add dark mode, improve logout and responsive layouts | 2026-08-26 | 8ffc777 | [260825-x95](./quick/260825-x95-polish-primer-ui-remove-decorative-emoji/) |
+| 260826-1od | Restore distinct per-site report chart colors from the initial palette | 2026-08-26 | d82dbd7 | [260826-1od](./quick/260826-1od-restore-distinct-per-site-report-chart-c/) |
 
 ## Deferred Items
 
