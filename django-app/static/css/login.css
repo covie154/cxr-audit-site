@@ -4,29 +4,30 @@
     justify-content: center;
     min-height: 100vh;
     padding: 32px 20px;
-    background:
-        radial-gradient(circle at 18% 18%, rgba(14, 124, 134, .09), transparent 28%),
-        linear-gradient(135deg, var(--c-bg), #eef3f6);
+    background: var(--c-bg);
 }
 .login-card {
     width: 100%;
-    max-width: 400px;
-    padding: 42px 36px 36px;
-    border-top: 3px solid var(--c-primary);
+    max-width: 430px;
+    padding: 38px 38px 36px;
     box-shadow: var(--shadow-md);
 }
+.login-brand { display:flex; align-items:center; justify-content:center; gap:12px; margin-bottom:28px; }
+.login-brand-mark { display:grid; width:44px; height:44px; place-items:center; border-radius:var(--radius); background:var(--c-primary); }
+.login-brand-mark img { width:25px; height:25px; filter:invert(1); }
 .login-card h2 {
-    text-align: center;
+    text-align: left;
     font-family: var(--font-display);
     font-size: 1.45em;
     letter-spacing: -.025em;
-    margin-bottom: 6px;
+    margin-bottom: 1px;
 }
+.login-brand p { color:var(--c-text-muted); font-size:.78em; }
 .login-subtitle {
     text-align: center;
     color: var(--c-text-muted);
     font-size: .88em;
-    margin-bottom: 24px;
+    margin-bottom: 20px;
 }
 .login-field {
     margin-bottom: 16px;
@@ -73,4 +74,9 @@
     margin-bottom: 16px;
     font-size: .88em;
     text-align: center;
+}
+
+@media (max-width: 520px) {
+    .login-page { padding:20px 14px; }
+    .login-card { padding:30px 24px 28px; }
 }

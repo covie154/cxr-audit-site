@@ -10,7 +10,10 @@
 {% block body %}
 <div class="login-page">
     <div class="card login-card">
-        <h2>🫁 PRIMER-LLM</h2>
+        <div class="login-brand">
+            <span class="login-brand-mark" aria-hidden="true"><img src="{% static 'img/primer-mark.svg' %}" alt=""></span>
+            <div><h2>PRIMER-LLM</h2><p>Clinical audit workspace</p></div>
+        </div>
         <p class="login-subtitle">Sign in to continue</p>
 
         {% if form.errors %}
@@ -29,7 +32,7 @@
                 <label for="id_password">Password</label>
                 <input type="password" name="password" id="id_password" required>
             </div>
-            <button type="submit" class="login-btn">Sign In</button>
+            <button type="submit" class="login-btn">Sign in</button>
         </form>
     </div>
 </div>
