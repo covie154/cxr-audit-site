@@ -4,8 +4,8 @@ milestone: v1.0
 milestone_name: milestone
 status: executing
 stopped_at: Phase 5 context gathered
-last_updated: "2026-08-23T00:56:16.4095405+08:00"
-last_activity: 2026-08-23
+last_updated: "2026-08-26T00:00:00+08:00"
+last_activity: 2026-08-26
 progress:
   total_phases: 6
   completed_phases: 4
@@ -79,6 +79,7 @@ None yet.
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
 | 260822-ww5 | Apply the approved PRIMER visual system and responsive navigation across all existing Django screens without changing copy or behavior | 2026-08-23 | 6d30d69 | [260822-ww5](./quick/260822-ww5-apply-the-approved-primer-visual-system-/) |
+| 260825-x95 | Polish PRIMER UI, remove decorative emoji, add dark mode, improve logout and responsive layouts | 2026-08-26 | 8ffc777 | [260825-x95](./quick/260825-x95-polish-primer-ui-remove-decorative-emoji/) |
 
 ## Deferred Items
 
