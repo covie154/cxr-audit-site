@@ -23,7 +23,7 @@ async function checkForActiveTask() {
             const sc = document.getElementById('statusContainer');
             sc.className = 'status-container status-processing';
             sc.style.display = 'block';
-            document.getElementById('statusMessage').textContent = `\u{1F504} Resuming task\u2026 ${d.progress_message || ''}`;
+            document.getElementById('statusMessage').textContent = `Resuming task\u2026 ${d.progress_message || ''}`;
             const pct = typeof d.progress_percent === 'number' ? d.progress_percent : 10;
             updateProgress(pct, d.progress_message || 'Resuming\u2026');
 
@@ -41,7 +41,7 @@ async function checkForActiveTask() {
 function lockFormForActiveTask() {
     const btn = document.getElementById('submitBtn');
     btn.disabled = true;
-    btn.textContent = '\u231B Task in progress\u2026';
+    btn.textContent = 'Task in progress\u2026';
     // Disable file inputs
     document.getElementById('lunitFiles').disabled = true;
     document.getElementById('gtFiles').disabled = true;
@@ -51,7 +51,7 @@ function lockFormForActiveTask() {
 function unlockForm() {
     const btn = document.getElementById('submitBtn');
     btn.disabled = false;
-    btn.textContent = '\u{1F4E4} Upload & Check';
+    btn.textContent = 'Upload & check';
     document.getElementById('lunitFiles').disabled = false;
     document.getElementById('gtFiles').disabled = false;
     document.getElementById('supplementalSteps').disabled = false;
@@ -72,7 +72,7 @@ async function fetchSavedResults(taskId) {
 // ══════════ API connection ══════════
 async function checkApiConnection() {
     const el = document.getElementById('apiStatus');
-    el.className = 'api-pill checking'; el.textContent = '\u{1F504} Checking\u2026';
+    el.className = 'api-pill checking'; el.textContent = 'Checking API\u2026';
     try {
         const r = await fetch(`${API_BASE_URL}/check-connection`, { headers: { 'X-CSRFToken': csrfToken } });
         const d = await r.json();
@@ -84,7 +84,7 @@ async function checkApiConnection() {
 // \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 LLM connection \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
 async function checkLlmConnection() {
     const el = document.getElementById('llmStatus');
-    el.className = 'api-pill checking'; el.textContent = '\u{1F504} LLM\u2026';
+    el.className = 'api-pill checking'; el.textContent = 'Checking LLM\u2026';
     try {
         const r = await fetch(`${API_BASE_URL}/check-llm`, { headers: { 'X-CSRFToken': csrfToken } });
         const d = await r.json();
@@ -166,7 +166,7 @@ document.getElementById('uploadForm').addEventListener('submit', async e => {
     if (!lunit.length || !gt.length) { alert('Please select files for both CARPL and RIS.'); return; }
 
     const btn = document.getElementById('submitBtn');
-    btn.disabled = true; btn.textContent = '\u231B Checking database\u2026';
+    btn.disabled = true; btn.textContent = 'Checking database\u2026';
 
     // Hide any previous panels
     document.getElementById('precheckPanel').style.display = 'none';
@@ -186,7 +186,7 @@ document.getElementById('uploadForm').addEventListener('submit', async e => {
 
         if (check.error) {
             showError(`Pre-check error: ${check.error}`);
-            btn.disabled = false; btn.textContent = '\u{1F4E4} Upload & Check';
+            btn.disabled = false; btn.textContent = 'Upload & check';
             return;
         }
 
@@ -194,7 +194,7 @@ document.getElementById('uploadForm').addEventListener('submit', async e => {
     } catch(e) {
         showError(`Pre-check failed: ${e.message}`);
     }
-    btn.disabled = false; btn.textContent = '\u{1F4E4} Upload & Check';
+    btn.disabled = false; btn.textContent = 'Upload & check';
 });
 
 function showPrecheckPanel(check) {
@@ -215,7 +215,7 @@ function showPrecheckPanel(check) {
     // Stats
     const statsEl = document.getElementById('precheckStats');
     statsEl.innerHTML = `
-        <h4 style="margin:0 0 8px;">\u{1F5C4}\uFE0F Database Check</h4>
+        <h4 style="margin:0 0 8px;">Database check</h4>
         <div class="metric"><span class="metric-label">Unique accession numbers</span><span class="metric-value">${check.total}</span></div>
         <div class="metric"><span class="metric-label">New (will be added)</span><span class="metric-value" style="color:var(--c-success)">${check.new}</span></div>
         <div class="metric"><span class="metric-label">Already in database</span><span class="metric-value" style="color:var(--c-warning)">${check.existing}</span></div>`;
@@ -238,7 +238,7 @@ function showPrecheckPanel(check) {
         startBtn.style.background = '#cbd5e1';
     } else {
         startBtn.disabled = false;
-        startBtn.textContent = `\u{1F680} Start Analysis (${check.new} new records)`;
+        startBtn.textContent = `Start analysis (${check.new} new records)`;
         startBtn.style.background = '';
     }
 
@@ -268,11 +268,11 @@ async function uploadFiles(lunit, gt, supp) {
     fd.append('supplemental_steps', supp);
 
     const btn = document.getElementById('submitBtn');
-    btn.disabled = true; btn.textContent = '\u231B Uploading\u2026';
+    btn.disabled = true; btn.textContent = 'Uploading\u2026';
 
     const sc = document.getElementById('statusContainer');
     sc.className = 'status-container status-uploading'; sc.style.display = 'block';
-    document.getElementById('statusMessage').textContent = `\u{1F4E4} Uploading ${lunit.length + gt.length} files\u2026${supp ? ' (detailed findings enabled)' : ''}`;
+    document.getElementById('statusMessage').textContent = `Uploading ${lunit.length + gt.length} files\u2026${supp ? ' (detailed findings enabled)' : ''}`;
     updateProgress(2, 'Uploading\u2026');
 
     try {
@@ -296,7 +296,7 @@ function stopTask() {
     if (!confirm('Stop the current task? Results processed so far will not be saved.')) return;
     const btn = document.getElementById('stopTaskBtn');
     btn.disabled = true;
-    btn.textContent = '\u23f3 Stopping\u2026';
+    btn.textContent = 'Stopping\u2026';
     fetch(`${API_BASE_URL}/tasks/${currentTaskId}/cancel`, {
         method: 'POST',
         headers: { 'X-CSRFToken': csrfToken }
@@ -321,7 +321,7 @@ function startMonitoring() {
     updateProgress(6, 'Upload complete, starting analysis\u2026');
     const sc = document.getElementById('statusContainer');
     sc.className = 'status-container status-processing';
-    document.getElementById('statusMessage').textContent = '\u{1F504} Processing\u2026';
+    document.getElementById('statusMessage').textContent = 'Processing\u2026';
     const stopBtn = document.getElementById('stopTaskBtn');
     stopBtn.style.display = 'block';
     stopBtn.disabled = false;
@@ -340,10 +340,10 @@ async function checkStatus() {
 
         if (s.progress_details) {
             const d = s.progress_details;
-            if (d.step === 'llm' && d.total > 0) msg = `\u{1F916} LLM Grading: ${d.current}/${d.total}`;
-            else if (d.step === 'lunit' && d.total > 0) msg = `\u{1F50D} Detailed Findings: ${d.current}/${d.total}`;
+            if (d.step === 'llm' && d.total > 0) msg = `LLM grading: ${d.current}/${d.total}`;
+            else if (d.step === 'lunit' && d.total > 0) msg = `Detailed findings: ${d.current}/${d.total}`;
         }
-        document.getElementById('statusMessage').textContent = `\u{1F504} ${msg}`;
+        document.getElementById('statusMessage').textContent = msg;
 
         let pct = typeof s.progress_percent === 'number' ? s.progress_percent : guessPct(s.status, s.progress);
         let txt = msg;
@@ -400,13 +400,13 @@ function showResults(res) {
     document.getElementById('resultsContent').innerHTML = `
         ${errHtml}
         <div class="db-stats-box">
-            <h4 style="margin:0 0 8px;">\u{1F4BE} Database Import Summary</h4>
+            <h4 style="margin:0 0 8px;">Database import summary</h4>
             <div class="metric"><span class="metric-label">Total processed</span><span class="metric-value">${total}</span></div>
             <div class="metric"><span class="metric-label">New records added</span><span class="metric-value" style="color:var(--c-success)">${newRecs}</span></div>
             <div class="metric"><span class="metric-label">Skipped (already existed)</span><span class="metric-value" style="color:var(--c-warning)">${skipped}</span></div>
         </div>
         <div class="download-row" style="margin-top:20px;">
-            <a href="${window.PAGE_CONFIG.reportUrl}" class="btn btn-primary" style="text-decoration:none;">\u{1F4CA} View Reports</a>
+            <a href="${window.PAGE_CONFIG.reportUrl}" class="btn btn-primary" style="text-decoration:none;">View reports</a>
         </div>`;
     rc.style.display = 'block';
 

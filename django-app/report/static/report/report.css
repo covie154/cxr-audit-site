@@ -18,6 +18,7 @@
 
 /* ══════════ Date picker card ══════════ */
 .picker-card { padding: 24px 28px; }
+.picker-help { max-width:72ch; margin-top:14px; color:var(--c-text-muted); font-size:.82em; }
 
 .date-row {
     display: flex;
@@ -143,7 +144,7 @@
     background: var(--c-surface-subtle);
     padding: 18px;
     border-radius: var(--radius-lg);
-    border-left: 4px solid var(--c-primary);
+    border: 1px solid var(--c-border);
     white-space: pre-wrap;
     font-family: var(--font-mono);
     font-size: .84em;
@@ -173,7 +174,7 @@
 }
 .site-table th:first-child, .site-table td:first-child { text-align: left; }
 .site-table tr:hover td { background: var(--c-primary-soft); }
-.site-table .overall-row td { font-weight: 700; background: #d7ebed; border-top: 2px solid var(--c-primary); }
+.site-table .overall-row td { font-weight: 700; background: var(--c-primary-soft); border-top: 2px solid var(--c-primary); }
 
 /* ── False negatives ── */
 .fn-summary {
@@ -350,4 +351,6 @@
 @media (max-width: 600px) {
     .report-page { margin-top: 0; padding: 22px 12px 40px; }
     .report-block { padding: 15px; overflow-x: auto; }
+    .picker-card { padding:20px; }
+    .date-row .btn { width:100%; }
 }

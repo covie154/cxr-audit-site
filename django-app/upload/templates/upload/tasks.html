@@ -12,36 +12,36 @@
 <div class="tasks-page">
     <div class="page-header">
         <div>
-            <h1 class="page-title">📋 Processing Tasks</h1>
+            <h1 class="page-title">Processing Tasks</h1>
             <span class="task-count">{{ tasks|length }} task{{ tasks|length|pluralize }}</span>
         </div>
     </div>
 
     <!-- Backfill Panel -->
-    <div class="card" style="margin-bottom:1.5rem;">
-        <div style="padding:1rem 1.25rem;">
-            <h2 style="font-size:1rem;font-weight:600;margin:0 0 .75rem;">🔄 Backfill Supplemental Analysis</h2>
-            <p style="font-size:.85rem;color:var(--c-text-muted);margin:0 0 1rem;">
+    <section class="card backfill-panel" aria-labelledby="backfillTitle">
+        <div class="backfill-body">
+            <h2 id="backfillTitle">Backfill supplemental analysis</h2>
+            <p>
                 Re-runs per-finding LLM extraction on existing records that have no supplemental data.
                 Any running upload will block the backfill (and vice versa).
             </p>
-            <form id="backfillForm" style="display:flex;flex-wrap:wrap;gap:.75rem;align-items:flex-end;">
+            <form id="backfillForm" class="backfill-form">
                 <div>
-                    <label style="display:block;font-size:.8rem;margin-bottom:.3rem;">From</label>
+                    <label for="backfillDateFrom">From</label>
                     <input type="date" name="date_from" id="backfillDateFrom"
-                           style="padding:.4rem .6rem;border:1px solid var(--c-border);border-radius:6px;font-size:.875rem;">
+                           >
                 </div>
                 <div>
-                    <label style="display:block;font-size:.8rem;margin-bottom:.3rem;">To</label>
+                    <label for="backfillDateTo">To</label>
                     <input type="date" name="date_to" id="backfillDateTo"
-                           style="padding:.4rem .6rem;border:1px solid var(--c-border);border-radius:6px;font-size:.875rem;">
+                           >
                 </div>
-                <button type="submit" id="backfillBtn" class="btn btn-primary" style="padding:.45rem 1rem;">
+                <button type="submit" id="backfillBtn" class="btn btn-primary">
                     Run Backfill
                 </button>
             </form>
         </div>
-    </div>
+    </section>
 
     <div class="card">
         {% if tasks %}
@@ -64,40 +64,40 @@
                 <tbody>
                     {% for t in tasks %}
                     <tr id="row-{{ t.task_id }}">
-                        <td>
+                        <td data-label="Type">
                             {% if t.task_type == 'backfill' %}
                                 <span style="font-size:.75rem;background:#f0f4ff;color:#3b5bdb;padding:2px 7px;border-radius:4px;font-weight:600;">Backfill</span>
                             {% else %}
                                 <span style="font-size:.75rem;background:#f0fff4;color:#2f9e44;padding:2px 7px;border-radius:4px;font-weight:600;">Upload</span>
                             {% endif %}
                         </td>
-                        <td>
+                        <td data-label="Status">
                             <span class="status-badge status-{{ t.status }}">{{ t.get_status_display }}</span>
                         </td>
-                        <td class="progress-cell">
+                        <td class="progress-cell" data-label="Progress">
                             <span class="mini-progress">
                                 <span class="mini-progress-fill" style="width:{{ t.progress_percent|floatformat:0 }}%; background:{% if t.status == 'completed' %}var(--c-success){% elif t.status == 'failed' %}var(--c-danger){% else %}var(--c-primary){% endif %};"></span>
                             </span>
                             {{ t.progress_percent|floatformat:0 }}%
                         </td>
-                        <td class="msg-cell" title="{{ t.progress_message|default_if_none:'' }}">
+                        <td class="msg-cell" data-label="Message" title="{{ t.progress_message|default_if_none:'' }}">
                             {{ t.progress_message|default:"—" }}
                         </td>
-                        <td class="date-cell">{{ t.created_at|date:"d M Y H:i" }}</td>
-                        <td class="date-cell">
+                        <td class="date-cell" data-label="Created">{{ t.created_at|date:"d M Y H:i" }}</td>
+                        <td class="date-cell" data-label="Completed">
                             {% if t.completed_at %}
                                 {{ t.completed_at|date:"d M Y H:i" }}
                             {% else %}
                                 <span style="color:var(--c-text-muted)">—</span>
                             {% endif %}
                         </td>
-                        <td class="num-cell">{{ t.total_records_processed }}</td>
-                        <td class="num-cell">{{ t.new_records_added }}</td>
-                        <td class="num-cell">{{ t.existing_records_skipped }}</td>
-                        <td>
-                            <button type="button" class="btn btn-danger" style="padding:5px 12px;font-size:.8em;"
+                        <td class="num-cell" data-label="Processed">{{ t.total_records_processed }}</td>
+                        <td class="num-cell" data-label="Added">{{ t.new_records_added }}</td>
+                        <td class="num-cell" data-label="Skipped">{{ t.existing_records_skipped }}</td>
+                        <td class="task-actions" data-label="Action">
+                            <button type="button" class="task-delete-button"
                                 data-task-id="{{ t.task_id }}">
-                                🗑 Delete
+                                Delete
                             </button>
                         </td>
                     </tr>
@@ -107,7 +107,6 @@
         </div>
         {% else %}
         <div class="empty-state">
-            <div class="icon">📭</div>
             <p>No processing tasks yet.<br>Upload files from the <a href="{% url 'upload:index' %}">Upload</a> page to create a task.</p>
         </div>
         {% endif %}
@@ -121,7 +120,7 @@
         <p id="deleteMsg">This will permanently remove the task record. CXR study data already saved to the database will <strong>not</strong> be affected.</p>
         <div class="modal-actions">
             <button id="cancelDeleteBtn" class="btn btn-outline">Cancel</button>
-            <button id="confirmDeleteBtn" class="btn btn-danger">🗑 Delete</button>
+            <button id="confirmDeleteBtn" class="btn btn-danger">Delete task</button>
         </div>
     </div>
 </div>

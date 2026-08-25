@@ -13,6 +13,14 @@
 .page-title { font-size: clamp(1.55rem, 2.5vw, 2rem); letter-spacing: -.025em; font-weight: 700; }
 .task-count { color: var(--c-text-muted); font-size: .9em; }
 
+.backfill-panel { margin-bottom:1.5rem; }
+.backfill-body { padding:1rem 1.25rem; }
+.backfill-body h2 { font-size:1rem; font-weight:600; margin:0 0 .5rem; }
+.backfill-body p { max-width:72ch; color:var(--c-text-muted); font-size:.85rem; margin:0 0 1rem; }
+.backfill-form { display:flex; flex-wrap:wrap; gap:.75rem; align-items:flex-end; }
+.backfill-form label { display:block; font-size:.8rem; margin-bottom:.3rem; }
+.backfill-form input { padding:.4rem .6rem; font-size:.875rem; }
+
 /* ══════════ Table ══════════ */
 .tasks-table-wrap {
     overflow-x: auto;
@@ -72,7 +80,6 @@
 .mini-progress-fill {
     height: 100%;
     border-radius: 99px;
-    transition: width .3s;
 }
 
 .progress-cell {
@@ -98,6 +105,19 @@
     color: var(--c-text-muted);
 }
 .empty-state .icon { font-size: 2.5em; margin-bottom: 12px; }
+
+.task-delete-button {
+    min-height:32px;
+    padding:5px 9px;
+    border:1px solid transparent;
+    border-radius:6px;
+    background:transparent;
+    color:var(--c-text-muted);
+    cursor:pointer;
+    font-size:.8em;
+    font-weight:600;
+}
+.task-delete-button:hover, .task-delete-button:focus-visible { border-color:var(--c-danger); background:var(--c-danger-soft); color:var(--c-danger); }
 
 .delete-form { display: inline; }
 
@@ -125,7 +145,19 @@
 .modal-actions { display: flex; gap: 10px; justify-content: center; }
 
 @media (max-width: 768px) {
-    .tasks-page { padding: 0 10px 30px; margin-top: 20px; }
+    .tasks-page { padding: 22px 12px 40px; }
+    .backfill-form > div { flex:1 1 130px; }
+    .backfill-form input, .backfill-form .btn { width:100%; }
+    .tasks-page > .card:last-of-type { border:0; background:transparent; box-shadow:none; }
+    .tasks-table-wrap { overflow:visible; }
+    .tasks-table, .tasks-table tbody { display:block; }
+    .tasks-table thead { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); }
+    .tasks-table tr { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px 16px; margin-bottom:12px; padding:16px; border:1px solid var(--c-border); border-radius:var(--radius); background:var(--c-surface); box-shadow:var(--shadow-sm); }
+    .tasks-table td { display:block; min-width:0; padding:0; border:0; text-align:left; }
+    .tasks-table td::before { content:attr(data-label); display:block; margin-bottom:2px; color:var(--c-text-faint); font-size:10px; font-weight:600; letter-spacing:.05em; text-transform:uppercase; }
+    .tasks-table .msg-cell { grid-column:1 / -1; max-width:none; white-space:normal; }
+    .tasks-table .task-actions { grid-column:1 / -1; display:flex; justify-content:flex-end; padding-top:4px; border-top:1px solid var(--c-border); }
+    .mini-progress { width:58px; }
 }
 
 .tasks-table td.num-cell, .tasks-table .date-cell, .progress-cell { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }

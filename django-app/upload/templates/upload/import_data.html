@@ -10,12 +10,11 @@
 
 {% block body %}
 <div class="import-page">
-    <h1 class="page-title">📥 Import Historical Data</h1>
-    <p class="page-subtitle">Upload a processed CSV file to import past results into the database. Duplicate accession numbers will be skipped.</p>
+    <h1 class="page-title">Import Historical Data</h1>
+    <p class="page-subtitle">Upload a processed CSV file, then choose how duplicate accession numbers should be handled.</p>
 
     <!-- File picker -->
     <div class="upload-zone" id="uploadZone">
-        <div class="upload-zone-icon">📄</div>
         <div class="upload-zone-text" id="zoneText">Drop a CSV file here or click to browse</div>
         <div class="upload-zone-hint">Accepts .csv files with an ACCESSION_NO column</div>
     </div>
@@ -33,8 +32,8 @@
     <!-- Preview card -->
     <div class="preview-card card" id="previewCard">
         <div class="preview-header">
-            <span class="preview-title">📋 Import Preview</span>
-            <button id="clearFileBtn" class="btn btn-outline" style="font-size:.82em;padding:4px 10px;">✕ Clear</button>
+            <span class="preview-title">Import preview</span>
+            <button id="clearFileBtn" class="btn btn-outline btn-compact">Clear file</button>
         </div>
         <div class="preview-body">
             <div class="stat-grid" id="statGrid">
@@ -75,7 +74,7 @@
             <!-- Actions -->
             <div class="action-row">
                 <button class="btn btn-primary" id="btnImport">
-                    📥 Import <span id="btnImportCount"></span> records
+                    Import <span id="btnImportCount"></span> records
                 </button>
                 <span style="font-size:.82em;color:var(--c-text-muted);" id="importHint"></span>
             </div>

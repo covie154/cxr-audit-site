@@ -23,7 +23,7 @@
         if (!start || !end) return;
 
         infoEl.className = 'report-info loading';
-        infoEl.textContent = '\u{1F504} Checking reports in range\u2026';
+        infoEl.textContent = 'Checking reports in range\u2026';
         dlBtn.disabled = true;
 
         fetch(`/gt/api/report-count?start=${start}&end=${end}`)
@@ -45,9 +45,9 @@
                     recommendedPct = data.recommended_pct || 2;
                     recommendedCount = data.recommended_count || Math.ceil(eligibleReports * 2 / 100);
                     infoEl.className = 'report-info';
-                    infoEl.textContent = `\u{1F4CB} ${totalReports.toLocaleString()} report${totalReports !== 1 ? 's' : ''} found in range, ${eligibleReports.toLocaleString()} without GT.`;
+                    infoEl.textContent = `${totalReports.toLocaleString()} report${totalReports !== 1 ? 's' : ''} found in range, ${eligibleReports.toLocaleString()} without GT.`;
                     stratEl.style.display = '';
-                    stratEl.textContent = `\u{1F3E5} Sampling pool: ${priorityReports.toLocaleString()} priority (TPY/HOU/KHA/AMK) + ${otherReports.toLocaleString()} other \u2014 50/50 stratified sampling applied.`;
+                    stratEl.textContent = `Sampling pool: ${priorityReports.toLocaleString()} priority (TPY/HOU/KHA/AMK) + ${otherReports.toLocaleString()} other \u2014 50/50 stratified sampling applied.`;
                 }
                 syncFromPct();
                 updateDownloadState();
@@ -192,7 +192,7 @@
             return;
         }
         selectedFile = file;
-        fileNameEl.textContent = `\u{1F4C4} ${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+        fileNameEl.textContent = `${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
         fileSelDiv.style.display = 'flex';
         dropZone.style.display = 'none';
         validateBtn.disabled = false;
@@ -226,7 +226,7 @@
     validateBtn.addEventListener('click', () => {
         if (!selectedFile) return;
         validateBtn.disabled = true;
-        showValMsg('info', '\u{1F504} Validating file\u2026');
+        showValMsg('info', 'Validating file\u2026');
         mapSection.style.display = 'none';
         resultPanel.style.display = 'none';
 
@@ -270,7 +270,7 @@
     uploadBtn.addEventListener('click', () => {
         if (!validatedData) return;
         uploadBtn.disabled = true;
-        uploadBtn.textContent = '\u231B Uploading\u2026';
+        uploadBtn.textContent = 'Uploading\u2026';
         resultPanel.style.display = 'none';
 
         fetch('/gt/api/apply-gt', {
@@ -284,7 +284,7 @@
             .then(r => r.json().then(d => ({ ok: r.ok, data: d })))
             .then(({ ok, data }) => {
                 uploadBtn.disabled = false;
-                uploadBtn.textContent = '\u{1F4E4} Upload to Database';
+                uploadBtn.textContent = 'Upload to database';
 
                 if (!ok) {
                     resultPanel.className = 'result-panel error';
@@ -316,7 +316,7 @@
             })
             .catch(() => {
                 uploadBtn.disabled = false;
-                uploadBtn.textContent = '\u{1F4E4} Upload to Database';
+                uploadBtn.textContent = 'Upload to database';
                 resultPanel.className = 'result-panel error';
                 resultTitle.textContent = '\u274C Network Error';
                 resultSummary.textContent = 'Failed to reach the server.';

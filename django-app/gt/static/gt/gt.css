@@ -247,3 +247,12 @@
     .gt-page { padding: 22px 12px 40px; }
     .action-row { align-items: stretch; flex-direction: column; }
 }
+
+.sample-rationale { margin-top:-12px; margin-bottom:18px; font-size:.82em; color:var(--c-text-muted); background:var(--c-success-soft); border-color:color-mix(in srgb,var(--c-success) 30%,var(--c-border)); justify-content:space-between; }
+.sample-rationale a { flex:0 0 auto; font-weight:600; }
+.file-drop { box-shadow:inset 0 1px 0 color-mix(in srgb,var(--c-surface) 70%,transparent); }
+
+@media (max-width: 600px) {
+    .sample-rationale { align-items:flex-start; flex-direction:column; }
+    .sample-rationale a { min-height:36px; display:inline-flex; align-items:center; }
+}

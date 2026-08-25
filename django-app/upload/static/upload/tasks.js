@@ -16,7 +16,7 @@ async function doDelete() {
     if (!pendingDeleteId) return;
     const taskId = pendingDeleteId;
     const btn = document.getElementById('confirmDeleteBtn');
-    btn.disabled = true; btn.textContent = '\u231B Deleting\u2026';
+    btn.disabled = true; btn.textContent = 'Deleting\u2026';
 
     try {
         const r = await fetch(`${deleteBaseUrl}${taskId}/delete`, {
@@ -47,7 +47,7 @@ async function doDelete() {
     }
 
     closeModal();
-    btn.disabled = false; btn.textContent = '\u{1F5D1} Delete';
+    btn.disabled = false; btn.textContent = 'Delete';
 }
 
 // Close modal on overlay click

@@ -11,7 +11,7 @@
 .upload-zone {
     border: 1.5px dashed var(--c-border-strong);
     border-radius: var(--radius);
-    padding: 40px 20px;
+    padding: 34px 20px;
     text-align: center;
     color: var(--c-text-muted);
     cursor: pointer;
@@ -28,7 +28,6 @@
     background: var(--c-success-soft);
     color: var(--c-success);
 }
-.upload-zone-icon { font-size: 2.4em; margin-bottom: 8px; }
 .upload-zone-text { font-weight: 600; font-size: .95em; }
 .upload-zone-hint { font-size: .82em; margin-top: 4px; }
 
@@ -49,6 +48,7 @@
     border-radius: 8px;
     font-size: .9em;
 }
+.btn-compact { min-height:32px; padding:4px 10px; font-size:.82em; }
 
 /* ── Preview card ── */
 .preview-card {

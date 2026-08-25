@@ -299,7 +299,7 @@ function renderGtCompare(mvl) {
         });
         if (fns.length > 100) fb.innerHTML += `<tr><td colspan="6" style="text-align:center;color:#94a3b8;padding:12px;">First 100 of ${fns.length}. Download CSV for all.</td></tr>`;
     } else {
-        document.getElementById('fnSummary').innerHTML = '🎉 <strong>No false negatives</strong> — LLM and Manual GT agree on all positive cases.';
+        document.getElementById('fnSummary').innerHTML = '<strong>No false negatives</strong> — LLM and Manual GT agree on all positive cases.';
         document.getElementById('fnTableBody').innerHTML = '';
     }
 
@@ -317,15 +317,15 @@ function renderGtCompare(mvl) {
         });
         if (fps.length > 100) fpb.innerHTML += `<tr><td colspan="6" style="text-align:center;color:#94a3b8;padding:12px;">First 100 of ${fps.length}. Download CSV for all.</td></tr>`;
     } else {
-        document.getElementById('fpSummary').innerHTML = '🎉 <strong>No false positives</strong> — LLM and Manual GT agree on all negative cases.';
+        document.getElementById('fpSummary').innerHTML = '<strong>No false positives</strong> — LLM and Manual GT agree on all negative cases.';
         document.getElementById('fpTableBody').innerHTML = '';
     }
 
     // Download buttons for FN/FP CSVs
     const gtDlRow = document.getElementById('gtDownloadRow');
     let dlHtml = '';
-    if (fns.length > 0) dlHtml += `<button class="btn btn-warning" id="downloadFnCsvBtn">📥 Download False Negatives CSV</button>`;
-    if (fps.length > 0) dlHtml += `<button class="btn btn-warning" id="downloadFpCsvBtn">📥 Download False Positives CSV</button>`;
+    if (fns.length > 0) dlHtml += `<button class="btn btn-warning" id="downloadFnCsvBtn">Download false negatives CSV</button>`;
+    if (fps.length > 0) dlHtml += `<button class="btn btn-warning" id="downloadFpCsvBtn">Download false positives CSV</button>`;
     gtDlRow.innerHTML = dlHtml;
     gtDlRow.style.display = dlHtml ? 'flex' : 'none';
     // Attach event listeners to dynamically created buttons
@@ -353,7 +353,7 @@ async function downloadPDF() {
     if (!lastReportData) { alert('Generate a report first.'); return; }
     const btn = document.getElementById('downloadPdfBtn');
     btn.disabled = true;
-    btn.textContent = '⏳ Preparing…';
+    btn.textContent = 'Preparing…';
     try {
         const chartImages = captureChartImages();
         const r = await fetch(window.REPORT_CONFIG.downloadPdfUrl, {
@@ -380,7 +380,7 @@ async function downloadPDF() {
     } catch (e) { alert('PDF error: ' + e.message); }
     finally {
         btn.disabled = false;
-        btn.textContent = '📄 Download PDF';
+        btn.textContent = 'Download PDF';
     }
 }
 

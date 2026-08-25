@@ -77,7 +77,7 @@
 {% if data.site_metrics %}
 <tr>
 <td style="padding:24px 32px 0;">
-    <h2 style="margin:0 0 14px;font-size:15px;font-weight:700;color:#334155;border-bottom:2px solid #3b82f6;padding-bottom:6px;">📈 Per-Site Breakdown</h2>
+    <h2 style="margin:0 0 14px;font-size:15px;font-weight:700;color:#334155;border-bottom:2px solid #3b82f6;padding-bottom:6px;">Per-Site Breakdown</h2>
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:12px;border-collapse:collapse;">
     <thead>
         <tr style="background:#f8fafc;">
@@ -127,7 +127,7 @@
 {% if chart_images.aucTrendChart or chart_images.sensChart or chart_images.specChart %}
 <tr>
 <td style="padding:24px 32px 0;">
-    <h2 style="margin:0 0 14px;font-size:15px;font-weight:700;color:#334155;border-bottom:2px solid #3b82f6;padding-bottom:6px;">📊 Performance Trend Charts</h2>
+    <h2 style="margin:0 0 14px;font-size:15px;font-weight:700;color:#334155;border-bottom:2px solid #3b82f6;padding-bottom:6px;">Performance Trend Charts</h2>
 
     {% if ci_status %}
     {% if ci_status.in_ci %}
@@ -169,7 +169,7 @@
 {% if data.time_stats.tcd_count or data.time_stats.tee_count %}
 <tr>
 <td style="padding:24px 32px 0;">
-    <h2 style="margin:0 0 14px;font-size:15px;font-weight:700;color:#334155;border-bottom:2px solid #3b82f6;padding-bottom:6px;">⏱️ Time Analysis</h2>
+    <h2 style="margin:0 0 14px;font-size:15px;font-weight:700;color:#334155;border-bottom:2px solid #3b82f6;padding-bottom:6px;">Time Analysis</h2>
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
     <tr>
         {% if data.time_stats.tcd_count %}
@@ -236,7 +236,7 @@
 {% if data.manual_vs_llm %}
 <tr>
 <td style="padding:24px 32px 0;">
-    <h2 style="margin:0 0 14px;font-size:15px;font-weight:700;color:#334155;border-bottom:2px solid #3b82f6;padding-bottom:6px;">🧪 Manual vs LLM Ground Truth</h2>
+    <h2 style="margin:0 0 14px;font-size:15px;font-weight:700;color:#334155;border-bottom:2px solid #3b82f6;padding-bottom:6px;">Manual vs LLM Ground Truth</h2>
     <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:12px 16px;font-size:13px;color:#1e40af;margin-bottom:14px;">
         <strong>{{ data.manual_vs_llm.n }}</strong> studies with manual GT.
         Agreement: <strong>{{ data.manual_vs_llm.agreement_pct }}%</strong>

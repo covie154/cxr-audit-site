@@ -168,7 +168,7 @@
 <body>
 
 <div class="report-header">
-    <h1>🫁 PRIMER-LLM — CXR Analysis Report</h1>
+    <h1>PRIMER-LLM — CXR Analysis Report</h1>
     <div class="subtitle">Reporting period: {{ date_from }} to {{ date_to }}</div>
 </div>
 
@@ -201,7 +201,7 @@
 
 <!-- ── Per-Site Breakdown ── -->
 {% if data.site_metrics %}
-<h2>📈 Per-Site Breakdown</h2>
+<h2>Per-Site Breakdown</h2>
 <table>
 <thead>
     <tr>
@@ -246,7 +246,7 @@
 
 <!-- ── Charts ── -->
 {% if chart_images.aucTrendChart or chart_images.sensChart or chart_images.specChart %}
-<h2>📊 Performance Trend Charts</h2>
+<h2>Performance Trend Charts</h2>
 
 {% if ci_status %}
 {% if ci_status.in_ci %}
@@ -285,7 +285,7 @@
 
 <!-- ── Time Analysis ── -->
 {% if data.time_stats.tcd_count or data.time_stats.tee_count %}
-<h2>⏱️ Time Analysis</h2>
+<h2>Time Analysis</h2>
 
 {% if data.time_stats.tcd_count %}
 <div class="time-card" style="margin-bottom:12px;">
@@ -334,7 +334,7 @@
 
 <!-- ── Manual vs LLM GT ── -->
 {% if data.manual_vs_llm %}
-<h2>🧪 Manual vs LLM Ground Truth</h2>
+<h2>Manual vs LLM Ground Truth</h2>
 <div class="info-box blue">
     <strong>{{ data.manual_vs_llm.n }}</strong> studies with manual GT.
     Agreement: <strong>{{ data.manual_vs_llm.agreement_pct }}%</strong>

@@ -109,6 +109,10 @@ class VisualShellTemplateTests(TestCase):
         self.assertIn('id="mainContent"', html)
         self.assertIn('aria-current="page"', html)
         self.assertIn("Shell probe", html)
+        self.assertIn('id="themeToggle"', html)
+        self.assertIn('role="switch"', html)
+        self.assertIn("Sign out", html)
+        self.assertNotIn("Logout ↗", html)
 
     def test_admin_shell_retains_admin_only_destinations(self):
         html = self._render_shell(

@@ -30,7 +30,7 @@ function handleFile(file) {
         return;
     }
     zone.classList.add('has-file');
-    document.getElementById('zoneText').textContent = `\u{1F4C4} ${file.name} (${formatSize(file.size)})`;
+    document.getElementById('zoneText').textContent = `${file.name} (${formatSize(file.size)})`;
     previewFile(file);
 }
 
@@ -136,7 +136,7 @@ async function doImport() {
     }
     const btn = document.getElementById('btnImport');
     btn.disabled = true;
-    btn.textContent = '\u231B Importing\u2026';
+    btn.textContent = 'Importing\u2026';
 
     const form = new FormData();
     form.append('file', fileInput.files[0]);
@@ -152,14 +152,14 @@ async function doImport() {
         if (!res.ok) {
             showToast(data.error || 'Import failed', 'error');
             btn.disabled = false;
-            btn.innerHTML = '\u{1F4E5} Import';
+            btn.innerHTML = 'Import';
             return;
         }
         showResult(data);
     } catch (err) {
         showToast('Network error: ' + err.message, 'error');
         btn.disabled = false;
-        btn.innerHTML = '\u{1F4E5} Import';
+        btn.innerHTML = 'Import';
     }
 }
 
@@ -171,8 +171,8 @@ function showResult(data) {
         <p><strong>${ok ? 'Import complete!' : 'Import failed'}</strong></p>
         ${ok ? `
             <p>\u2705 <strong>${data.new_count.toLocaleString()}</strong> new records added</p>
-            ${data.updated_count ? `<p>\u{1F504} <strong>${data.updated_count.toLocaleString()}</strong> existing records updated</p>` : ''}
-            <p>\u23ED\uFE0F <strong>${data.skipped_count.toLocaleString()}</strong> duplicates skipped</p>
+            ${data.updated_count ? `<p><strong>${data.updated_count.toLocaleString()}</strong> existing records updated</p>` : ''}
+            <p><strong>${data.skipped_count.toLocaleString()}</strong> duplicates skipped</p>
             <p>\u26A0\uFE0F <strong>${data.invalid_count.toLocaleString()}</strong> invalid rows skipped</p>
         ` : `<p>${data.error}</p>`}
     `;

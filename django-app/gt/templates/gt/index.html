@@ -10,12 +10,12 @@
 
 {% block body %}
 <div class="gt-page">
-    <h1 class="page-title">📝 Manual Ground Truth</h1>
+    <h1 class="page-title">Manual Ground Truth</h1>
     <p class="page-subtitle">Download reports for manual review, or upload labelled results.</p>
 
     <!-- ══════════ Box 1: Download Reports ══════════ -->
     <div class="card gt-card">
-        <h2>⬇️ Download Reports</h2>
+        <h2>Download reports</h2>
         <p class="card-desc">Select a date range and sample size to download CXR reports for manual grading.</p>
 
         <!-- Date range -->
@@ -32,7 +32,7 @@
 
         <!-- Report count info -->
         <div class="report-info loading" id="reportInfo">
-            🔄 Checking reports in range…
+            Checking reports in range…
         </div>
         <div class="report-info" id="stratifiedInfo" style="display:none; margin-top:4px; font-size:.88em; color:var(--c-text-muted);"></div>
 
@@ -47,38 +47,38 @@
                 <input type="number" id="countInput" value="0" min="1" step="1">
             </div>
         </div>
-        <div class="report-info" id="sampleRationale" style="margin-top:-12px; margin-bottom:18px; font-size:.82em; color:var(--c-text-muted); background:#f0fdf4; border-color:#bbf7d0;">
-            📊 Default 2% — provides ±5% precision on agreement (95% CI), with 80% power for McNemar's and non-inferiority tests.
-            <a href="#" id="rationaleLink" style="margin-left:4px;">Why?</a>
+        <div class="report-info sample-rationale" id="sampleRationale">
+            <span>Default 2% provides ±5% precision on agreement (95% CI), with 80% power for McNemar's and non-inferiority tests.</span>
+            <a href="#" id="rationaleLink">Why this sample?</a>
         </div>
 
         <!-- Download button -->
         <div class="action-row">
             <button class="btn btn-primary" id="downloadBtn" disabled>
-                📥 Download CSV
+                Download CSV
             </button>
         </div>
     </div>
 
     <!-- ══════════ Box 2: Upload Labelled Reports ══════════ -->
     <div class="card gt-card">
-        <h2>⬆️ Upload Labelled Reports</h2>
+        <h2>Upload labelled reports</h2>
         <p class="card-desc">Upload a CSV/Excel file with accession numbers and manual ground truth labels (0 or 1).</p>
 
         <!-- File drop zone -->
         <input type="file" id="gtFileInput" accept=".csv,.xls,.xlsx" hidden>
         <div class="file-drop" id="gtFileDrop">
-            📁 Drag &amp; drop a file here, or <strong>click to browse</strong><br>
+            Drag and drop a file here, or <strong>click to browse</strong><br>
             <span style="font-size:.82em;color:var(--c-text-muted);">CSV, XLS or XLSX only</span>
         </div>
         <div class="file-selected" id="gtFileSelected">
             <span class="file-info" id="gtFileName"></span>
-            <button class="remove-file-btn" id="gtRemoveFile" type="button">✕ Remove</button>
+            <button class="remove-file-btn" id="gtRemoveFile" type="button">Remove</button>
         </div>
 
         <!-- Validate button -->
         <div class="action-row" style="margin-bottom:16px;">
-            <button class="btn btn-outline" id="validateBtn" disabled>🔍 Validate</button>
+            <button class="btn btn-outline" id="validateBtn" disabled>Validate file</button>
         </div>
 
         <!-- Validation status message -->
@@ -103,7 +103,7 @@
 
             <!-- Upload button -->
             <div class="action-row">
-                <button class="btn btn-success" id="uploadBtn">📤 Upload to Database</button>
+                <button class="btn btn-success" id="uploadBtn">Upload to database</button>
             </div>
         </div>
 
