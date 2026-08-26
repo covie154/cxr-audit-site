@@ -203,6 +203,27 @@ class VisualPageRenderTests(TestCase):
             self.reviewer,
         )
 
+    def test_document_reports_use_light_primer_design(self):
+        context = {
+            "data": {},
+            "date_from": "2026-08-01",
+            "date_to": "2026-08-07",
+            "chart_images": {},
+            "ci_status": None,
+            "note": "",
+        }
+
+        for template_name in (
+            "report/email_report.html",
+            "report/print_report.html",
+        ):
+            with self.subTest(template=template_name):
+                html = engines["django"].get_template(template_name).render(context)
+                self.assertIn('content="light only"', html)
+                self.assertIn("color-scheme: only light", html)
+                self.assertIn("#0a5a62", html)
+                self.assertNotIn('data-theme="dark"', html)
+
     def test_manual_gt_page_keeps_interaction_targets(self):
         self.assert_page_contains(
             "/gt/",

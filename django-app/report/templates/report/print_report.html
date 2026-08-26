@@ -3,13 +3,17 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="light only">
+<meta name="supported-color-schemes" content="light only">
 <title>PRIMER-LLM Report — {{ date_from }} to {{ date_to }}</title>
 <style>
     /* ── Base ── */
+    :root { color-scheme: only light; }
     *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    html { background: #ffffff; }
     body {
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-        color: #1e293b;
+        font-family: "IBM Plex Sans", "Aptos", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        color: #111a2b;
         background: #fff;
         padding: 32px 40px;
         font-size: 13px;
@@ -18,18 +22,21 @@
 
     /* ── Header ── */
     .report-header {
-        border-bottom: 3px solid #3b82f6;
-        padding-bottom: 14px;
+        border-bottom: 1px solid #dce3ec;
+        padding: 0 0 16px;
         margin-bottom: 28px;
     }
     .report-header h1 {
-        font-size: 20px;
+        font-family: "Space Grotesk", "Aptos Display", sans-serif;
+        font-size: 21px;
         font-weight: 700;
-        color: #1e40af;
+        color: #111a2b;
+        letter-spacing: -.02em;
     }
+    .report-header .brand { color: #0a5a62; }
     .report-header .subtitle {
         font-size: 13px;
-        color: #64748b;
+        color: #5a6478;
         margin-top: 4px;
     }
 
@@ -37,10 +44,12 @@
     h2 {
         font-size: 14px;
         font-weight: 700;
-        color: #334155;
-        border-bottom: 2px solid #3b82f6;
-        padding-bottom: 5px;
+        color: #111a2b;
+        border-bottom: 1px solid #dce3ec;
+        padding-bottom: 7px;
         margin: 24px 0 12px;
+        font-family: "Space Grotesk", "Aptos Display", sans-serif;
+        letter-spacing: -.015em;
     }
 
     /* ── Summary cards ── */
@@ -51,22 +60,24 @@
     }
     .summary-box {
         flex: 1;
-        border: 1px solid #e2e8f0;
-        border-radius: 8px;
+        border: 1px solid #dce3ec;
+        border-radius: 10px;
+        background: #f9fafc;
         padding: 12px 8px;
         text-align: center;
     }
     .summary-box .val {
         font-size: 22px;
         font-weight: 700;
-        color: #3b82f6;
+        color: #0e7c86;
+        font-variant-numeric: tabular-nums;
     }
     .summary-box .lbl {
         font-size: 11px;
-        color: #64748b;
+        color: #5a6478;
         margin-top: 2px;
     }
-    .summary-box.green .val { color: #16a34a; }
+    .summary-box.green .val { color: #2f855a; }
 
     /* ── Tables ── */
     table {
@@ -78,19 +89,22 @@
     th, td {
         padding: 5px 8px;
         text-align: right;
-        border-bottom: 1px solid #e2e8f0;
+        border-bottom: 1px solid #dce3ec;
+        font-variant-numeric: tabular-nums;
     }
     th {
-        background: #f8fafc;
+        background: #edf1f6;
         font-weight: 600;
-        color: #64748b;
+        color: #5a6478;
     }
     th:first-child, td:first-child { text-align: left; }
     tr.overall td {
         font-weight: 700;
-        background: #dbeafe;
-        border-top: 2px solid #3b82f6;
+        background: #e4f1f2;
+        border-top: 1px solid #0e7c86;
     }
+    .site-name { display: inline-flex; align-items: center; gap: 6px; }
+    .site-swatch { display: inline-block; width: 8px; height: 8px; border-radius: 50%; flex: 0 0 8px; }
 
     /* ── Info boxes ── */
     .info-box {
@@ -99,9 +113,9 @@
         font-size: 12px;
         margin-bottom: 10px;
     }
-    .info-box.blue   { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; }
-    .info-box.yellow { background: #fef9c3; border: 1px solid #fde68a; color: #92400e; }
-    .info-box.red    { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; }
+    .info-box.blue   { background: #e4f1f2; border: 1px solid #bfdcdf; color: #0a5a62; }
+    .info-box.yellow { background: #fdf0e4; border: 1px solid #f0c59e; color: #8f421c; }
+    .info-box.red    { background: #fbeaeb; border: 1px solid #efb7bc; color: #9f2630; }
 
     /* ── Time cards ── */
     .time-grid {
@@ -111,13 +125,14 @@
     }
     .time-card {
         flex: 1;
-        border: 1px solid #e2e8f0;
-        border-radius: 8px;
+        border: 1px solid #dce3ec;
+        border-radius: 10px;
+        background: #f9fafc;
         padding: 14px;
     }
     .time-card .title { font-weight: 700; font-size: 13px; margin-bottom: 6px; }
-    .time-card .big { font-size: 20px; font-weight: 700; color: #3b82f6; }
-    .time-card .meta { font-size: 11px; color: #64748b; margin-top: 4px; }
+    .time-card .big { font-size: 20px; font-weight: 700; color: #0e7c86; font-variant-numeric: tabular-nums; }
+    .time-card .meta { font-size: 11px; color: #5a6478; margin-top: 4px; }
 
     /* ── Chart images ── */
     .chart-section { margin-bottom: 20px; }
@@ -126,7 +141,7 @@
         max-width: 700px;
         display: block;
         margin: 8px auto;
-        border: 1px solid #e2e8f0;
+        border: 1px solid #dce3ec;
         border-radius: 6px;
     }
     .chart-row {
@@ -147,14 +162,15 @@
     .report-footer {
         margin-top: 32px;
         padding-top: 14px;
-        border-top: 1px solid #e2e8f0;
+        border-top: 1px solid #dce3ec;
         text-align: center;
         font-size: 11px;
-        color: #94a3b8;
+        color: #8791a3;
     }
 
     /* ── Print styles ── */
     @media print {
+        html, body { color-scheme: only light !important; background: #fff !important; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
         body { padding: 0; font-size: 11px; }
         .summary-grid { gap: 8px; }
         h2 { break-after: avoid; }
@@ -168,7 +184,7 @@
 <body>
 
 <div class="report-header">
-    <h1>PRIMER-LLM — CXR Analysis Report</h1>
+    <h1><span class="brand">PRIMER-LLM</span> — CXR Analysis Report</h1>
     <div class="subtitle">Reporting period: {{ date_from }} to {{ date_to }}</div>
 </div>
 
@@ -213,7 +229,7 @@
 <tbody>
     {% for site, m in data.site_metrics.items %}
     <tr>
-        <td style="font-weight:600;">{{ site }}</td>
+        <td style="font-weight:600;"><span class="site-name"><span class="site-swatch" style="background:{% cycle '#3b82f6' '#8b5cf6' '#f59e0b' '#10b981' '#ef4444' '#ec4899' '#06b6d4' '#84cc16' '#f97316' '#6366f1' %};"></span>{{ site }}</span></td>
         <td>{{ m.n }}</td>
         <td>{{ m.accuracy|floatformat:3 }}</td>
         <td>{{ m.roc_auc|floatformat:3 }}</td>
@@ -250,11 +266,11 @@
 
 {% if ci_status %}
 {% if ci_status.in_ci %}
-<div style="background:#dcfce7;border:1px solid #86efac;border-radius:8px;padding:10px 16px;margin-bottom:14px;font-size:13px;color:#14532d;font-weight:600;">
+<div style="background:#e7f2ec;border:1px solid #acd6bd;border-radius:8px;padding:10px 16px;margin-bottom:14px;font-size:13px;color:#246a48;font-weight:600;">
     ✅ Performance on track — this week's ROC-AUC ({{ ci_status.last_auc }}%) is within the expected 95% range ({{ ci_status.ci_lower }}%–{{ ci_status.ci_upper }}%)
 </div>
 {% else %}
-<div style="background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;padding:10px 16px;margin-bottom:14px;font-size:13px;color:#7f1d1d;font-weight:600;">
+<div style="background:#fbeaeb;border:1px solid #efb7bc;border-radius:8px;padding:10px 16px;margin-bottom:14px;font-size:13px;color:#9f2630;font-weight:600;">
     ⚠️ Performance deviation detected — this week's ROC-AUC ({{ ci_status.last_auc }}%) is outside the expected 95% range ({{ ci_status.ci_lower }}%–{{ ci_status.ci_upper }}%). Please review.
 </div>
 {% endif %}
@@ -262,21 +278,21 @@
 
 {% if chart_images.aucTrendChart %}
 <div class="chart-section">
-    <h3 style="font-size:12px;color:#475569;margin-bottom:4px;">ROC-AUC Trend (Weekly)</h3>
+    <h3 style="font-size:12px;color:#2a3547;margin-bottom:4px;">ROC-AUC Trend (Weekly)</h3>
     <img src="{{ chart_images.aucTrendChart }}" alt="AUC Trend Chart">
 </div>
 {% endif %}
 
 {% if chart_images.sensChart %}
 <div class="chart-section">
-    <h3 style="font-size:12px;color:#475569;margin-bottom:4px;">Sensitivity by Site (Weekly)</h3>
+    <h3 style="font-size:12px;color:#2a3547;margin-bottom:4px;">Sensitivity by Site (Weekly)</h3>
     <img src="{{ chart_images.sensChart }}" alt="Sensitivity Chart">
 </div>
 {% endif %}
 
 {% if chart_images.specChart %}
 <div class="chart-section">
-    <h3 style="font-size:12px;color:#475569;margin-bottom:4px;">Specificity by Site (Weekly)</h3>
+    <h3 style="font-size:12px;color:#2a3547;margin-bottom:4px;">Specificity by Site (Weekly)</h3>
     <img src="{{ chart_images.specChart }}" alt="Specificity Chart">
 </div>
 {% endif %}
@@ -297,9 +313,9 @@
         <span class="big">{{ data.time_stats.tcd_mean_fmt }}</span> mean
     </div>
     <div class="meta">25th–75th centile: {{ data.time_stats.tcd_p25_fmt }} – {{ data.time_stats.tcd_p75|floatformat:0 }}s</div>
-    <div class="meta" style="color:#94a3b8;">5th–95th centile: {{ data.time_stats.tcd_p5|floatformat:0 }}s – {{ data.time_stats.tcd_p95_fmt }}</div>
+    <div class="meta" style="color:#8791a3;">5th–95th centile: {{ data.time_stats.tcd_p5|floatformat:0 }}s – {{ data.time_stats.tcd_p95_fmt }}</div>
     {% if data.time_stats.tcd_above_p95 != None %}
-    <div class="meta" style="color:#dc2626;font-weight:600;">{{ data.time_stats.tcd_above_p95 }} cases ≥ 95th centile</div>
+    <div class="meta" style="color:#c5303b;font-weight:600;">{{ data.time_stats.tcd_above_p95 }} cases ≥ 95th centile</div>
     {% endif %}
     {% if chart_images.tcdBoxPlot %}
     <div style="margin-top:8px;">
@@ -320,7 +336,7 @@
     </div>
     <div class="meta">P25: {{ data.time_stats.tee_p25|floatformat:0 }}s &nbsp;|&nbsp; P75: {{ data.time_stats.tee_p75|floatformat:0 }}s</div>
     {% if data.time_stats.tee_more_than_5mins != None %}
-    <div class="meta" style="color:#dc2626;font-weight:600;">&gt;5 min: {{ data.time_stats.tee_more_than_5mins }} cases</div>
+    <div class="meta" style="color:#c5303b;font-weight:600;">&gt;5 min: {{ data.time_stats.tee_more_than_5mins }} cases</div>
     {% endif %}
     {% if chart_images.teeBoxPlot %}
     <div style="margin-top:8px;">
