@@ -34,16 +34,19 @@ def getLLMJSON(message_lst, client, model_name, response_format, **kwargs):
         completion = client.beta.chat.completions.parse(
             model=model_name,
             messages=message_lst,
-            response_format=response_format,
-            temperature=0.7,
-            top_p=0.8,
-            presence_penalty=1.5,
-            extra_body={
-                "top_k": 20,
-                "thinking_token_budget": 500,
-            }, 
+            response_format=response_format, 
             **kwargs
         )
+        
+        # Previous params:
+        # NO LONGER NEEDED because everything is defined in the model
+        #    temperature=0.7,
+        #    top_p=0.8,
+        #    presence_penalty=1.5,
+        #    extra_body={
+        #        "top_k": 20,
+        #        "thinking_token_budget": 500,
+        #    },
         
         # Extract the parsed content
         resp_json = completion.choices[0].message.parsed
