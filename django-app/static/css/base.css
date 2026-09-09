@@ -392,6 +392,10 @@ img, svg {
     margin-left: var(--nav-w);
 }
 
+.app-shell--guest .app-workspace {
+    margin-left: 0;
+}
+
 .app-topbar {
     position: sticky;
     top: 0;
