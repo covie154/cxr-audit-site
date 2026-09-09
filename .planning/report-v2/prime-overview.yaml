@@ -1,0 +1,489 @@
+# DRAFT ONLY: planned schema; not consumed by the current application.
+schema_version: 1
+project: prime
+id: overview
+title: Analysis Report
+grid:
+  columns: 12
+  row_height_px: 64
+sections:
+- id: summary
+  title: Summary
+  widgets:
+  - id: total
+    title: Total studies
+    type: value
+    layout:
+      width: 2
+      height: 3
+    query:
+      measurement: record_count
+      inputs: {}
+    window:
+      start: '2025-12-12'
+      end: D
+    controls:
+      date_range: true
+      filters:
+      - site
+      compare_by: []
+    ci:
+      enabled: false
+    export: full
+  - id: graded
+    title: Graded
+    type: value
+    layout:
+      width: 2
+      height: 3
+    query:
+      measurement: label_count
+      inputs:
+        value: llm_abnormal
+    window:
+      start: '2025-12-12'
+      end: D
+    controls:
+      date_range: true
+      filters:
+      - site
+      compare_by: []
+    ci:
+      enabled: false
+    export: full
+  - id: accuracy
+    title: Accuracy
+    type: value
+    layout:
+      width: 2
+      height: 3
+    query:
+      measurement: accuracy
+      inputs:
+        prediction: lunit_findings
+        ground_truth: llm_abnormal
+      threshold_policy: lunit-defaults@1
+    window:
+      start: '2025-12-12'
+      end: D
+    controls:
+      date_range: true
+      filters:
+      - site
+      compare_by: []
+    ci:
+      enabled: false
+    export: full
+  - id: sensitivity
+    title: Sensitivity
+    type: value
+    layout:
+      width: 3
+      height: 3
+    query:
+      measurement: sensitivity
+      inputs:
+        prediction: lunit_findings
+        ground_truth: llm_abnormal
+      threshold_policy: lunit-defaults@1
+    window:
+      start: '2025-12-12'
+      end: D
+    controls:
+      date_range: true
+      filters:
+      - site
+      compare_by: []
+    ci:
+      enabled: false
+    export: full
+  - id: specificity
+    title: Specificity
+    type: value
+    layout:
+      width: 3
+      height: 3
+    query:
+      measurement: specificity
+      inputs:
+        prediction: lunit_findings
+        ground_truth: llm_abnormal
+      threshold_policy: lunit-defaults@1
+    window:
+      start: '2025-12-12'
+      end: D
+    controls:
+      date_range: true
+      filters:
+      - site
+      compare_by: []
+    ci:
+      enabled: false
+    export: full
+- id: performance
+  title: Per-site breakdown
+  widgets:
+  - id: site_metrics
+    title: Per-site breakdown
+    type: table
+    layout:
+      width: 12
+      height: 5
+    query:
+      measurement: classification_summary
+      inputs:
+        prediction: lunit_findings
+        ground_truth: llm_abnormal
+      threshold_policy: lunit-defaults@1
+    window:
+      start: '2025-12-12'
+      end: D
+    controls:
+      date_range: true
+      filters:
+      - site
+      compare_by:
+      - site
+    ci:
+      enabled: false
+    export: full
+    columns:
+    - n
+    - accuracy
+    - balanced_accuracy
+    - sensitivity
+    - specificity
+    - ppv
+    - npv
+    - tp
+    - tn
+    - fp
+    - fn
+    - predicted_negative_fraction
+    default_compare_by: site
+  - id: balanced_accuracy_trend
+    title: Balanced accuracy (weekly)
+    type: line
+    layout:
+      width: 12
+      height: 5
+    query:
+      measurement: balanced_accuracy
+      inputs:
+        prediction: lunit_findings
+        ground_truth: llm_abnormal
+      threshold_policy: lunit-defaults@1
+    window:
+      start: '2025-12-12'
+      end: D
+    controls:
+      date_range: true
+      filters:
+      - site
+      compare_by:
+      - site
+    ci:
+      enabled: false
+    export: full
+    bucket: week
+  - id: sensitivity_trend
+    title: Sensitivity by site (weekly)
+    type: line
+    layout:
+      width: 12
+      height: 5
+    query:
+      measurement: sensitivity
+      inputs:
+        prediction: lunit_findings
+        ground_truth: llm_abnormal
+      threshold_policy: lunit-defaults@1
+    window:
+      start: '2025-12-12'
+      end: D
+    controls:
+      date_range: true
+      filters:
+      - site
+      compare_by:
+      - site
+    ci:
+      enabled: false
+    export: full
+    bucket: week
+    default_compare_by: site
+  - id: specificity_trend
+    title: Specificity by site (weekly)
+    type: line
+    layout:
+      width: 12
+      height: 5
+    query:
+      measurement: specificity
+      inputs:
+        prediction: lunit_findings
+        ground_truth: llm_abnormal
+      threshold_policy: lunit-defaults@1
+    window:
+      start: '2025-12-12'
+      end: D
+    controls:
+      date_range: true
+      filters:
+      - site
+      compare_by:
+      - site
+    ci:
+      enabled: false
+    export: full
+    bucket: week
+    default_compare_by: site
+- id: timing
+  title: Time analysis
+  widgets:
+  - id: clinical_decision
+    title: Time to Clinical Decision
+    type: boxplot
+    layout:
+      width: 12
+      height: 5
+    query:
+      measurement: duration_summary
+      inputs:
+        value: time_to_clinical_decision
+    window:
+      start: '2025-12-12'
+      end: D
+    controls:
+      date_range: true
+      filters:
+      - site
+      compare_by:
+      - site
+    ci:
+      enabled: false
+    export: full
+    options:
+      whiskers: tukey
+  - id: server_time
+    title: End-to-End Server Time
+    type: boxplot
+    layout:
+      width: 12
+      height: 5
+    query:
+      measurement: duration_summary
+      inputs:
+        value: time_end_to_end
+    window:
+      start: '2025-12-12'
+      end: D
+    controls:
+      date_range: true
+      filters:
+      - site
+      compare_by:
+      - site
+    ci:
+      enabled: false
+    export: full
+    options:
+      whiskers: tukey
+    benchmarks:
+    - label: 5 minutes
+      value: 300
+      unit: seconds
+- id: manual
+  title: Manual vs LLM ground truth analysis
+  widgets:
+  - id: llm_lunit
+    title: LLM GT vs Lunit
+    type: table
+    layout:
+      width: 12
+      height: 5
+    query:
+      measurement: classification_summary
+      inputs:
+        prediction: lunit_findings
+        ground_truth: llm_abnormal
+      threshold_policy: lunit-defaults@1
+      cohort: manual_label_present
+    window:
+      start: '2025-12-12'
+      end: D
+    controls:
+      date_range: true
+      filters:
+      - site
+      compare_by:
+      - site
+    ci:
+      enabled: false
+    export: full
+    columns:
+    - n
+    - accuracy
+    - balanced_accuracy
+    - sensitivity
+    - specificity
+    - ppv
+    - npv
+    - tp
+    - tn
+    - fp
+    - fn
+    - predicted_negative_fraction
+    default_compare_by: site
+  - id: manual_lunit
+    title: Manual GT vs Lunit
+    type: table
+    layout:
+      width: 12
+      height: 5
+    query:
+      measurement: classification_summary
+      inputs:
+        prediction: lunit_findings
+        ground_truth: manual_abnormal
+      threshold_policy: lunit-defaults@1
+      cohort: manual_label_present
+    window:
+      start: '2025-12-12'
+      end: D
+    controls:
+      date_range: true
+      filters:
+      - site
+      compare_by:
+      - site
+    ci:
+      enabled: false
+    export: full
+    columns:
+    - n
+    - accuracy
+    - balanced_accuracy
+    - sensitivity
+    - specificity
+    - ppv
+    - npv
+    - tp
+    - tn
+    - fp
+    - fn
+    - predicted_negative_fraction
+    default_compare_by: site
+  - id: agreement
+    title: Manual and LLM agreement
+    type: table
+    layout:
+      width: 12
+      height: 5
+    query:
+      measurement: reference_agreement
+      inputs:
+        ground_truth: manual_abnormal
+        prediction: llm_abnormal
+    window:
+      start: '2025-12-12'
+      end: D
+    controls:
+      date_range: true
+      filters:
+      - site
+      compare_by: []
+    ci:
+      enabled: false
+    export: full
+    columns:
+    - n
+    - agreement
+    - kappa
+  - id: mcnemar
+    title: McNemar comparison
+    type: table
+    layout:
+      width: 12
+      height: 5
+    query:
+      measurement: paired_reference_comparison
+      inputs:
+        ground_truth: manual_abnormal
+        alternative_reference: llm_abnormal
+        prediction: lunit_findings
+      threshold_policy: lunit-defaults@1
+    window:
+      start: '2025-12-12'
+      end: D
+    controls:
+      date_range: true
+      filters:
+      - site
+      compare_by: []
+    ci:
+      enabled: false
+    export: full
+    columns:
+    - n
+    - b
+    - c
+    - p_value
+  - id: false_negatives
+    title: 'False negatives: LLM vs manual'
+    type: table
+    layout:
+      width: 12
+      height: 5
+    query:
+      measurement: false_negatives
+      inputs:
+        ground_truth: manual_abnormal
+        prediction: llm_abnormal
+    window:
+      start: '2025-12-12'
+      end: D
+    controls:
+      date_range: true
+      filters:
+      - site
+      compare_by: []
+    ci:
+      enabled: false
+    export: summary
+    columns:
+    - accession
+    - site
+    - study_date
+    - highest_finding
+    - highest_score
+    - report_text
+  - id: false_positives
+    title: 'False positives: LLM vs manual'
+    type: table
+    layout:
+      width: 12
+      height: 5
+    query:
+      measurement: false_positives
+      inputs:
+        ground_truth: manual_abnormal
+        prediction: llm_abnormal
+    window:
+      start: '2025-12-12'
+      end: D
+    controls:
+      date_range: true
+      filters:
+      - site
+      compare_by: []
+    ci:
+      enabled: false
+    export: summary
+    columns:
+    - accession
+    - site
+    - study_date
+    - highest_finding
+    - highest_score
+    - report_text

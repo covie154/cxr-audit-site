@@ -1,0 +1,22 @@
+# DRAFT: copies existing DEFAULTS, not upcoming revised clinical thresholds.
+schema_version: 1
+project: prime
+id: lunit-defaults
+version: 1
+score_scale:
+- 0
+- 100
+operator: gt
+aggregate: any_positive
+require_all_scores: true
+findings:
+  atelectasis: 10
+  calcification: 10
+  cardiomegaly: 10
+  consolidation: 10
+  fibrosis: 10
+  mediastinal_widening: 10
+  nodule: 15
+  pleural_effusion: 10
+  pneumoperitoneum: 10
+  pneumothorax: 10
