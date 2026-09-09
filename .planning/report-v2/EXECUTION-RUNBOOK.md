@@ -1,24 +1,26 @@
-# Step-by-step implementation runbook for Qwen/Terra or equivalent
+# Report v2 — Implementation Contract
 
-Use this as the execution brief for a capable coding model. It does not depend on a specific model version.
-Status: planned, not implemented. Written 10 September 2026. Complete one task at a time; do not generate
-all files in one pass or treat a stub as a completed feature.
+Single source of truth for the report v2 rebuild. Read this before writing any code.
+It does not depend on a specific model version. Complete one task at a time; do not
+generate all files in one pass or treat a stub as a completed feature.
+
+Status: planned, not implemented. Written 10 September 2026.
 
 ## Start here
 
-1. Read django/AGENTS.md and honor the required GSD workflow. Work only in the Django repository.
-2. Read DESIGN.md, YAML-CONTRACT.md, LEGACY-MAP.md and the example/schema files beside this document.
-3. Read git status. Preserve unrelated work. Do not reset, clean or overwrite other edits.
+1. Read `AGENTS.md` at the repo root and honour the required GSD workflow. Work only in the Django repository.
+2. Read `DESIGN.md`, `YAML-CONTRACT.md`, `LEGACY-MAP.md` and the example/schema files beside this document.
+3. Read `git status`. Preserve unrelated work. Do not reset, clean or overwrite other edits.
 4. Follow tasks below in order. Dependencies can skip ahead only when explicitly satisfied.
-5. Before each task, inspect its current files and tests; the paths below are proposed destinations,
+5. Before each task, inspect its current files and tests; paths below are proposed destinations,
    not a claim those modules already exist. Reuse an equivalent implementation rather than duplicating it.
 6. Add focused tests for changed production logic. Run those tests before committing the task.
-7. Record changed files, test commands/results and any deviation in IMPLEMENTATION-NOTES.md.
+7. Record changed files, test commands/results and any deviation in `IMPLEMENTATION-NOTES.md`.
 8. If a task fails, fix it before advancing. If a required data definition is unknown, document the exact
    blocker; do not fabricate a clinical rule, reduce validation, or substitute hard-coded demo outputs.
-9. No deployment, real email sending, production seed publication or clinical DB access is authorized
+9. No deployment, real email sending, production seed publication or clinical DB access is authorised
    by this plan. Synthetic tests use test DBs/temp directories only. Do not migrate a production DB to test.
-10. Avoid parallel agents unless explicitly authorized in that implementation session.
+10. Avoid parallel agents unless explicitly authorised in that implementation session.
 
 ## Fixed product decisions: do not reopen or simplify away
 
@@ -32,7 +34,7 @@ Initial report mirrors old sections minus text box, with explicitly documented c
 
 ## Validation commands
 
-Run from django/django-app after selecting the intended development Python environment:
+Run from `django-app/` after selecting the project virtualenv:
 
 ```powershell
 python manage.py test report_v2 --noinput
@@ -43,9 +45,9 @@ After splitting tests into a package, run each task's module using the same test
 static storage and secure-redirect settings as existing tests do, and route artifact roots to temporary
 folders. The existing LLM HTTP configuration warning is not permission to alter production transport settings.
 Inspect database settings first; tests must create isolated test databases. Use locmem mail, never SMTP.
-For new JavaScript, run node --check on each non-module file; if using browser ES modules, use a matching
+For new JavaScript, run `node --check` on each non-module file; if using browser ES modules, use a matching
 module syntax check and browser tests instead of treating CommonJS parsing errors as code failures.
-Run git diff --check before each commit. Browser testing should use the project's available tooling;
+Run `git diff --check` before each commit. Browser testing should use the project's available tooling;
 if none exists, add one minimal runner and document its install/run command rather than claiming it ran.
 Use explicit file lists when staging. GSD planning/summary updates belong inside this repository.
 
@@ -53,12 +55,12 @@ Use explicit file lists when staging. GSD planning/summary updates belong inside
 
 Depends on: none.
 
-**Files/responsibility:** Read-only inventory; write .planning/report-v2/IMPLEMENTATION-NOTES.md.
+**Files/responsibility:** Read-only inventory; write `.planning/report-v2/IMPLEMENTATION-NOTES.md`.
 
 **Steps:**
 1. Inspect current report_v2 shell, upload/models.py, report/views.py, report/charts.js, settings, deployment volumes and test conventions.
 2. Map actual field names, score scale and operator to the catalog.
-3. Confirm current admin rule and mail/print behavior.
+3. Confirm current admin rule and mail/print behaviour.
 4. Record fixture-safe test commands.
 5. Do not inspect database contents or change thresholds.
 
@@ -70,11 +72,11 @@ Depends on: none.
 
 Depends on: 01.
 
-**Files/responsibility:** report_v2/tests/; migrate existing report_v2/tests.py into tests/test_routes.py.
+**Files/responsibility:** `report_v2/tests/`; migrate existing `report_v2/tests.py` into `tests/test_routes.py`.
 
 **Steps:**
 1. Preserve the four existing route/static/auth tests.
-2. Add tests/__init__.py and factories.py.
+2. Add `tests/__init__.py` and `factories.py`.
 3. Build in-memory records for pure tests and synthetic CXRStudy rows only in Django test databases.
 4. Create binary, three-class, timing, missing-field and older-subgroup fixtures; do not write fixtures to the production DB.
 
@@ -86,7 +88,7 @@ Depends on: 01.
 
 Depends on: 02.
 
-**Files/responsibility:** report_v2/definitions/loader.py, schemas/; tests/test_definitions.py; requirements.txt only if needed.
+**Files/responsibility:** `report_v2/definitions/loader.py`, `schemas/`; `tests/test_definitions.py`; `requirements.txt` only if needed.
 
 **Steps:**
 1. Copy the reviewed planning schema into app-owned schema data.
@@ -96,7 +98,7 @@ Depends on: 02.
 5. Convert parser/schema errors into path-aware editor messages.
 6. Do not add executable templates.
 
-**Done when:** Both seed examples parse. Invalid/duplicate/unknown keys and unsafe YAML fail without file writes. A malformed date such as 2026-02-30 is rejected semantically rather than merely matching a regex. Run python manage.py test report_v2.tests.test_definitions.
+**Done when:** Both seed examples parse. Invalid/duplicate/unknown keys and unsafe YAML fail without file writes. A malformed date such as 2026-02-30 is rejected semantically rather than merely matching a regex. Run `python manage.py test report_v2.tests.test_definitions`.
 
 **Commit boundary:** task 03 implementation and focused tests only, plus its GSD log.
 
@@ -104,7 +106,7 @@ Depends on: 02.
 
 Depends on: 03.
 
-**Files/responsibility:** report_v2/projects/base.py, prime.py, registry.py; permissions.py; tests/test_catalog.py.
+**Files/responsibility:** `report_v2/projects/base.py`, `prime.py`, `registry.py`; `permissions.py`; `tests/test_catalog.py`.
 
 **Steps:**
 1. Define small typed metadata structures for sources, outcomes, cohorts, dimensions and measurement signatures.
@@ -121,14 +123,14 @@ Depends on: 03.
 
 Depends on: 04.
 
-**Files/responsibility:** report_v2/measurements/predictions.py; tests/test_thresholds.py.
+**Files/responsibility:** `report_v2/measurements/predictions.py`; `tests/test_thresholds.py`.
 
 **Steps:**
 1. Resolve immutable project-local policy ID/version.
 2. Validate 0..100 finite raw scores, configured finding coverage and one default per finding.
 3. Classify with the explicit gt operator; any finding strictly above threshold is positive, all constituent scores required for complete aggregate prediction.
 4. Label-valued sources bypass thresholding.
-5. Do not modify CXRStudy.lunit_binarised.
+5. Do not modify `CXrStudy.lunit_binarised`.
 
 **Done when:** A score equal to threshold is negative; a higher score positive; any missing constituent score produces ineligible aggregate prediction. Two sites with identical scores give identical labels. Version 1 and version 2 can produce different results without overwriting either policy or stored labels.
 
@@ -138,7 +140,7 @@ Depends on: 04.
 
 Depends on: 04.
 
-**Files/responsibility:** report_v2/dates.py; tests/test_dates.py.
+**Files/responsibility:** `report_v2/dates.py`; `tests/test_dates.py`.
 
 **Steps:**
 1. Accept captured anchor date and project timezone.
@@ -146,7 +148,7 @@ Depends on: 04.
 3. Calendar periods start Monday/first day/January 1.
 4. Return inclusive dates and timezone-safe query boundaries.
 5. Bucket day/week/month/year independently of selected range; label partial boundaries.
-6. Never use date.today as a fallback.
+6. Never use `date.today` as a fallback.
 
 **Done when:** All date examples below pass. Empty eligibility returns no anchor. Filter requests cannot submit a new anchor. Reversed dates fail. Explicit future dates return coverage/empty results rather than moving the requested range.
 
@@ -156,7 +158,7 @@ Depends on: 04.
 
 Depends on: 05.
 
-**Files/responsibility:** report_v2/measurements/classification.py; tests/test_classification.py.
+**Files/responsibility:** `report_v2/measurements/classification.py`; `tests/test_classification.py`.
 
 **Steps:**
 1. Implement binary confusion counts, accuracy, sensitivity, specificity, PPV, NPV, balanced accuracy and predicted-negative fraction.
@@ -173,7 +175,7 @@ Depends on: 05.
 
 Depends on: 07.
 
-**Files/responsibility:** report_v2/measurements/descriptive.py, agreement.py; tests/test_descriptive.py, test_agreement.py.
+**Files/responsibility:** `report_v2/measurements/descriptive.py`, `agreement.py`; `tests/test_descriptive.py`, `test_agreement.py`.
 
 **Steps:**
 1. Implement record_count, label_count, categorical_count and duration_summary.
@@ -181,7 +183,7 @@ Depends on: 07.
 3. Implement reference agreement/kappa and legacy paired-reference McNemar test on common complete rows.
 4. Implement FN/FP case selection with manual as reference and LLM as prediction; paginate separately from aggregates.
 
-**Done when:** Single-value duration, missing/invalid duration and outliers have declared behavior. Undefined kappa is null. Paired counts exclude incomplete pairs consistently. The synthetic FN/FP cases are in the correct direction. Record exact numerical methods and known differences from old outputs.
+**Done when:** Single-value duration, missing/invalid duration and outliers have declared behaviour. Undefined kappa is null. Paired counts exclude incomplete pairs consistently. The synthetic FN/FP cases are in the correct direction. Record exact numerical methods and known differences from old outputs.
 
 **Commit boundary:** task 08 implementation and focused tests only, plus its GSD log.
 
@@ -189,7 +191,7 @@ Depends on: 07.
 
 Depends on: 08.
 
-**Files/responsibility:** measurement metadata and definitions/validation.py; tests/test_semantics.py.
+**Files/responsibility:** measurement metadata and `definitions/validation.py`; `tests/test_semantics.py`.
 
 **Steps:**
 1. Choose and document a standard per-proportion CI method (proposed Wilson 95%) using existing numerical dependencies where available.
@@ -204,9 +206,9 @@ Depends on: 08.
 
 ## Task 10: Build widget evaluation and request contract
 
-Depends on: 06,09.
+Depends on: 06, 09.
 
-**Files/responsibility:** report_v2/evaluation.py, results.py; tests/test_evaluation.py.
+**Files/responsibility:** `report_v2/evaluation.py`, `results.py`; `tests/test_evaluation.py`.
 
 **Steps:**
 1. Implement project scope and locked cohort -> completeness -> D capture -> widget window -> user filters -> eligible sample -> grouping/buckets -> measurement.
@@ -221,9 +223,9 @@ Depends on: 06,09.
 
 ## Task 11: Implement file-backed drafts and immutable publication
 
-Depends on: 03,04,09.
+Depends on: 03, 04, 09.
 
-**Files/responsibility:** report_v2/definitions/repository.py; settings.py; compose config; tests/test_repository.py.
+**Files/responsibility:** `report_v2/definitions/repository.py`; `settings.py`; compose config; `tests/test_repository.py`.
 
 **Steps:**
 1. Add private configurable persistent root; keep sample seeds outside runtime published directories.
@@ -238,12 +240,12 @@ Depends on: 03,04,09.
 
 ## Task 12: Build the admin YAML editor
 
-Depends on: 10,11.
+Depends on: 10, 11.
 
-**Files/responsibility:** report_v2/admin_views.py, urls.py, templates/report_v2/layout.html, static editor JS/CSS; tests/test_editor.py.
+**Files/responsibility:** `report_v2/admin_views.py`, `urls.py`, `templates/report_v2/layout.html`, static editor JS/CSS; `tests/test_editor.py`.
 
 **Steps:**
-1. Add reserved /report/layout/ routes before report slug routes.
+1. Add reserved `/report/layout/` routes before report slug routes.
 2. Provide report select/create, YAML textarea, validation errors, save draft, preview and explicit publish.
 3. Reuse normal widget renderer in preview when available; initially expose validated preview data.
 4. Show dirty state/version conflicts.
@@ -255,13 +257,13 @@ Depends on: 10,11.
 
 ## Task 13: Build report routing, page state and widget frames
 
-Depends on: 10,11.
+Depends on: 10, 11.
 
-**Files/responsibility:** report_v2/views.py, urls.py, templates/report_v2/; static/report_v2/report.js, report.css; tests/test_pages.py.
+**Files/responsibility:** `report_v2/views.py`, `urls.py`, `templates/report_v2/`; `static/report_v2/report.js`, `report.css`; `tests/test_pages.py`.
 
 **Steps:**
-1. Keep /report-old/ unchanged.
-2. /report/ lists published reports; /report/<slug>/ opens a version-pinned page.
+1. Keep `/report-old/` unchanged.
+2. `/report/` lists published reports; `/report/<slug>/` opens a version-pinned page.
 3. Render sections in YAML order on a 12-column responsive grid.
 4. Give every widget its independent date/filter controls and eligible/matching summary.
 5. Store overrides only in current-page memory.
@@ -275,13 +277,13 @@ Depends on: 10,11.
 
 Depends on: 13.
 
-**Files/responsibility:** static/report_v2/widgets/ value.js, table.js, line.js, bar.js and registry.js; browser tests.
+**Files/responsibility:** `static/report_v2/widgets/` value.js, table.js, line.js, bar.js and `registry.js`; browser tests.
 
 **Steps:**
 1. Keep presentation options generated internally from typed result data.
 2. Value/table use safe DOM text; line/bar use locally vendored ECharts.
 3. Implement unit formatting, group counts, fixed benchmark dotted lines and supported CI rendering.
-4. Keep deterministic colors by group.
+4. Keep deterministic colours by group.
 5. Provide accessible text/table alternatives, resize and theme cleanup.
 
 **Done when:** Synthetic scalar/table/time-series/grouped-bar examples render correctly. Weekly gaps remain gaps. Exactly one comparison dimension is active. Benchmarks are on the numeric axis and scale properly. Chart disposal prevents leaks after replacement. No CDN or new framework is required.
@@ -292,23 +294,23 @@ Depends on: 13.
 
 Depends on: 14.
 
-**Files/responsibility:** static/report_v2/widgets/ pie.js, confusion.js, boxplot.js; synthetic browser gallery.
+**Files/responsibility:** `static/report_v2/widgets/` pie.js, confusion.js, boxplot.js; synthetic browser gallery.
 
 **Steps:**
 1. Pie uses mutually exclusive category counts; optional donut flag.
-2. Confusion matrix uses declared GT rows/pred columns with count or normalized percentage display.
-3. Box plots consume server summaries with correctly labeled whiskers and outliers.
+2. Confusion matrix uses declared GT rows/pred columns with count or normalised percentage display.
+3. Box plots consume server summaries with correctly labelled whiskers and outliers.
 4. Export-safe alternative tables support all charts.
 
-**Done when:** All seven displays are covered. Binary 2x2 and multiclass 3x3 labels/counts match fixtures. Zero-denominator normalized rows show unavailable. No benchmark line is drawn on a pie or confusion matrix. The duration reference 300 seconds appears at 5 minutes when axes format minutes.
+**Done when:** All seven displays are covered. Binary 2x2 and multiclass 3x3 labels/counts match fixtures. Zero-denominator normalised rows show unavailable. No benchmark line is drawn on a pie or confusion matrix. The duration reference 300 seconds appears at 5 minutes when axes format minutes.
 
 **Commit boundary:** task 15 implementation and focused tests only, plus its GSD log.
 
 ## Task 16: Complete the 17-widget PRIME seed and compatibility actions
 
-Depends on: 08,12,15.
+Depends on: 08, 12, 15.
 
-**Files/responsibility:** app-owned draft seed YAML, policy seed, scoped CSV routes; tests/test_seed.py.
+**Files/responsibility:** app-owned draft seed YAML, policy seed, scoped CSV routes; `tests/test_seed.py`.
 
 **Steps:**
 1. Load reviewed planning seed via an explicit admin seed action/management command into drafts only.
@@ -325,7 +327,7 @@ Depends on: 08,12,15.
 
 Depends on: 16.
 
-**Files/responsibility:** report_v2/snapshots.py, exports.py, print template; tests/test_snapshots.py, test_print.py.
+**Files/responsibility:** `report_v2/snapshots.py`, `exports.py`, print template; `tests/test_snapshots.py`, `test_print.py`.
 
 **Steps:**
 1. Freeze evaluated result data, report/policy versions and widget overrides server-side for export.
@@ -342,7 +344,7 @@ Depends on: 16.
 
 Depends on: 17.
 
-**Files/responsibility:** exports.py, email template, email modal JS; tests/test_email.py.
+**Files/responsibility:** `exports.py`, email template, email modal JS; `tests/test_email.py`.
 
 **Steps:**
 1. Reuse configured Django email backend, recipients/note modal and CID images.
@@ -359,13 +361,13 @@ Depends on: 17.
 
 Depends on: 18.
 
-**Files/responsibility:** focused regression tests, synthetic browser checks, .planning/report-v2/IMPLEMENTATION-NOTES.md.
+**Files/responsibility:** focused regression tests, synthetic browser checks, `.planning/report-v2/IMPLEMENTATION-NOTES.md`.
 
 **Steps:**
 1. Run all report_v2 and affected existing tests, static collection checks in an isolated location, and editor->publish->viewer filters->print/email synthetic flow.
 2. Review responsive layout, older subgroup message, CI control and initial YAML.
 3. Verify project isolation with the test-only non-CXR adapter.
-4. Preserve legacy route behavior and avoid deployment until separately authorized.
+4. Preserve legacy route behaviour and avoid deployment until separately authorised.
 
 **Done when:** Every acceptance checklist below passes with recorded commands. No clinical records viewed or external email sent. Remaining issues are explicit, not marked complete. Handoff includes commit IDs, test results, configuration changes, seed procedure, rollback and known limitations.
 
@@ -420,16 +422,16 @@ opens v2 with admin defaults. Never silently regenerate an expired snapshot usin
 - [ ] Threshold changes require new policy versions; no site-specific branch remains in v2.
 - [ ] First YAML covers all 17 mapped widgets; no monospaced text report block.
 - [ ] Print and email preserve current widget states and pinned definitions.
-- [ ] Legacy /report-old/ still works; no historical source copies were modified.
+- [ ] Legacy `/report-old/` still works; no historical source copies were modified.
 - [ ] No persisted user preferences, new PDF engine or scheduled email feature was added.
 - [ ] Tests and configuration/seed procedure are recorded for the next implementer.
 
 ## Copy-paste handoff prompt
 
-Implement the next incomplete task in .planning/report-v2/EXECUTION-RUNBOOK.md.
-Read django/AGENTS.md and the report-v2 design documents first. Follow the required GSD workflow.
+Implement the next incomplete task in `.planning/report-v2/EXECUTION-RUNBOOK.md`.
+Read `AGENTS.md` and the report-v2 design documents first. Follow the required GSD workflow.
 Use existing code patterns, work only in the Django repository, preserve unrelated edits, and use synthetic
 data only. Do not skip task dependencies or weaken validation to make tests pass. Complete the task's
 acceptance checks, record evidence and commit its scoped changes. Report the task number, changed files,
 tests and any unresolved blocker. Do not deploy or send real email. Continue to subsequent tasks only
-if this execution session explicitly authorizes the entire runbook.
+if this execution session explicitly authorises the entire runbook.

@@ -8,3 +8,11 @@ documentation/
 *.pyo
 .env
 /.worktrees/
+
+# local python virtualenvs (created by uv/python venv, never commit)
+.venv/
+venv/
+.ven/
+env/
+venvs/
+.python/
