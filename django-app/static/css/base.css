@@ -30,7 +30,7 @@
 
 :root {
     --nav-w: 236px;
-    --topbar-h: 58px;
+    --topbar-h: 0px;
     --content-max: 1600px;
     --c-bg: #f4f6f9;
     --c-surface: #ffffff;
@@ -400,7 +400,7 @@ img, svg {
     position: sticky;
     top: 0;
     z-index: 180;
-    display: flex;
+    display: none;
     min-height: var(--topbar-h);
     align-items: center;
     gap: 12px;
@@ -453,6 +453,9 @@ img, svg {
     background: var(--c-surface-muted);
     color: var(--c-text);
 }
+
+.sidebar-footer .theme-toggle { width: 100%; min-height: 40px; }
+.sidebar-footer .theme-switch-track { margin-left: auto; flex-shrink: 0; }
 
 .theme-icon { width: 16px; height: 16px; }
 .theme-icon--sun { display: none; }
@@ -702,6 +705,8 @@ input::placeholder, textarea::placeholder {
 }
 
 @media (max-width: 900px) {
+    :root { --topbar-h: 58px; }
+
     .app-sidebar {
         width: min(286px, calc(100vw - 48px));
         box-shadow: var(--shadow-md);
@@ -718,6 +723,7 @@ input::placeholder, textarea::placeholder {
     }
 
     .app-topbar {
+        display: flex;
         min-height: var(--topbar-h);
     }
 
@@ -790,15 +796,6 @@ input::placeholder, textarea::placeholder {
         text-overflow: ellipsis;
         white-space: nowrap;
     }
-
-    .theme-toggle {
-        width: 38px;
-        padding: 0;
-        justify-content: center;
-    }
-
-    .theme-label,
-    .theme-switch-track { display: none; }
 
     .toast {
         right: 16px;

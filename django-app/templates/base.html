@@ -74,6 +74,12 @@
         </nav>
 
         <div class="sidebar-footer">
+            <button class="theme-toggle" id="themeToggle" type="button" role="switch" aria-checked="false" aria-label="Use dark theme">
+                <svg class="theme-icon theme-icon--moon" aria-hidden="true"><use href="#icon-moon"/></svg>
+                <svg class="theme-icon theme-icon--sun" aria-hidden="true"><use href="#icon-sun"/></svg>
+                <span class="theme-label">Dark mode</span>
+                <span class="theme-switch-track" aria-hidden="true"><span></span></span>
+            </button>
             <div class="account-row">
                 <div class="user-summary">
                     <span class="user-avatar" aria-hidden="true"><svg><use href="#icon-user"/></svg></span>
@@ -106,12 +112,6 @@
             </a>
             <div class="topbar-actions">
                 <div class="topbar-context">{% block header_right %}{% endblock %}</div>
-                <button class="theme-toggle" id="themeToggle" type="button" role="switch" aria-checked="false" aria-label="Use dark theme">
-                    <svg class="theme-icon theme-icon--moon" aria-hidden="true"><use href="#icon-moon"/></svg>
-                    <svg class="theme-icon theme-icon--sun" aria-hidden="true"><use href="#icon-sun"/></svg>
-                    <span class="theme-label">Dark mode</span>
-                    <span class="theme-switch-track" aria-hidden="true"><span></span></span>
-                </button>
             </div>
         </header>
         {% endif %}

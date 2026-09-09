@@ -4,10 +4,6 @@
 {% block title %}Database — PRIMER-LLM{% endblock %}
 {% block nav_database %}active{% endblock %}
 
-{% block header_right %}
-<span style="font-size:.85em;">{{ total }} records</span>
-{% endblock %}
-
 {% block extra_head %}
 <link rel="stylesheet" href="{% static 'viewer/viewer.css' %}">
 {% endblock %}
@@ -16,7 +12,7 @@
 <div class="page-body">
 
 <div class="viewer-heading">
-    <div><h1 class="page-title">Database</h1><p class="page-subtitle">Review, filter, export, and maintain audited studies.</p></div>
+    <div><h1 class="page-title">Database</h1><p class="page-subtitle">Review, filter, export, and maintain audited studies. {{ total }} records.</p></div>
 </div>
 
 <!-- ───── Toolbar ───── -->
