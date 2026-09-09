@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-06-14)
 Phase: 6 of 6 (remaining hipaa controls plan)
 Plan: Not started
 Status: Ready to execute
-Last activity: 2026-09-09 - Completed quick task 260909-wue: Move theme switch to sidebar and hide desktop top bar
+Last activity: 2026-09-10 - Completed quick task 260910-0ey: Report v2 design and execution runbook
 
 Progress: [----------] 0%
 
@@ -86,6 +86,7 @@ None yet.
 | 260909-wqa | Centre the login card in the browser viewport | 2026-09-09 | 3a2fc0b | [260909-wqa](./quick/260909-wqa-centre-the-login-card-in-the-browser-vie/) |
 | 260909-wpc | Create ECharts report v2 shell and relocate legacy report | 2026-09-09 | 778aaf0 | [260909-wpc](./quick/260909-wpc-create-report-v2-with-echarts-and-move-l/) |
 | 260909-wue | Move theme switch to sidebar and hide desktop top bar | 2026-09-09 | 5137845 | [260909-wue](./quick/260909-wue-move-theme-switch-to-sidebar-and-hide-de/) |
+| 260910-0ey | Report v2 design, YAML contract and 19-step implementation runbook | 2026-09-10 | 7433e4f | [260910-0ey](./quick/260910-0ey-document-extensible-report-v2-design-yam/) |
 
 
 ## Deferred Items
