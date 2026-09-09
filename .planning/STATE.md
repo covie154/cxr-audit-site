@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-06-14)
 Phase: 6 of 6 (remaining hipaa controls plan)
 Plan: Not started
 Status: Ready to execute
-Last activity: 2026-08-23
+Last activity: 2026-09-09 - Completed quick task 260909-wqa: Centre the login card in the browser viewport
 
 Progress: [----------] 0%
 
@@ -82,6 +82,8 @@ None yet.
 | 260825-x95 | Polish PRIMER UI, remove decorative emoji, add dark mode, improve logout and responsive layouts | 2026-08-26 | 8ffc777 | [260825-x95](./quick/260825-x95-polish-primer-ui-remove-decorative-emoji/) |
 | 260826-1od | Restore distinct per-site report chart colors from the initial palette | 2026-08-26 | d82dbd7 | [260826-1od](./quick/260826-1od-restore-distinct-per-site-report-chart-c/) |
 | 260826-we0 | Align PDF and email reports with the updated PRIMER light-theme design | 2026-08-26 | bb5c4f3 | [260826-we0](./quick/260826-we0-align-pdf-and-email-reports-with-the-upd/) |
+
+| 260909-wqa | Centre the login card in the browser viewport | 2026-09-09 | 3a2fc0b | [260909-wqa](./quick/260909-wqa-centre-the-login-card-in-the-browser-vie/) |
 
 ## Deferred Items
 
