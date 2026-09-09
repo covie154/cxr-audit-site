@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Report v2 — PRIMER-LLM{% endblock %}
+{% block nav_report %}active{% endblock %}
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'report_v2/report.css' %}">
+{% endblock %}
+{% block body %}
+<div class="report-v2-page">
+    <h1 class="page-title">Report <small>v2</small></h1>
+    <p class="page-subtitle">A new workspace for audit reports.</p>
+    <p class="report-v2-legacy"><a href="{% url 'report:index' %}">Open the previous report</a> to generate reports, export results, or send email reports.</p>
+    <section class="card" aria-labelledby="overviewTitle">
+        <h2 id="overviewTitle">Overview</h2>
+        <p id="chartStatus" role="status">Report sections are not configured yet. No study data are displayed.</p>
+        <div class="report-v2-chart" data-report-chart role="img" aria-label="Empty report chart. Report sections are not configured yet."></div>
+        <noscript>JavaScript is required to display interactive charts.</noscript>
+    </section>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script src="{% static 'report_v2/vendor/echarts.min.js' %}"></script>
+<script src="{% static 'report_v2/report.js' %}"></script>
+{% endblock %}

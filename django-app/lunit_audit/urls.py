@@ -30,6 +30,7 @@ urlpatterns = [
     path("logout/", auth_views.LogoutView.as_view(http_method_names=["post"]), name="logout"),
     path("upload/", include("upload.urls")),
     path("view/", include("viewer.urls")),
-    path("report/", include("report.urls")),
+    path("report-old/", include("report.urls")),
+    path("report/", include("report_v2.urls")),
     path("gt/", include("gt.urls")),
 ]

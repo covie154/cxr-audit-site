@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     "upload.apps.UploadConfig",
     "viewer.apps.ViewerConfig",
     "report.apps.ReportConfig",
+    "report_v2.apps.ReportV2Config",
     "gt.apps.GtConfig",
 ]
 

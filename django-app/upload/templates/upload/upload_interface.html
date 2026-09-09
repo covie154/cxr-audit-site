@@ -87,7 +87,7 @@
     window.PAGE_CONFIG = {
         csrfToken: '{{ csrf_token }}',
         apiBaseUrl: '{% url "upload:index" %}'.replace(/\/$/, '') + '/api',
-        reportUrl: '{% url "report:index" %}',
+        reportUrl: '{% url "report_v2:index" %}',
         viewerUrl: '{% url "viewer:index" %}',
     };
 </script>

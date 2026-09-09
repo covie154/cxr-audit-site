@@ -65,7 +65,7 @@
                 <svg class="nav-icon" aria-hidden="true"><use href="#icon-database"/></svg><span>Database</span>
             </a>
             {% endif %}
-            <a href="{% url 'report:index' %}" class="nav-item {% block nav_report %}{% endblock %}"{% if request.resolver_match.namespace == 'report' %} aria-current="page"{% endif %}>
+            <a href="{% url 'report_v2:index' %}" class="nav-item {% block nav_report %}{% endblock %}"{% if request.resolver_match.namespace == 'report_v2' %} aria-current="page"{% endif %}>
                 <svg class="nav-icon" aria-hidden="true"><use href="#icon-report"/></svg><span>Report</span>
             </a>
             <a href="{% url 'gt:index' %}" class="nav-item {% block nav_gt %}{% endblock %}"{% if request.resolver_match.namespace == 'gt' %} aria-current="page"{% endif %}>

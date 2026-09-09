@@ -1,0 +1,7 @@
+.report-v2-page { max-width: 1400px; margin: 0 auto; }
+.report-v2-page h1 small { color: var(--c-text-muted); font-size: .6em; }
+.report-v2-legacy { margin-bottom: 24px; color: var(--c-text-muted); }
+.report-v2-page .card { padding: 24px; }
+.report-v2-page h2 { margin-bottom: 12px; }
+.report-v2-page [role="status"] { color: var(--c-text-muted); }
+.report-v2-chart { width: 100%; height: 320px; }

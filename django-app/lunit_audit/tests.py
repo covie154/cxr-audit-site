@@ -198,7 +198,7 @@ class VisualPageRenderTests(TestCase):
 
     def test_report_page_keeps_dashboard_targets(self):
         self.assert_page_contains(
-            "/report/",
+            "/report-old/",
             ('id="generateBtn"', 'id="resultsSection"', 'id="emailModal"'),
             self.reviewer,
         )
