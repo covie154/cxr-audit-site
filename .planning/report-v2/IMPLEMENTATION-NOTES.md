@@ -488,3 +488,162 @@ its mtime is unchanged.
   affects this task's acceptance.
 - PyYAML/jsonschema (Task 03 devdeps) remain available in the venv; no new package was
   installed this task (pure-python/stdlib + Django only).
+
+
+## Task 05 (implementing session report)
+
+Status: complete. Written 2026-09-10. All changes left UNCOMMITTED in the working tree
+for the orchestrator to stage and commit. No git-mutating command was run. Depends on
+Task 04 (landed at f2f8b35). Baselines at start: report_v2 60/60, lunit_audit 16/16.
+
+### Changed/added files (all NEW/untracked; no tracked file modified)
+- `django-app/report_v2/measurements/__init__.py` — package marker re-exporting the
+  predictions public surface (mirrors `definitions/__init__.py` style).
+- `django-app/report_v2/measurements/predictions.py` — the pure implementation (437 lines).
+  No Django/ORM/DB import at all; predictions are computed *values*, never stored labels;
+  nothing touches `lunit_binarised` or any persisted column. Public API:
+  `resolve_policy(project_id, policy_ref, *, registry=None)` (delegates to the Task-04
+  `require_project_context(..., policy_ref=...)` guard then reads the policy back off the
+  resolved `ProjectDefinition`, so unknown/foreign refs fail with the *typed* base errors
+  — `UnknownPolicyError`/`CrossProjectReferenceError`/`UnknownProjectError` — unconverted,
+  no fallback, no default version); `classify_prediction(findings, *, project_id, policy_ref,
+  registry=None, outcome_id="abnormal_lunit")` -> `PredictionResult`; and
+  `classify_label_prediction(label_value, *, project_id, outcome_id, registry=None)` ->
+  `LabelPredictionResult`. Error hierarchy `PolicyEvaluationError` (+ `ScoreOutOfRangeError`,
+  `NonFiniteScoreError`, `UncoveredFindingError`, `MissingPolicyError`,
+  `InvalidPolicyConfigurationError`, `OutOfVocabularyLabelError`), mirroring the
+  base/`kind`+message+__str__ shape. Frozen value objects `FindingDecision`,
+  `PredictionResult`, `LabelPredictionResult` (+ `as_dict()`).
+- `django-app/report_v2/tests/test_thresholds.py` — 20 hermetic `SimpleTestCase` tests
+  with the standard staticfiles/SSL/locmem `override_settings` trio; a synthetic `handth`
+  two-finding project built from the generic `base` dataclasses (thresholds 10 v1 / 12 v2),
+  PRIME exercised via a throwaway registry and the read-only production path. No ORM, no
+  `factories.py`, no `upload.models` import, no DB access.
+
+### Delegation split (pi) vs orchestrator-authored
+The coding was DELEGATED to `pi` (`pi --print --no-session --approve --model
+qwen3.8-flash-next`, run from inside the repo) via one self-contained, tightly-scoped
+prompt (/tmp/pi-task05-prompt.txt) that fixed the exact three-file list, the required
+public API signatures, the exact 0..100 / finite / strict-gt / require-all semantics, the
+coverage/one-default-per-finding validation order, the label-pass-through no-policy-lookup
+rule, the typed-error propagation rule, and the full named-test matrix. pi authored all
+three files and self-reported green (report_v2 80, lunit_audit 16). The orchestrator
+(this session) independently, without editing any product file:
+- re-ran every validation command below against the venv and captured real output;
+- audited the implementation source line-by-line and every test body for real (non-tautological)
+  assertions;
+- wrote and ran an independent adversarial probe (/tmp/task05_probe.py) that drives the
+  public API directly (independent of pi's tests) proving equality-at-threshold=negative,
+  strict-gt boundary (10.0 neg vs 10.000001 pos), require-all missing -> eligible False +
+  label None + positive None + reason names the constituent, v1/v2 coexistence with
+  immutability snapshots, site-invariance, label pass-through on a policy-less project, every
+  typed guard raising with no silent negative fallback, the full-ten PRIME production path,
+  and module purity (no ORM/DB symbols) — ALL PROBE ASSERTIONS PASSED;
+- wrote and ran a pure-Python semantics prototype (/tmp/proto_task05.py) of the intended
+  classification before delegating, to fix expected hand-check values independently.
+No re-authoring of pi's code was required. One accepted modelling nuance is recorded below.
+
+### Validation commands + real results (run from `django-app/`, project virtualenv)
+```
+$ .venv/bin/python manage.py test report_v2.tests.test_thresholds --noinput -v 2
+    Ran 20 tests in 0.004s ... OK      (all 20 named tests individually "ok"; no DB contacted:
+    "Skipping setup of unused database(s): audit, default.")
+$ .venv/bin/python manage.py test report_v2 --noinput -v 1
+    Ran 80 tests in 0.164s ... OK      (60 pre-existing + 20 new test_thresholds)
+$ .venv/bin/python manage.py test lunit_audit --noinput -v 1
+    Ran 16 tests in 0.408s ... OK      (16/16 baseline, no regression)
+$ git diff --check
+    clean (exit 0; the only changes are two NEW untracked paths)
+$ git status --porcelain
+    ?? django-app/report_v2/measurements/
+    ?? django-app/report_v2/tests/test_thresholds.py
+$ git diff --name-only HEAD -- upload/models.py lunit_audit/settings.py report_v2/projects \
+      report_v2/definitions report_v2/tests/factories.py
+    (no output) => every forbidden/adjacent file is byte-identical to HEAD (untouched)
+$ .venv/bin/python -m py_compile -q <the three files>
+    exit 0 (all parse)
+$ PYTHONPATH=. .venv/bin/python /tmp/task05_probe.py
+    ALL PROBE ASSERTIONS PASSED
+$ stat the sample snapshot DB (never opened/read/migrated): mtime unchanged 2026-06-18 22:51:24
+```
+The single expected `lunit_audit.W002` (LLM_BASE_URL over HTTP / DEBUG=False) system-check
+warning is informational and unrelated. Repeated runs are deterministic (fixed 20/80/16).
+
+### Five hand-checkable cases (runbook "Threshold versioning" block) — exact values
+Policy thresholds 10, strict gt, two findings {consolidation, nodule}, require_all=True,
+outcome classes ("normal","abnormal"), positive "abnormal":
+- `[10,10]` -> NEGATIVE. eligible True, positive False, label "normal"; each per-finding
+  decision.positive False (10 is NOT > 10). Asserted by
+  `test_score_equal_to_threshold_is_negative` (also in `test_hand_check_threshold_block`).
+- `[11,10]` -> POSITIVE. eligible True, positive True, label "abnormal"; consolidations
+  decision.positive True (11>10), nodule False (10 !> 10). Asserted by
+  `test_score_above_threshold_is_positive`.
+- `[11,null]` -> INELIGIBLE (require-all). eligible False, label None, positive None,
+  missing_findings ("nodule",), result.reason literally names "nodule" ("ineligible under
+  require-all policy: missing constituent score(s): nodule"). Never defaulted to the
+  negative label. Asserted by
+  `test_missing_constituent_makes_aggregate_ineligible_not_negative`.
+- version 2 (threshold 12) turns `[11,10]` -> NEGATIVE. positive False, label "normal"
+  (11 !> 12). Asserted by `test_policy_version_one_and_two_coexist_without_overwrite` and
+  `test_hand_check_threshold_block`.
+- identical rows assigned to two synthetic sites keep EQUAL labels. Asserted by
+  `test_identical_scores_across_two_sites_produce_identical_labels`.
+
+### Where each guarantee is asserted (test names)
+- equality-at-threshold negative -> `test_score_equal_to_threshold_is_negative`,
+  `test_gt_is_strict_not_ge` (10.0 neg, 10.000001 pos), `test_primes_policy_resolves_from_production_registry`
+  (the all-5.0 baseline is negative and atelectasis 10 !> 10; the independent probe additionally
+  checked nodule 15 !> 15, i.e. equality at the 15 threshold).
+- strict gt / above-threshold positive -> `test_score_above_threshold_is_positive`,
+  `test_gt_is_strict_not_ge`, `test_primes_policy_resolves_from_production_registry`
+  (nodule 20>15, atelectasis 11>10).
+- require-all ineligibility (eligible=False + reason, never negative) ->
+  `test_missing_constituent_makes_aggregate_ineligible_not_negative`,
+  `test_primes_missing_any_of_ten_findings_is_ineligible`.
+- site-invariance -> `test_identical_scores_across_two_sites_produce_identical_labels`.
+- policy-version immutability + versioning (coexist, differ, no overwrite, no stored-label
+  change) -> `test_policy_version_one_and_two_coexist_without_overwrite` (snapshots both
+  policy.findings maps before/after, re-resolves v1 to threshold 10, asserts version attrs 1
+  vs 2) and `test_pure_computation_no_orm_no_mutation`.
+- typed-error resolution, no fallback -> `test_unknown_policy_raises_typed_error_no_fallback`,
+  `test_foreign_policy_raises_cross_project_error`, `test_unknown_project_raises`.
+- input validation (out-of-range / nonfinite / uncovered / bool / out-of-vocabulary) ->
+  `test_out_of_range_score_rejected`, `test_nonfinite_score_rejected`,
+  `test_uncovered_finding_rejected`, `test_bool_is_not_accepted_as_score`,
+  `test_out_of_vocabulary_label_rejected`.
+- label-valued sources pass through without thresholding / no policy lookup ->
+  `test_label_passthrough_no_thresholding` (asserts a label result carries no `policy_ref`
+  and that a policy-less project still classifies), `test_label_passthrough_missing_value`.
+- predictions are computed values, not stored labels -> `test_pure_computation_no_orm_no_mutation`.
+
+### How a missing constituent yields eligible=False with a stated reason (not a silent negative)
+In `classify_prediction`, after per-finding binarisation a `None`/absent score is recorded as
+a `FindingDecision(score=None, positive=None)` and its id lands in `missing_findings`. When
+`policy.require_all_scores` is set (it is, for the shipped `lunit-defaults@1` and the
+hand-check policy) and `missing_findings` is non-empty, the function returns
+`PredictionResult(eligible=False, label=None, positive=None, reason="ineligible under
+require-all policy: missing constituent score(s): <sorted, comma-joined missing ids>")`. The
+negative class is only ever chosen on the fully-complete `else` branch, so a missing
+constituent can never be coerced into the negative label. Proven by the two named tests above
+and by the independent probe.
+
+### Deviations / blockers
+- No blockers. All "Done when" checks pass with named tests and an independent probe.
+- One accepted modelling nuance: `base.ProjectDefinition.policies` is keyed by `policy_id` and
+  stores exactly one `ThresholdPolicy` per key, and `policy("id@version")` validates
+  `policy.version == version`. To make version 1 and version 2 *coexist* in one synthetic
+  project without one overwriting the other, they are registered as two distinct immutable
+  entries — `hand-thresholds@1` (thresholds 10) and `hand-thresholds-v2@2` (thresholds 12) —
+  rather than two rows sharing a single key. This faithfully demonstrates immutability +
+  versioning (distinct keys, differing `version` attrs, neither findings map mutates, the two
+  produce different results on `[11,10]`, no stored label touched) and is documented in the
+  test docstring. The production `lunit-defaults@1` policy is exercised unchanged through the
+  real `production_registry()`.
+- The suite needs no `factories.py` and touches no DB: `classify_prediction` reads
+  `policy.findings` (not the ORM/source declarations) over a plain findings Mapping, so every
+  test is pure `SimpleTestCase`. The reserved-accession / SYNTH conventions are therefore not
+  exercised (nothing writes rows); the sample snapshot DB
+  (`~/serverfiles/downloads/db_2026-06-18.sqlite3`) was NOT opened, read or migrated (mtime
+  unchanged). No `upload/models.py`, no `CXrStudy` field, no `lunit_binarised`, no legacy
+  report code, no settings/urls/views/migrations were modified (verified by `git diff --name-only
+  HEAD` showing no diff). No new package was installed.
