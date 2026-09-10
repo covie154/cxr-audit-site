@@ -202,3 +202,97 @@ The `tuberculosis` score field exists in CXRStudy and CSV exports but has no thr
 in `lunit-defaults.v1.yaml` and no per-finding LLM binary (`tb_llm`) reference in the seed.
 This is intentional per the existing default-threshold config (`report/views.py:34-50`), which
 also excludes tuberculosis from the `DIAGNOSIS_FIELDS` list used for aggregate Lunit classification.
+
+---
+
+## Task 02 — Test package and deterministic fixtures
+Status: complete. Written 2026-09-10. No commits made (orchestrator verifies then commits).
+
+### Files changed
+- `report_v2/tests.py` -> `report_v2/tests/test_routes.py` (byte-exact `git mv`; the only content
+  edit is the post-move relative-import fix `from . import views` -> `from .. import views`).
+  The four original route/static/auth tests are preserved verbatim in behaviour
+  (`test_report_routes_are_separate`, `test_both_reports_require_login`,
+  `test_v2_renders_without_database_access`, `test_static_assets_are_discoverable`).
+- `report_v2/tests/__init__.py` (new, empty package marker).
+- `report_v2/tests/factories.py` (new) — synthetic fixture/factory layer.
+- `report_v2/tests/test_factories.py` (new) — focused tests validating the fixtures against the
+  runbook hand-checks.
+Nothing else touched. `upload/models.py`, the legacy `report` app, and settings were not modified.
+
+### Delegation split
+Coding of `factories.py` + `test_factories.py` was delegated to the `pi` CLI
+(`pi --print --no-session --approve --model qwen3.8-flash-next`) from inside `django-app/`.
+pi read `upload/models.py` and `lunit_audit/settings.py` itself for real field names, wrote both
+files, ran the suite, and self-reported green. I independently re-ran everything and re-derived the
+numbers; the migration (`git mv`) and the one-line import fix were done by me directly.
+
+### Determinism
+Single module-level integer `FIXED_SEED = 20260910` in `report_v2/tests/factories.py`. Every
+builder draws from `random.Random(FIXED_SEED + offset)` (a fresh instance per call), so repeated
+calls and repeated runs produce byte-identical values. `test_determinism` asserts
+`builder() == builder()` for the seeded builders. No unseeded randomness, no time-based values.
+
+### Synthetic-only guarantees
+Reserved non-clinical accession block (900000000..), `SYNTH`-prefixed patient/study/text/site
+literals, and `assert_no_real_identifiers` / `_assert_synthetic_only` guards applied before every
+ORM save. No real accession numbers, patient identifiers, or realistic report text appear anywhere
+in the fixtures. DB builders are gated by `ensure_test_database()`, which hard-rejects any on-disk
+`*.sqlite/.sqlite3/.db` path (proven: it refuses a `db.sqlite3` path) and accepts only the runner's
+in-memory/`test_`-prefixed database. No production database is opened or migrated. Tests use the
+locmem mail backend and route any artifact root to a temp dir; they override the staticfiles storage
+to plain storage and disable the secure SSL redirect, mirroring the existing test convention.
+
+### Fixture families (each: an in-memory builder for pure tests + a `*_db` builder for the test DB)
+- Binary: `binary_fixture`, `binary_fixture_with_missing_gt`, `binary_fixture_no_positive_gt`
+  (+ `_db`). Ground-truth labels vs predicted labels encoded via a designated finding score under
+  the strict `> SCORE_THRESHOLD` policy (score 20 -> positive, 5 -> negative);
+  `lunit_binarised` stored consistently with that policy for convenience (v2 recomputes it).
+- Three-class: `three_class_fixture` (+ `_db`) over declared classes A/B/C.
+- Timing: `timing_fixture` (+ `_db`) covering normal spread, single value, missing, invalid
+  (negative sentinel), and a Tukey 1.5*IQR outlier; includes the 300s reference.
+- Missing-field: `missing_field_fixture` (+ `_db`) for missing ground truth, a None constituent
+  score (require-all ineligible), and a missing duration.
+- Older-subgroup: `older_subgroup_fixture` (+ `_db`) laying out the anchor-D / older-subgroup /
+  widget-boundary / newer-incomplete date geometry.
+- `create_default_population()` lays a small deterministic two-site mix.
+
+### Hand-checkable cases — verified consistent with the laid-down fixtures (independently re-derived)
+- Binary comparison: GT [1,1,1,0,0,0] / pred [1,1,0,1,0,0] -> TP=2, FN=1, FP=1, TN=2;
+  accuracy, sensitivity, specificity, PPV, NPV and balanced accuracy all = 2/3; predicted-negative
+  fraction = 3/6. Missing-GT variant: matching=7, eligible=6, excluded=1 (does not move the
+  metrics). All-GT-positive removed -> sensitivity is null (not zero).
+- Threshold versioning (strict `>`): [10,10] -> negative; [11,10] -> positive; [11,None] ->
+  ineligible (require-all); threshold 12 -> [11,10] flips to negative; identical rows across the
+  two sites yield identical labels.
+- Multiclass: matrix (rows=GT order A,B,C / cols=pred) = [[1,1,0],[0,1,1],[1,0,1]]; accuracy 1/2;
+  class A TP=1, FN=1, FP=1, TN=3 -> sensitivity 1/2, specificity 3/4.
+- Calendar windows: cohort anchor D = 2026-09-01; older subgroup reaches only through 2026-08-28;
+  a widget whose required fields are complete only through 2026-08-30 gets its own boundary; the
+  newer 2026-09-10 incomplete row does not advance D.
+(These are the *fixture data*; Task 03+ measurement code is what turns them into the metrics above.
+The measurement engine is intentionally not reimplemented here.)
+
+### Deviations / notes
+- `nodule` policy threshold is 15 in `lunit-defaults.v1.yaml`; the binary fixture's designated
+  finding is a single representative score field chosen so the strict `>10` rule reproduces the
+  predicted label — it is a fixture-encoding convention, not a clinical threshold decision. Later
+  measurement tasks (05/07) should classify directly from the per-finding score dictionaries that the
+  in-memory records already carry, against the real policy.
+- In-memory records are plain dicts (a typed dataclass wrapper can be added when the measurement
+  layer wants typed access).
+- The pre-existing `lunit_audit.W002` (LLM_BASE_URL over HTTP) system-check warning is expected and
+  not a failure.
+- Known display artifact (not a code issue): the on-disk bytes of `test_routes.py` are canonical and
+  it runs green; certain tokens render altered only in my read-back view.
+
+### Validation (from `django-app/`, project virtualenv)
+```
+.venv/bin/python manage.py test report_v2 --noinput -v 1                     # Ran 12 tests ... OK
+.venv/bin/python manage.py test report_v2.tests.test_routes --noinput -v 1   # Ran 4 tests ... OK
+.venv/bin/python manage.py test report_v2.tests.test_factories --noinput -v 1# Ran 8 tests ... OK
+.venv/bin/python manage.py test lunit_audit --noinput -v 1                    # Ran 16 tests ... OK
+git diff --check                                                              # clean (CRLF->LF warning only)
+```
+No JS files were added, so no `node --check` was required. No real/clinical database was read; the
+sample snapshot DB was never opened or migrated. No commits, pushes, resets or cleans were run.
