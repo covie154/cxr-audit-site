@@ -1,0 +1,300 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:primer:report-definition:1",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "project": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_-]*$"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_-]*$"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1
+    },
+    "grid": {
+      "type": "object",
+      "properties": {
+        "columns": {
+          "const": 12
+        },
+        "row_height_px": {
+          "type": "integer",
+          "minimum": 24,
+          "maximum": 120
+        }
+      },
+      "required": [
+        "columns",
+        "row_height_px"
+      ],
+      "additionalProperties": false
+    },
+    "sections": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_-]*$"
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1
+          },
+          "widgets": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "pattern": "^[a-z][a-z0-9_-]*$"
+                },
+                "title": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "type": {
+                  "enum": [
+                    "value",
+                    "table",
+                    "line",
+                    "bar",
+                    "pie",
+                    "confusion_matrix",
+                    "boxplot"
+                  ]
+                },
+                "layout": {
+                  "type": "object",
+                  "properties": {
+                    "width": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 12
+                    },
+                    "height": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 30
+                    }
+                  },
+                  "required": [
+                    "width",
+                    "height"
+                  ],
+                  "additionalProperties": false
+                },
+                "query": {
+                  "type": "object",
+                  "properties": {
+                    "measurement": {
+                      "type": "string",
+                      "pattern": "^[a-z][a-z0-9_-]*$"
+                    },
+                    "inputs": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    },
+                    "threshold_policy": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "cohort": {
+                      "type": "string",
+                      "pattern": "^[a-z][a-z0-9_-]*$"
+                    },
+                    "target_class": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "required": [
+                    "measurement",
+                    "inputs"
+                  ],
+                  "additionalProperties": false
+                },
+                "window": {
+                  "type": "object",
+                  "properties": {
+                    "start": {
+                      "type": "string",
+                      "pattern": "^(D|W|M|Y)(-[0-9]+)?$|^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+                    },
+                    "end": {
+                      "type": "string",
+                      "pattern": "^D$|^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+                    }
+                  },
+                  "required": [
+                    "start",
+                    "end"
+                  ],
+                  "additionalProperties": false
+                },
+                "bucket": {
+                  "enum": [
+                    "day",
+                    "week",
+                    "month",
+                    "year"
+                  ]
+                },
+                "controls": {
+                  "type": "object",
+                  "properties": {
+                    "date_range": {
+                      "const": true
+                    },
+                    "filters": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "pattern": "^[a-z][a-z0-9_-]*$"
+                      }
+                    },
+                    "compare_by": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "pattern": "^[a-z][a-z0-9_-]*$"
+                      }
+                    }
+                  },
+                  "required": [
+                    "date_range",
+                    "filters",
+                    "compare_by"
+                  ],
+                  "additionalProperties": false
+                },
+                "default_compare_by": {
+                  "type": "string",
+                  "pattern": "^[a-z][a-z0-9_-]*$"
+                },
+                "ci": {
+                  "type": "object",
+                  "properties": {
+                    "enabled": {
+                      "type": "boolean"
+                    },
+                    "method": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "required": [
+                    "enabled"
+                  ],
+                  "additionalProperties": false
+                },
+                "benchmarks": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "label": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "value": {
+                        "type": "number"
+                      },
+                      "unit": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    },
+                    "required": [
+                      "label",
+                      "value",
+                      "unit"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "columns": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "pattern": "^[a-z][a-z0-9_-]*$"
+                  }
+                },
+                "options": {
+                  "type": "object",
+                  "properties": {
+                    "whiskers": {
+                      "enum": [
+                        "min_max",
+                        "p5_p95",
+                        "tukey"
+                      ]
+                    },
+                    "normalization": {
+                      "enum": [
+                        "count",
+                        "row_percent",
+                        "column_percent"
+                      ]
+                    },
+                    "donut": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [],
+                  "additionalProperties": false
+                },
+                "export": {
+                  "enum": [
+                    "full",
+                    "summary"
+                  ]
+                }
+              },
+              "required": [
+                "id",
+                "title",
+                "type",
+                "layout",
+                "query",
+                "window",
+                "controls",
+                "ci",
+                "export"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "widgets"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "schema_version",
+    "project",
+    "id",
+    "title",
+    "grid",
+    "sections"
+  ],
+  "additionalProperties": false
+}

@@ -296,3 +296,47 @@ git diff --check                                                              # 
 ```
 No JS files were added, so no `node --check` was required. No real/clinical database was read; the
 sample snapshot DB was never opened or migrated. No commits, pushes, resets or cleans were run.
+
+
+## Task 03 — Strict YAML parsing and structural schemas
+
+> Provenance note: the implementing session's own report was lost to a
+> gateway delivery drop; the evidence below is the orchestrator's
+> independent re-verification of the working tree, not a self-report.
+
+**Changed/added files**
+- `django-app/report_v2/definitions/__init__.py` (package marker)
+- `django-app/report_v2/definitions/loader.py` (strict loader)
+- `django-app/report_v2/definitions/schemas/report.schema.json` (copy of the reviewed planning schema)
+- `django-app/report_v2/definitions/schemas/policy.schema.json` (new strict policy schema)
+- `django-app/report_v2/tests/test_definitions.py` (24 tests)
+
+**Implementation contract**
+- Safe constructors only (`yaml.safe_load` family); no executable templates.
+- Explicit duplicate-key detection in block and flow styles.
+- Rejected constructs, each with a named test: aliases/anchors, custom/unknown
+  tags, merge keys, multiple documents, excessive size/depth/node-count,
+  oversize scalars, nonfinite numbers, unknown/missing/extra keys, wrong types.
+- Path-aware editor messages (test asserts the offending YAML path is reported).
+- Malformed calendar dates (e.g. 2026-02-30, quoted and unquoted) rejected
+  semantically via real date construction, not by regex.
+- Validation is read-only: `test_validation_writes_nothing_to_disk` asserts no
+  file creation on any rejection path.
+- Both seed examples (`prime-overview.yaml`, `lunit-defaults.v1.yaml`) parse
+  and validate through the loader (two named tests).
+
+**Test commands + results (verified by the orchestrator)**
+```
+.venv/bin/python manage.py test report_v2.tests.test_definitions --noinput -v 2   # 24 tests, OK
+.venv/bin/python manage.py test report_v2 --noinput -v 1                          # 36 tests, OK
+.venv/bin/python manage.py test lunit_audit --noinput -v 1                        # 16 tests, OK (no regression)
+git diff --check                                                                  # clean
+```
+Run from `django-app/` with the project virtualenv. The single expected
+lunit_audit.W002 system-check warning is unrelated to this task.
+
+**Deviations:** none material. PyYAML and jsonschema were installed in the
+dev virtualenv earlier for this task; they are pure-python additions and the
+only tolerated requirements touch would have been listing them (not done —
+loader works with what the app already vendors; re-check at Task 11 if the
+runtime image needs them added to requirements.txt explicitly).

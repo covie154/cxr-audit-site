@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:primer:threshold-policy:1",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "project": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_-]*$"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_-]*$"
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "score_scale": {
+      "type": "array",
+      "items": {
+        "type": "number"
+      },
+      "minItems": 2,
+      "maxItems": 2
+    },
+    "operator": {
+      "enum": [
+        "gt",
+        "gte"
+      ]
+    },
+    "aggregate": {
+      "enum": [
+        "any_positive",
+        "all_positive"
+      ]
+    },
+    "require_all_scores": {
+      "type": "boolean"
+    },
+    "findings": {
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": {
+        "pattern": "^[a-z][a-z0-9_-]*$"
+      },
+      "additionalProperties": {
+        "type": "number"
+      }
+    }
+  },
+  "required": [
+    "schema_version",
+    "project",
+    "id",
+    "version",
+    "score_scale",
+    "operator",
+    "aggregate",
+    "require_all_scores",
+    "findings"
+  ],
+  "additionalProperties": false
+}
