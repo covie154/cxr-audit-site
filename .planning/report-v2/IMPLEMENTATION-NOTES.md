@@ -340,3 +340,151 @@ dev virtualenv earlier for this task; they are pure-python additions and the
 only tolerated requirements touch would have been listing them (not done —
 loader works with what the app already vendors; re-check at Task 11 if the
 runtime image needs them added to requirements.txt explicitly).
+
+
+
+## Task 04 (implementing session report)
+
+Status: complete. Written 2026-09-10. All changes left UNCOMMITTED in the working
+tree as untracked files for the orchestrator to stage and commit. No git-mutating
+command was run. Depends on Task 03 (landed at 5f91418).
+
+### Changed/added files (all NEW; no tracked file was modified)
+- `django-app/report_v2/projects/__init__.py` — package marker re-exporting the
+  base/prime/registry public surface (mirrors `definitions/__init__.py`).
+- `django-app/report_v2/projects/base.py` — generic, project-agnostic frozen
+  dataclasses: `Source`, `Outcome`, `Cohort`, `Dimension`, `ThresholdPolicy`
+  (+`.ref` property), `MeasurementSignature`, `ProjectDefinition`; the closed
+  vocabularies `KINDS`/`SOURCE_OPERATORS`/`AGGREGATES`; the `ProjectCatalogError`
+  hierarchy including `UnknownProjectError`, `UnknownSourceError`,
+  `UnknownOutcomeError`, `UnknownCohortError`, `UnknownDimensionError`,
+  `UnknownPolicyError`, `UnknownMeasurementError`, `CrossProjectReferenceError`.
+  Per-project strict lookups raise the typed errors; id/key integrity is checked at
+  construction; `policy("id@version")` and bare-id resolution is strict (no default).
+- `django-app/report_v2/projects/prime.py` — the single configured PRIME adapter
+  catalog binding the generic structures to real `upload.CXRStudy` columns: 10
+  `score_*` sources + record_id/site/procedure_date/report_text/manual_abnormal/
+  llm_abnormal/lunit_binarised/time_* sources; three binary outcomes; cohorts
+  `manual_label_present` (predicate `{"gt_manual__isnull": False}`) and `all`;
+  the `site` dimension (SYNTH-SITE-A/B demo codes only); policy `lunit-defaults@1`
+  (score_scale 0..100, operator gt, aggregate any_positive, require_all_scores,
+  nodule 15 / others 10 — mirrors the read-only seed); the YAML-contract measurement
+  signatures. `get_project_definition()` returns the frozen `PROJECT`.
+- `django-app/report_v2/projects/registry.py` — `ProjectRegistry`; the thread-safe
+  lazy `production_registry()` singleton (PRIME only, bootstrapped from `prime.PROJECT`);
+  `register_production`; the single `require_project_context(...)` guard (NO default
+  project, NO cross-project fallback — unknown project raises `UnknownProjectError`;
+  an id that is missing locally but owned by exactly one OTHER registered project is
+  escalated to `CrossProjectReferenceError`, otherwise the specific `Unknown*Error`
+  re-raises); and a PHYSICALLY SEPARATE, documented TEST-ONLY path
+  (`register_test_project`, `test_registry`, `require_test_project_context`) that
+  reads/writes a distinct `_TEST_REGISTRY` singleton which `production_registry()`
+  never imports, merges or falls back to.
+- `django-app/report_v2/permissions.py` — reuses the house admin convention verbatim:
+  `_is_admin(user) = user.is_superuser or user.groups.filter(name="admins").exists()`
+  and `admin_required = user_passes_test(_is_admin)` (imported from
+  `django.contrib.auth.decorators`, identical to upload/views.py + viewer/views.py).
+  Plus `can_edit_catalog` (admin rule), `can_view_published` (authentication gate; the
+  published-only *selection* is owned by the Task 11 repository layer), and the thin
+  `published_report_only = login_required` convention decorator. No new permission
+  model, group, or auth scheme.
+- `django-app/report_v2/tests/test_catalog.py` — 24 hermetic `SimpleTestCase` tests
+  with the standard staticfiles/SSL/locmem `override_settings` trio; a synthetic
+  second project `synthx` built only from generic `x_*` metadata and registered via
+  the test-only path / an explicit throwaway registry passed through the `registry=`
+  kwarg (never the production singleton). No ORM/`upload.models` import, no DB access.
+
+### Delegation split (pi) vs. orchestrator-authored
+Coding of all six files was DELEGATED to `pi`
+(`pi --print --no-session --model qwen3.8-flash-next`, run from inside the repo) via
+a single self-contained, tightly-scoped prompt (/tmp/pi-task04-prompt.txt) that fixed
+the exact file list, the generic/prime vocabulary-boundary rule, the frozen-dataclass
+shapes, the PRIME facts (verified against `upload/models.py` and the seeds), the
+require-guard semantics, and the test coverage matrix. pi wrote all six files and
+self-reported green. The orchestrator (this session) independently:
+- re-ran every validation command below against the venv and captured real output;
+- independently `grep`-verified that base.py + loader.py contain ZERO clinical field
+  tokens (exit 1 = no match) and that every real column string used by prime.py
+  exists in `upload/models.py`;
+- ran an additional adversarial `manage.py shell`-equivalent probe (/tmp/task04_probe.py,
+  real Django settings, no DB) proving: the production registry resolves only `prime`
+  even after test-registration of a synthetic project; case/whitespace lookalikes
+  (`""`, `"PRIME"`, `"prime "`, `"Prime"`) do NOT resolve to PRIME; unknown-not-foreign
+  ids stay the specific `Unknown*Error`; genuine foreign ids escalate to
+  `CrossProjectReferenceError` naming both projects; the admin rule is superuser-or-admins only.
+No substantive re-authoring of pi's code was required; the orchestrator added only
+the independent verification harness. pi flagged two self-noted interpretations, both
+accepted as correct: (1) this Django build's `user_passes_test` denies by 302-redirect
+to login rather than raising, so the decorator-rejection test asserts the 302 + that
+the protected body never runs (consistent with the existing test_routes.py convention);
+(2) policy thresholds stored as floats compared against int literals with `==` (equal).
+
+### Validation commands + real results (run from `django-app/`, project virtualenv)
+```
+$ .venv/bin/python manage.py test report_v2 --noinput -v 2
+    ... Ran 60 tests in 0.160s ... OK      (36 pre-existing + 24 new test_catalog)
+    Only the expected lunit_audit.W002 (LLM HTTP / DEBUG=False) warning.
+
+$ .venv/bin/python manage.py test report_v2.tests.test_catalog --noinput -v 2
+    Ran 24 tests in 0.016s ... OK
+    "Skipping setup of unused database(s): audit, default."  (no DB contacted)
+
+$ .venv/bin/python manage.py test lunit_audit --noinput -v 1
+    Ran 16 tests in 0.404s ... OK          (16/16 baseline, no regression)
+    Only the expected lunit_audit.W002 warning.
+
+$ git diff --check
+    clean (exit 0; no tracked modifications exist — every change is a new file)
+
+$ grep -i -n '<CXR field tokens>' report_v2/projects/base.py report_v2/definitions/loader.py
+    (no output)  grep exit 1  → CLEAN: generic model + parser free of clinical field names
+
+$ python manage.py shell-equivalent probe (/tmp/task04_probe.py)
+    ALL PROBE ASSERTIONS PASSED (production isolation, no-fallback, cross-project
+    escalation, case/whitespace lookalikes, admin rule)
+```
+Before these additions the tree was green at 5f91418 (report_v2 36, lunit_audit 16),
+re-confirmed here as report_v2 60 (incl. 24 new) and lunit_audit 16.
+
+### Fixtures used
+No new DB fixtures. `test_catalog.py` needs none of `factories.py` — it exercises
+metadata + permission predicates with `Mock()` users (is_superuser + a mocked
+groups.filter().exists() branch, mirroring test_routes.py) and a purely synthetic
+`synthx` project whose identifiers are generic `x_*` tokens (no CXR field names, no
+accessions, no clinical text). The PRIME catalog itself is metadata only and performs
+no queries, so `@databases`/ORM is never used and the reserved-accession / SYNTH
+conventions are not exercised (nothing writes rows). The sample snapshot DB
+(`~/serverfiles/downloads/db_2026-06-18.sqlite3`) was NOT opened, read or migrated;
+its mtime is unchanged.
+
+### Where the guarantees live (audit pointers)
+- Admin edit rule enforced in `report_v2/permissions.py` (`_is_admin` +
+  `admin_required = user_passes_test(_is_admin)`), the verbatim duplicate of the
+  pattern documented in AGENTS.md and present in upload/views.py + viewer/views.py.
+- Authenticated-view rule in `permissions.can_view_published` + `published_report_only`
+  (login gate); "published only" selection deferred to Task 11 repository, per DESIGN.md.
+- Test-only second project unreachable from production navigation: production code reads
+  ONLY `production_registry()` (a distinct singleton bootstrapped from `prime.PROJECT`);
+  the `_TEST_REGISTRY` / `register_test_project` / `require_test_project_context` trio
+  never feeds it. Proven by both `test_registering_test_project_never_touches_production`
+  and the live probe (`production_registry().ids() == ("prime",)` after test registration).
+- No CXR field names in generic parsing: proven by the grep (base.py + loader.py clean)
+  and by `ParserPurityTests` asserting the forbidden-token set is absent from both
+  module sources; the tokens appear only in the adapter `prime.py`, which is the
+  sanctioned location.
+
+### Deviations / blockers
+- No blockers. No deviations from the Task 04 "Done when" checks: unknown project/source
+  ids fail; referencing a foreign project's source from the PRIME context raises
+  `CrossProjectReferenceError`; no CXR field names in generic parsing; NO project-
+  membership models and NO migrations were added (none of settings.py, models.py,
+  urls.py, views.py, definitions/loader.py were touched — confirmed by
+  `git status --porcelain`).
+- Forward-looking note for later tasks: the catalog currently stores mappings as plain
+  `dict`s; the dataclass fields are frozen but the contained `Mapping` values are not
+  recursively sealed (they are treated read-only by convention). `require_project_context`
+  intentionally keeps the "exactly one clear foreign owner" heuristic (ambiguous shared
+  ids stay `Unknown*Error` rather than risk a wrong cross-project accusation). Neither
+  affects this task's acceptance.
+- PyYAML/jsonschema (Task 03 devdeps) remain available in the venv; no new package was
+  installed this task (pure-python/stdlib + Django only).
