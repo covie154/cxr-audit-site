@@ -872,3 +872,128 @@ the order rows arrive in.
   the runner's isolated in-memory test databases only.
 
 [TASK-07 COMPLETE]
+
+## Task 08 (implementing session report)
+
+Count / duration / reference-comparison measurements. Pure value helpers only (take
+plain values in, return frozen dataclasses / scalars; no ORM, DB, web or network
+imports). All synthetic; no real ePHI, no reference snapshot, no `upload/models.py`,
+`CXRAStudy` fields, or legacy `report/` changes; no new models or migrations.
+
+### Changed files
+- `django-app/report_v2/measurements/descriptive.py` (new) - `record_count`, `label_count`,
+  `categorical_count`, `duration_summary`, frozen `DurationSummary`, `QUANTILE_METHOD`,
+  `TAIL_METHOD`, `DescriptiveError` / `UnexpectedQuantileMethod`.
+- `django-app/report_v2/measurements/agreement.py` (new) - `cohen_kappa`, `mcnemar`,
+  `fn_fp_cases`, shared `complete_rows` filter + frozen `CompleteRows`, local frozen `Rate`
+  (null-plus-reason contract), frozen `McNemarResult` / `FnFpCases`, `AgreementError` base.
+- `django-app/report_v2/tests/test_descriptive.py` (new) - 52 tests, Django `SimpleTestCase`,
+  no DB writes, synthetic via `factories` (`timing_fixture`).
+- `django-app/report_v2/tests/test_agreement.py` (new) - 50 tests, same discipline
+  (`binary_fixture*` families).
+- `django-app/report_v2/measurements/__init__.py` (extended) - re-exports both new public
+  surfaces following the established Task-06/07 pattern. Note the real symbol collision:
+  `classification` already exports `Rate`; the package's `Rate` stays `classification.Rate`
+  and the agreement one is re-exported under the alias `AgreementRate` (no silent clobber).
+
+### How it was built (pi + bail-out accounting)
+Both pure modules were delegated to `pi` from the compact `/tmp/pi_task08_spec.md` only
+(one small file each; never the 935-line `classification.py` / 823-line `dates.py`). Both pi
+invocations exited 0 with the sentinels `DONE-DESCRIPTIVE` / `DONE-AGREEMENT` and produced
+faithful modules - no bail-out was needed for the two modules. I (the orchestrator-side
+subagent) WROTE BOTH TEST FILES MYSELF and fixed three of my own over-strict expectations
+against the real spec surface (details below). No module was rewritten from scratch.
+
+### Exact test commands + real output tail (venv python, run from django-app/)
+- `.venv/bin/python manage.py test report_v2.tests.test_descriptive --noinput -v 2`
+  -> `Ran 52 tests in 0.008s` / `OK`
+- `.venv/bin/python manage.py test report_v2.tests.test_agreement --noinput -v 2`
+  -> `Ran 50 tests in 0.009s` / `OK`
+- `.venv/bin/python manage.py test report_v2 --noinput -v 1`
+  -> `Ran 257 tests in 0.297s` / `OK`   (155 green baseline + 102 new = >= 155 preserved)
+- `.venv/bin/python manage.py test lunit_audit --noinput -v 1`
+  -> `Ran 16 tests in 0.400s` / `OK`   (16/16 preserved; the single W002
+  LLM_BASE_URL-HTTP system-check warning is the known/pre-existing, non-failing notice)
+- `git diff --check` -> clean (no whitespace errors).
+
+### Tukey micro-case (named test, observed values)
+`test_documented_hand_check_upper_whisker_and_single_outlier` on `[1..10, 100]` (n=11):
+`q1=3`, `median=6`, `q3=8`, `iqr=5`, `lower_fence=-4.5`, `upper_fence=15.5`,
+`outliers=[100]` (the ONLY outlier), `upper_whisker=10` (largest observed datum <= 15.5),
+`lower_whisker=1`. Mean=155/11 (the outlier is reported, never dropped from n/mean).
+
+### Kappa cases
+- Perfect agreement -> `value == 1.0` exactly, `defined=True`, `null_reason=None`
+  (`test_perfect_agreement_is_exactly_one`).
+- Undefined (degenerate marginals: a single class on BOTH sides so expected agreement==1, and
+  the empty complete population) -> `value=None` WITH a non-empty `null_reason`, `defined=False`,
+  and asserted `is not 0` / `is not 0.0` (`test_undefined_is_never_zero`,
+  `test_truly_degenerate_single_class_column_is_null_never_zero`). Never 0.
+- Contrast, kept as its own named test so the two states are proven distinct: a single-class
+  REFERENCE with a MIXED prediction (`binary_fixture_no_positive_gt`) is NOT degenerate - the
+  expected agreement is 0.5, so kappa is a *measured, defined* `0.0` with `null_reason=None`
+  (`test_fixture_no_positive_reference_kappa_is_a_defined_zero_not_null`). This was one of the
+  three expectations I corrected after running: my first draft wrongly demanded null here.
+- The runbook block `[1,1,1,0,0,0]` vs `[1,1,0,1,0,0]` -> `numerator=4`, `denominator=6`,
+  value `(4/6 - 1/2)/(1 - 1/2)`.
+- Structural guard: a defined `Rate` may not smuggle a `null_reason`, and an undefined one must
+  carry a non-blank reason (enforced in `Rate.__post_init__`; asserted in tests).
+
+### McNemar discordant counts + method
+`test_binary_block_discordant_counts`: b=1, c=1, n_discordant=2, n_total=6, n_complete=6.
+Direction fixed: `b` = reference-positive & prediction-negative, `c` = reference-negative &
+prediction-positive; a role swap moves them across cells (`test_discordant_direction_is_not_swappable`).
+Method (documented in `MCNEMAR_METHOD`, asserted to name it): exact TWO-SIDED binomial
+`p = 2 * sum(C(n,k) * 0.5**n for k <= min(b,c))`, n=b+c, computed with `fractions.Fraction`
+and clipped to 1.0; `statistic` = continuity-corrected chi-square `(abs(b-c)-1)**2/(b+c)`.
+A cross-check test compares `p_value` against an independent float restatement to 12 places, and
+symmetry in (b,c) is asserted (two-sidedness). When `n_discordant==0` both `statistic` and
+`p_value` are `None` with a reason in `p_note` (never a fabricated 0). Example: b=12,c=1 ->
+statistic 121/13 and p<0.05; b=3,c=0 -> p=0.25.
+
+### Documented quantile convention (single, used everywhere)
+`QUANTILE_METHOD = "lower order statistic: Q(p) = sorted[floor(p * (n - 1))], 0-based,
+clamped to [0, n-1], no interpolation"`. ONE convention drives `q1`/`median`/`q3` AND the
+`p5`/`p95` tails; there is no per-call-site variant, and `duration_summary` REFUSES a
+differently-documented method with `UnexpectedQuantileMethod` so the convention cannot drift
+(the historical quartile/quantile inconsistency is structurally prevented, not just avoided).
+Cross-checked by `test_every_quantile_field_matches_the_independent_restatement` against an
+independent restatement of the same formula.
+
+### Separate P5 / P95
+p5=Q(0.05) and p95=Q(0.95) are SEPARATE tail summaries carried with their own `tail_method`
+note; they are NOT the Tukey whiskers and are NOT folded into q1/q3. Proven by
+`test_p95_is_not_the_upper_whisker_and_not_q3` (upper_whisker=200 while p95=400) and
+`test_p5_is_not_the_lower_whisker_and_not_q1` (lower_whisker=10 while p5=0, and 0 is itself
+flagged an outlier). Whiskers are always observed data values inside the fences, never the fences.
+
+### FN/FP direction assertion + incomplete-pair exclusion
+`fn_fp_cases` direction is FIXED: `reference='manual'` (ground truth), `prediction='llm'`.
+FALSE NEGATIVE = reference-positive & prediction-negative; FALSE POSITIVE = reference-negative &
+prediction-positive; never swapped (`test_direction_is_manual_reference_and_llm_prediction`,
+`test_every_listed_case_carries_the_documented_orientation`, and
+`test_swapping_the_direction_names_is_rejected` / unknown-direction rejection). The two id
+lists page SEPARATELY via independent `fn_offset/fn_limit` and `fp_offset/fp_limit` windows
+exposed as `*_ids_view`, while the canonical lists and the aggregate `*_count` stay whole
+(`test_the_two_lists_paginate_separately`, `test_pagination_never_truncates_the_aggregates`,
+`test_re_paging_one_list_leaves_the_other_alone`). Incomplete pairs (None / non-int / bool /
+out-of-two-value vocabulary on either side) are EXCLUDED AND COUNTED via `excluded_incomplete`
+through the SAME `complete_rows` filter that feeds kappa and McNemar - never coerced to 0/1
+(`test_incomplete_pairs_are_excluded_and_counted_not_labelled`, `test_a_bool_label_is_incomplete_not_a_zero_or_one`,
+and `test_kappa_and_mcnemar_share_one_complete_row_filter` asserting the shared `n_complete`).
+
+### Known differences vs old outputs / deviations
+- `label_count` / `categorical_count` return plain `dict[value->count]` exactly as the compact
+  spec dictates (not a richer object); my first test draft had assumed a wrapper with
+  `counted`/`excluded_*` sub-fields, so I rewrote the count tests against the real surface.
+- `DurationSummary.outliers` is a `list` (per spec), and non-numeric `values` to the three
+  count helpers raise `TypeError` (they are `for ... in values`), not `DescriptiveError`;
+  `duration_summary` itself takes an iterable and raises `TypeError` on a non-iterable. Tests
+  match this actual contract rather than an imagined one.
+- `mcnemar`/`cohen_kappa` reject ragged-length inputs and bool labels with typed
+  `AgreementError`; the modules carry an `__main__` self-check that also passes.
+- Nothing here reintroduces threshold sweeping / ROC / AUC / macro-average (guarded by
+  `test_no_threshold_or_score_ranking_capability_leaks_in`). The single lunit_audit W002
+  system-check warning is unchanged and expected.
+
+[TASK-08 COMPLETE]
