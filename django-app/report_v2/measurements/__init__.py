@@ -61,6 +61,18 @@ from .descriptive import (
     label_count,
     record_count,
 )
+from .confidence import (
+    BALANCED_ACCURACY_IDENTITIES,
+    DEFAULT_Z,
+    ConfidenceError,
+    OutOfRangeCountError,
+    UnsupportedCiError,
+    WilsonInterval,
+    is_proportion_ci_registered,
+    register_proportion_ci,
+    require_proportion_ci,
+    wilson_interval,
+)
 from .predictions import (
     AGGREGATE_ANY_POSITIVE,
     FindingDecision,
@@ -141,4 +153,15 @@ __all__ = [
     "mcnemar",
     "FnFpCases",
     "fn_fp_cases",
+    # --- confidence intervals (Task 09) ---
+    "DEFAULT_Z",
+    "ConfidenceError",
+    "OutOfRangeCountError",
+    "UnsupportedCiError",
+    "WilsonInterval",
+    "wilson_interval",
+    "BALANCED_ACCURACY_IDENTITIES",
+    "register_proportion_ci",
+    "is_proportion_ci_registered",
+    "require_proportion_ci",
 ]

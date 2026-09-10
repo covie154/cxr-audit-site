@@ -997,3 +997,114 @@ and `test_kappa_and_mcnemar_share_one_complete_row_filter` asserting the shared 
   system-check warning is unchanged and expected.
 
 [TASK-08 COMPLETE]
+
+
+## Task 09 (implementing session report)
+
+Admin-controlled per-proportion confidence intervals + display/semantics validation.
+Built on Task 08 (frozen dataclasses / typed errors / null+reason discipline). Left UNCOMMITTED
+for the orchestrator (no git state commands run).
+
+### Files changed / created
+- NEW `django-app/report_v2/measurements/confidence.py` (pi-authored, then reviewed+hardened):
+  `wilson_interval(k,n,*,z=1.959963984540054)` -> frozen `WilsonInterval(k,n,lower,upper,
+  confidence_level,method,available,null_reason)`; `DEFAULT_Z`; typed `ConfidenceError` base with
+  `OutRangeCountError` + `UnsupportedCiError`; registry `register_proportion_ci` /
+  `is_proportion_ci_registered` / `require_proportion_ci`; `BALANCED_ACCURACY_IDENTITIES` + a hard
+  block so balanced accuracy can NEVER be registered nor looked up for a CI.
+- NEW `django-app/report_v2/definitions/validation.py` (pi-authored via a self-contained API
+  contract, reviewed): typed `DisplayValidationError` family; `ensure_whisker_is_not_ci`,
+  `ensure_no_calculated_baseline_band`, `validate_numeric_benchmark`, `validate_display`,
+  `build_ci_render_keys` (CI-OFF emits `{}`), plus the chart-type / bucket / whisker / CI-key
+  frozensets. `__main__` self-check prints `validation self-check ok`.
+- NEW `django-app/report_v2/tests/test_semantics.py` (written by the implementing session, not pi):
+  Django `SimpleTestCase`, no DB writes, synthetic dict/int inputs only, 39 tests.
+- MODIFIED `django-app/report_v2/measurements/__init__.py`: added the `.confidence` re-export block
+  + `__all__` entries (established house pattern - every prior task did the same).
+- MODIFIED `django-app/report_v2/definitions/__init__.py`: added the `.validation` re-export block
+  + `__all__` entries (same established pattern).
+
+### Exact test commands + real output tails (venv python, from django-app/)
+```
+.venv/bin/python manage.py test report_v2.tests.test_semantics --noinput -v 2  -> Ran 39 tests in 0.006s / OK
+.venv/bin/python manage.py test report_v2 --noinput -v 1                       -> Ran 296 tests in 0.224s / OK
+.venv/bin/python manage.py test lunit_audit --noinput -v 1                     -> Ran 16 tests in 0.496s / OK
+```
+Baselines preserved (report_v2 257 -> 296 with the 39 new; lunit_audit 16/16). The single
+lunit_audit W002 LLM_BASE_URL-HTTP system-check warning is pre-existing/expected, not a failure.
+`git --no-pager diff --check` is clean (exit 0). `git status --short` shows exactly the five
+intended paths (2 modified `__init__.py`, 3 new files).
+
+### Observed Wilson bounds (whole hand-check table, venv python, printed from wilson_interval)
+Confidence-level 0.95, method `wilson` for every row:
+```
+(0,1)   -> (0.000000, 0.793451)     (1,1)   -> (0.206549, 1.000000)
+(1,3)   -> (0.061492, 0.792340)     (2,3)   -> (0.207660, 0.938508)
+(5,10)  -> (0.236593, 0.763407)     (0,10)  -> (0.000000, 0.277533)
+(10,10) -> (0.722467, 1.000000)
+```
+Every row matches the independently-derived acceptance table to <= 1e-5; asserted verbatim (not
+edited to fit code) in `test_hand_check_table_matches_to_1e_minus_5`. Invariants for all supported
+proportions: lower/upper finite and `0 <= lower <= upper <= 1`
+(`test_every_supported_proportion_is_finite_ordered_and_in_range`, ~72 cases + an independent
+reference restatement to 1e-9).
+
+### CI-OFF key-omission evidence
+`build_ci_render_keys({})`, `{"ci":{"enabled":False}}`, `{"ci":{}}`, `{"ci":None}` all return `{}`
+-- no `ci`/`lower`/`upper` keys at all (`test_disabled_ci_emits_no_ci_keys`). End-to-end a validated
+widget with `ci.enabled=False` yields render data free of CI keys
+(`test_validated_widget_with_ci_off_publishes_no_ci_keys`). When ON it emits exactly
+`{ci,lower,upper}` with `0<=lower<=upper<=1`; unordered/non-finite/out-of-range bounds raise
+`DisplayValidationError` (`test_enabled_ci_*`).
+
+### Rejection behaviours (all typed, all named tests)
+- balanced_accuracy + any CI -> `UnsupportedCiError`: blocked BOTH at `register_proportion_ci` and
+  `require_proportion_ci` for every identity in `BALANCED_ACCURACY_IDENTITIES` and normalised
+  aliases (`test_balanced_accuracy_cannot_be_registered_for_a_ci`). Never invented/defaulted.
+- unregistered (metric,method) -> `UnsupportedCiError` before publication, for an unknown metric
+  and for a known metric with an unregistered method string
+  (`test_unregistered_metric_is_rejected_before_publication`, `test_unregistered_method_string_is_rejected`).
+- whisker labelled as CI -> `WhiskerIsConfidenceIntervalError`: boxplot+tukey+marker key and any
+  whisker style claiming ci/confidence semantics rejected; a genuine tukey boxplot with an
+  independent CI (no marker) still passes (`WhiskerIsConfidenceIntervalTests`).
+- numeric benchmark on nonnumeric chart (pie/table/confusion_matrix) and on an unknown chart type
+  -> `NumericBenchmarkOnNonNumericChartError`; unit mismatch -> `BenchmarkUnitMismatchError`
+  (case/whitespace-insensitive match passes); malformed value (bool/str/nan/inf) ->
+  `DisplayValidationError` (`NumericBenchmarkTests`).
+- calculated/synthesised baseline band -> `CalculatedBaselineBandError`; a baseline referencing
+  registered data (`measurement`/`policy`) or an explicit constant `{value,unit}` passes
+  (`NoCalculatedBaselineBandTests`).
+- `validate_display` rejects unknown inputs / columns / buckets / threshold policies / disallowed
+  grouping / CI-unknown-method, and rejects a non-mapping config (`ValidateDisplayTests`).
+
+### n<=0 and out-of-range behaviours
+- `wilson_interval(0,0)`, `(0,-1)`, `(0,-10)` -> `available=False`, `lower=upper=None`,
+  `null_reason='n must be > 0'`, explicitly NOT the forbidden `(0.0, 0.0)` band
+  (`test_n_le_zero_returns_null_with_reason_never_zero_band`).
+- `k<0` (`(-1,5)`,`(-5,5)`) and `k>n` (`(6,5)`) raise the typed `OutRangeCountError`
+  (subclass of `ConfidenceError`); the input k is never clamped
+  (`test_out_of_range_count_raises_typed_error_never_clamps`).
+
+### pi delegation / bail-out accounting
+- First broad-scope pi run (whole spec, all 3 files) produced NO files and empty output after ~9 min
+  (the known empty-return failure mode) -> killed, counted as attempt 1 on the (confidence) unit.
+- Scoped pi to ONE file per call. Unit (A) `confidence.py`: pi succeeded on attempt 2 (single-file
+  scope). Reviewing it I fixed two real issues myself: missing PRIMER header (added) and a
+  defense-in-depth hard block for balanced-accuracy registration (added `BALANCED_ACCURACY_IDENTITIES`
+  + the guard). The `__all__` "OutRangeCountError" scare was a false alarm: the display layer
+  collapses double-underscores/long runs, so I verified via import that `__all__` is internally
+  consistent (`MISSING_FROM_ALL == []`).
+- Unit (B) `validation.py`: pi succeeded on its single scoped call against a self-contained API
+  contract (/tmp/pi_task09_validation_api.md); its `__main__` self-check passes.
+- Unit (C) `test_semantics.py`: I wrote it myself (not pi) for precise control over the frozen
+  hand-check oracle and the exact rejection assertions. No bail-out was needed beyond the killed
+  first broad run; both pi-authored modules were reviewed line-by-line and are correct.
+
+### Deviations / notes
+- The task's file list allowed extending `measurements/__init__.py` "if that is the pattern" -- it is
+  (Tasks 07/08 both re-export), so I extended it, and applied the same established pattern to
+  `definitions/__init__.py` so the new validation surface is reachable the house way. No other files
+  touched; no models/migrations; no ORM/DB/web imports inside the pure helpers; synthetic data only;
+  the real ePHI sqlite was never read.
+
+[TASK-09 COMPLETE]
