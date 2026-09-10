@@ -1,15 +1,42 @@
 # PRIMER - LLM-based Chest X-Ray Audit Tool
 # Copyright (C) 2026 Goh Shu Wen
 # Licensed under AGPL-3.0-or-later. See LICENSE at the repository root.
-"""Report-v2 measurement entry points (pure threshold binarisation + label pass-through predictions).
+"""Report-v2 measurement entry points (threshold binarisation + label pass-through predictions and classification).
 
-The heavy lifting lives in :mod:`report_v2.measurements.predictions`; this package marker re-exports the
-public surface so callers can ``from report_v2.measurements import classify_prediction`` directly. Nothing here
-touches the ORM or the database -- the whole module computes immutable prediction *values*.
+The heavy lifting lives in :mod:`report_v2.measurements.predictions` (prediction) and
+:mod:`report_v2.measurements.classification` (confusion counts, rates and one-versus-rest matrices, added by
+the Task-07 classification measurements); this package marker re-exports both public surfaces so callers can
+``from report_v2.measurements import classify_prediction`` or ``classification_summary`` directly. Nothing here
+touches the ORM or the database -- the whole package computes immutable prediction and classification *values*.
 """
 
 from __future__ import annotations
 
+from .classification import (
+    BALANCED_ACCURACY_LABEL,
+    BinaryClassVocabulary,
+    BinaryClassificationMetrics,
+    BinaryConfusionCounts,
+    ClassificationError,
+    ClassificationSummary,
+    ConfusionMatrix,
+    EmptyPopulationError,
+    IncompatiblePairError,
+    InvalidClassOrderError,
+    MissingTargetClassError,
+    OutOfVocabularyClassError,
+    Rate,
+    TargetClassMetrics,
+    binary_classification_metrics,
+    binary_confusion_counts,
+    classification_summary,
+    confusion_matrix,
+    one_vs_rest_metrics,
+    pairs_from_rows,
+    require_target_class,
+    safe_rate,
+    vocabulary_from_outcome,
+)
 from .predictions import (
     AGGREGATE_ANY_POSITIVE,
     FindingDecision,
@@ -44,4 +71,28 @@ __all__ = [
     "resolve_policy",
     "classify_prediction",
     "classify_label_prediction",
+    # --- classification measurements (Task 07) ---
+    "ClassificationError",
+    "OutOfVocabularyClassError",
+    "MissingTargetClassError",
+    "InvalidClassOrderError",
+    "IncompatiblePairError",
+    "EmptyPopulationError",
+    "BALANCED_ACCURACY_LABEL",
+    "BinaryClassVocabulary",
+    "vocabulary_from_outcome",
+    "pairs_from_rows",
+    "BinaryConfusionCounts",
+    "binary_confusion_counts",
+    "Rate",
+    "safe_rate",
+    "BinaryClassificationMetrics",
+    "binary_classification_metrics",
+    "ConfusionMatrix",
+    "confusion_matrix",
+    "TargetClassMetrics",
+    "one_vs_rest_metrics",
+    "require_target_class",
+    "ClassificationSummary",
+    "classification_summary",
 ]

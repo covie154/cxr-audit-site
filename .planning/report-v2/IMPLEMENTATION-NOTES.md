@@ -647,3 +647,228 @@ and by the independent probe.
   unchanged). No `upload/models.py`, no `CXrStudy` field, no `lunit_binarised`, no legacy
   report code, no settings/urls/views/migrations were modified (verified by `git diff --name-only
   HEAD` showing no diff). No new package was installed.
+
+
+## Task 07 (implementing session report)
+
+Status: complete. Written 2026-09-10. All changes left UNCOMMITTED in the working tree
+for the orchestrator to stage and commit. No git-mutating command was run by this session
+(only read-only `git status` / `git diff` / `git log`). Depends on Task 05 (landed at
+b6386f9). Baselines at start: report_v2 117/117, lunit_audit 16/16 (both re-confirmed
+green before any edit was made).
+
+### Changed/added files (exactly three; nothing else in the repo was touched)
+- `django-app/report_v2/measurements/classification.py` — NEW, 935 lines, the pure
+  classification-measurement module. NO web-framework import, NO ORM import, no DB/file/network
+  access: it receives already-extracted row *values*. Public surface (in `__all__`):
+  `ClassificationError` + `OutOfVocabularyClassError` / `MissingTargetClassError` /
+  `InvalidClassOrderError` / `IncompatiblePairError` / `EmptyPopulationError` (mirroring the
+  `base`/`predictions` `kind`+`message`+`__str__` shape); `BALANCED_ACCURACY_LABEL =
+  "Balanced accuracy"`; `BinaryClassVocabulary` + `vocabulary_from_outcome`;
+  `pairs_from_rows`; `BinaryConfusionCounts` + `binary_confusion_counts`; `Rate` +
+  `safe_rate`; `BinaryClassificationMetrics` + `binary_classification_metrics`;
+  `ConfusionMatrix` + `confusion_matrix`; `TargetClassMetrics` + `one_vs_rest_metrics`;
+  `require_target_class`; `ClassificationSummary` + `classification_summary`.
+  Three private error subclasses (`_InvalidRateOperandError`, `_InvalidVocabularyError`,
+  `_InvalidSummaryRequestError`) carry the spec-mandated `kind` discriminators
+  `invalid-rate-operand` / `invalid-vocabulary` / `invalid-summary-request` and are
+  deliberately underscore-prefixed and out of `__all__`.
+  Single-source-of-truth structure: `safe_rate` is the ONLY gate that builds a `Rate`;
+  `_matrix` is the ONLY NxN counter (used by `confusion_matrix`, `one_vs_rest_metrics` and
+  `classification_summary`); `binary_classification_metrics` derives every one of the seven
+  rates from `binary_confusion_counts`' cells alone; `classification_summary` contains NO
+  independent arithmetic — it is a thin composition (binary path reads its counts/rates off
+  `binary_classification_metrics`; multiclass path validates the target first, then reads the
+  shared `_matrix` and `one_vs_rest_metrics`). Balanced accuracy is averaged over exact
+  `Fraction`s taken from the two component rates' stored numerator/denominator, so `2/3` stays
+  exactly `2/3`, and it is undefined (never `0`) whenever either component is undefined.
+- `django-app/report_v2/tests/test_classification.py` — NEW, 38 hermetic `SimpleTestCase`
+  tests in six named classes (`BinaryHandCheckTests`, `ZeroDenominatorNullTests`,
+  `MulticlassMatrixTests`, `ValidationGuardTests`, `NamingAndScopeTests`,
+  `ReuseAndPurityTests`), carrying the standard staticfiles/SSL/locmem
+  `override_settings` trio. Reuses the Task-02 in-memory fixtures `binary_fixture`,
+  `binary_fixture_with_missing_gt`, `binary_fixture_no_positive_gt`,
+  `three_class_fixture` (lifted via `pairs_from_rows` on the real keys
+  `gt_label`/`pred_label` and `gt_class`/`pred_class`). No ORM, no `*_db` builders, no DB
+  access at all (the isolated run creates and destroys NO database — a strictly stronger
+  DB-free signal than the `Skipping setup of unused database(s)` line).
+- `django-app/report_v2/measurements/__init__.py` — EDITED (re-exports only, the established
+  package-marker pattern): all 13 pre-existing predictions exports preserved verbatim, plus
+  the 24 new classification names and an updated module docstring. `len(__all__)` is now 38.
+
+### Delegation split (pi) vs orchestrator-authored
+The coding of all three files was DELEGATED to `pi` (`pi --print --no-session --approve
+--model qwen3.8-flash-next`, run from inside the repo) through ONE self-contained,
+tightly-scoped prompt (`/tmp/pi-task07-prompt.txt`, ~38 KB) that fixed the exact three-file
+list and forbidden paths, the required public API with field-by-field semantics, the
+null-plus-reason contract, the stable-declared-order matrix rule, the required-explicit-
+`target_class` rule and its validation-before-counting ordering, the bool-is-not-a-class rule,
+the enforceable no-score-ranking naming scan rules, the eight DONE-WHEN clauses with their
+named-test mapping, the hand-check ground truth, and the exact verification commands. pi
+authored all three files and self-reported green (38 / 155 / 16).
+
+The orchestrator (this session) independently, WITHOUT editing any product file:
+- re-ran all three verification suites against the venv and captured real output (twice;
+  the counts are stable across runs);
+- wrote and ran a pure-Python oracle BEFORE delegating (`/tmp/proto_task07.py`) to fix the
+  expected hand-check values independently of pi; it reproduced the runbook numbers exactly;
+- audited pi's implementation line-by-line and every test body for real (non-tautological)
+  assertions — all 38 assert exact numerators/denominators, typed `kind` values, message
+  content, permutation geometry or JSON round-trips;
+- wrote and ran an independent adversarial probe (`/tmp/task07_probe.py`) that drives the
+  PUBLIC API directly, independent of pi's own test file: **135 checks, ALL PROBE ASSERTIONS
+  PASSED**. It additionally proves things pi's suite does not: the group-denominator form of
+  accuracy, that the balanced accuracy is the exact `(sens+spec)/2` rational, an
+  all-excluded population (`matching 3 / eligible 0 / exclusions 3`, every rate null with a
+  reason), disjoint-then-precedence attribution of `missing_ground_truth` over
+  `missing_prediction`, a genuinely ASYMMETRIC declared-order permutation proof (a symmetric
+  example cannot distinguish a correct implementation from a data-encounter-order one), that a
+  first-seen class value does not decide row 0, order-invariance of the diagonal,
+  `cell()` indexing by class rather than by position, JSON serialisability of every value
+  object, non-mutation and determinism of repeated calls, the full exclusion/purity token
+  scan of the on-disk bytes, and `pairs_from_rows` `None` preservation.
+
+Two probe-side defects were found and fixed during that audit; BOTH were mine, not pi's (a
+list-vs-tuple comparison on `pairs_from_rows`, and one hand-computed expectation for the
+reversed-order matrix), and fixing them produced no change to any product file.
+
+### Validation commands + real results (run from `django-app/`, project virtualenv)
+```
+$ .venv/bin/python manage.py test report_v2.tests.test_classification --noinput -v 2
+    Found 38 test(s).  Ran 38 tests in 0.012s  OK        (all 38 individually "... ok")
+    no database created/destroyed — zero DB lifecycle; "Skipping setup of unused database(s): audit, default."
+
+$ .venv/bin/python manage.py test report_v2 --noinput -v 1
+    Found 155 test(s).  Ran 155 tests in 0.211s  OK      (117 pre-existing + 38 new)
+
+$ .venv/bin/python manage.py test lunit_audit --noinput -v 1
+    Found 16 test(s).  Ran 16 tests in 0.407s  OK         (16/16 baseline, no regression)
+
+$ git diff --check
+    clean (exit 0)
+
+$ git status --porcelain
+    M  django-app/report_v2/measurements/__init__.py
+    ?? django-app/report_v2/measurements/classification.py
+    ?? django-app/report_v2/tests/test_classification.py
+
+$ git diff --name-only HEAD -- upload/models.py lunit_audit/settings.py report/ \
+      report_v2/projects report_v2/definitions report_v2/tests/factories.py \
+      report_v2/measurements/predictions.py report_v2/dates.py
+    (no output) => every forbidden/adjacent path is byte-identical to HEAD
+
+$ .venv/bin/python -m py_compile -q <the three files>       -> exit 0
+$ PYTHONPATH=. .venv/bin/python /tmp/task07_probe.py        -> ALL PROBE ASSERTIONS PASSED (135 checks)
+$ .venv/bin/python /tmp/proto_task07.py                     -> oracle reproduces the runbook values
+$ stat the sample snapshot DB (never opened/read/migrated): mtime unchanged 2026-06-18 22:51:24
+```
+Repeated runs are deterministic (fixed 38 / 155 / 16). The single expected
+`lunit_audit.W002` (LLM_BASE_URL over HTTP / DEBUG=False) system-check warning is
+informational and unrelated to this task.
+
+### Hand-check values actually observed (from the live implementation, not from the docs)
+Binary block — `binary_fixture()`, vocabulary `BinaryClassVocabulary(1, 0)`:
+`TP=2, FN=1, FP=1, TN=2`; `eligible(matching)=6`, `exclusions=0`;
+`accuracy 4/6`, `sensitivity 2/3`, `specificity 2/3`, `PPV 2/3`, `NPV 2/3`,
+`balanced_accuracy 2/3` (label exactly `"Balanced accuracy"`) — all six `value ~= 2/3`;
+`predicted_negative_fraction 3/6` and its denominator equals the group `n` (`eligible`),
+while sensitivity's denominator (`tp+fn = 3`) is distinct from it.
+Missing-GT variant: `matching=7, eligible=6, exclusions=1`,
+`excluded == {"missing_ground_truth": 1}`, and all four cells + all seven rates are
+byte-identical to the six-row case (`as_dict()` equality asserted).
+No-positive-GT variant (`binary_fixture_no_positive_gt()`): `counts 0/0/3/3`;
+`sensitivity.value is None` with a stated reason naming sensitivity and its zero
+denominator, operands `0/0`, and `value is not 0` / `repr(value) != "0"`;
+`balanced_accuracy` also `None` (its reason names the undefined component);
+`PPV` is a **legitimate** `0.0` over denominator `3` with `null_reason is None` — proving
+the module distinguishes a real zero from an undefined rate; group `n = 6` stays distinct
+from `positive_cases = 0`, and accuracy keeps the group denominator `6`.
+
+Multiclass block — declared order `("A","B","C")`, `three_class_fixture()`:
+`cells == ((1,1,0),(0,1,1),(1,0,1))`, `rows_are="ground_truth"`,
+`columns_are="prediction"`, `n=6`, `row_totals == column_totals == (2,2,2)`,
+`accuracy 3/6 == 0.5`; class `A`: `TP=1, FN=1, FP=1, TN=3`, `sensitivity 1/2`,
+`specificity 3/4`, `PPV 1/2`, `NPV 3/4`. A shuffled declared order
+`("A","C","B")` yields the correspondingly permuted
+`((1,0,1),(1,1,0),(0,1,1))`, and the probe's asymmetric case
+`[("A","B"),("A","B"),("B","A"),("C","C")]` gives `(A,B,C) -> ((0,2,0),(1,0,0),(0,0,1))`
+vs `(C,B,A) -> ((1,0,0),(0,0,1),(0,2,0))` — the geometry follows the DECLARATION, not
+the order rows arrive in.
+
+### Where each DONE-WHEN guarantee is asserted (test names)
+- binary hand-check reproduces exactly -> `test_hand_check_binary_block_reproduces_exactly`
+  (+ `test_predicted_negative_fraction_uses_the_group_denominator`,
+  `test_missing_ground_truth_row_is_excluded_and_does_not_move_the_metrics`,
+  `test_exclusion_reason_counts_are_non_overlapping_and_reconcile`)
+- removing all GT positives makes sensitivity NULL with a reason, not 0, and keeps the
+  positive-case denominator distinct from the group count ->
+  `test_removing_all_gt_positives_makes_sensitivity_null_not_zero`,
+  `test_positive_case_denominator_is_kept_distinct_from_the_group_count`
+- zero denominators never become 0 estimates (table-driven over six populations, plus the
+  `safe_rate(0,0)` vs `safe_rate(0,5)` distinction and operand validation) ->
+  `test_zero_denominator_never_becomes_a_zero_estimate`,
+  `test_safe_rate_rejects_invalid_operands`,
+  `test_matrix_without_any_eligible_pair_has_null_accuracy`
+- multiclass matrix / accuracy / class-A one-vs-rest ->
+  `test_hand_check_multiclass_block_reproduces_exactly`,
+  `test_target_class_one_vs_rest_rates_for_class_a`,
+  `test_cell_lookups_follow_declared_geometry`,
+  `test_declared_class_order_is_stable_and_not_data_encounter_order`
+- a multiclass rate requested WITHOUT `target_class` fails validation (missing required
+  kwarg -> `TypeError`; aggregate entry point / `None` / `""` / `"   "` ->
+  `MissingTargetClassError` whose message forbids averaging; and the guard fires BEFORE any
+  counting even when an out-of-vocabulary value is present) ->
+  `test_multiclass_rate_without_target_class_fails_validation`,
+  `test_missing_target_class_validation_precedes_counting`,
+  `test_require_target_class_helper`,
+  `test_no_unqualified_multiclass_sensitivity_is_exposed`
+- out-of-vocabulary classes rejected with a typed error naming value/side/vocabulary (plus
+  bool-is-not-a-class, malformed class orders, malformed pair containers) ->
+  `test_matrix_rejects_out_of_vocabulary_classes`,
+  `test_binary_rejects_out_of_vocabulary_labels`,
+  `test_bool_is_not_silently_accepted_as_a_binary_class`,
+  `test_invalid_class_order_rejected`,
+  `test_incompatible_pair_containers_rejected`, `test_empty_population_raises_typed_error`
+- balanced accuracy is labelled balanced accuracy and is NOT named for a score-ranking
+  statistic anywhere; no cross-class averaging introduced ->
+  `test_balanced_accuracy_is_labelled_balanced_accuracy_and_never_roc_auc`
+  (label equality + recursive key walk over `as_dict()` + module-source scan +
+  `dir()` + dataclass field-name scan),
+  `test_no_roc_auc_or_cross_class_averaging_api_is_introduced` (forbidden-token set over
+  `dir()`; no public `average`-named callable),
+  `test_balanced_accuracy_is_the_mean_of_sensitivity_and_specificity` (exact `Fraction`
+  equality — pins the definition WITHOUT naming it after a ranking statistic)
+- purity / no divergent second implementation ->
+  `test_no_module_level_django_or_orm_import`,
+  `test_classification_summary_uses_the_same_primitives`,
+  `test_metrics_are_pure_and_inputs_not_mutated`, `test_as_dict_is_json_serialisable`,
+  `test_rate_accessor_rejects_unknown_metric`
+
+### Deviations / notes
+- **No blockers, and no validation was weakened to obtain green.** Every guard raises.
+- One deliberate representativeness choice, accepted as correct and arguably preferable: the
+  `accuracy` Rate carries the honest operands `(tp+tn)/n` (`4/6`) rather than a pre-reduced
+  `2/3`, so the group denominator stays visible and the documented `(tp+tn)/n` formula is
+  literally reflected; `value` is still exactly `2/3`, and every other rate carries its
+  natural operands. This is asserted explicitly in
+  `test_hand_check_binary_block_reproduces_exactly` and in the probe.
+- `confusion_matrix`/`one_vs_rest_metrics` reject an entirely EMPTY input with
+  `EmptyPopulationError`, which is kept distinct from "rows present but all excluded"
+  (`eligible == 0`, rates null with reasons) — a documented design decision beyond the literal
+  spec wording; the all-excluded path is what the null-rate contract governs, and it is
+  covered. If a later task wants an empty population to yield an all-null summary rather than
+  a typed error, that is a one-line change in `_validate_pairs_container` (flagged for the
+  Task 08/13 authors, not applied here).
+- The scan for the frozen no-score-ranking decision is deliberately asymmetric (plain
+  substring for `auc`, word-boundary regex for a standalone `roc`) because ordinary English
+  words such as "process"/"procedure" contain the three letters `roc`; a naive substring scan
+  on `roc` would be an unsatisfiable trap. Both directions are asserted, and the module's
+  prose avoids the two words entirely (it says "score-based ranking metrics are out of
+  scope").
+- No new models, migrations, packages, dependencies, fixtures or test files; no settings /
+  urls / views / legacy `report/` / `upload/models.py` change; no deploy, no email, no
+  network. The sample snapshot DB `~/serverfiles/downloads/db_2026-06-18.sqlite3` was NOT
+  opened, read or migrated (mtime unchanged). The three suites use the locmem mail backend and
+  the runner's isolated in-memory test databases only.
+
+[TASK-07 COMPLETE]
