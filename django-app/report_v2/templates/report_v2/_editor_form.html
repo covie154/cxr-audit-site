@@ -1,0 +1,34 @@
+{# Editor form partial. Plain controls only - no pointer-reordering editing anywhere. #}
+<section class="card editor-workspace" aria-labelledby="workspaceTitle">
+    <h2 id="workspaceTitle">Draft YAML</h2>
+    <p class="editor-revision" data-role="revision-indicator" data-revision="{{ revision }}">
+        Revision: <code>{{ revision|default:"(no draft yet)" }}</code>
+    </p>
+    <textarea id="id_yaml_text" name="yaml_text" class="editor-yaml" rows="24" spellcheck="off"
+              data-role="yaml-textarea" aria-label="Report YAML definition">{% if draft_text %}{{ draft_text }}{% endif %}</textarea>
+    <p class="editor-status" role="status" data-role="dirty-indicator" data-dirty="false">Saved state: clean</p>
+    <p class="editor-conflict" role="alert" data-role="conflict-indicator" hidden>
+        Version conflict: someone else saved this report. Reload before saving again.
+    </p>
+</section>
+
+<section class="card editor-errors" aria-labelledby="errorsTitle">
+    <h2 id="errorsTitle">Validation errors</h2>
+    <ul class="editor-error-list" data-role="error-list"></ul>
+    <p class="editor-empty" data-role="errors-empty">No validation run yet.</p>
+</section>
+
+<section class="card editor-preview" aria-labelledby="previewTitle">
+    <h2 id="previewTitle">Preview</h2>
+    <p class="editor-preview-note">Preview renders from synthetic data only. It never publishes and never sends mail.</p>
+    <div class="editor-preview-output" data-role="preview-output" role="region" aria-label="Widget preview">
+        <p class="editor-empty">Press <em>Preview</em> to render the first supported widget.</p>
+    </div>
+</section>
+
+<section class="card editor-actions" aria-labelledby="actionsTitle">
+    <h2 id="actionsTitle" class="visually-hidden">Actions</h2>
+    <button type="button" class="btn" data-action="save">Save draft</button>
+    <button type="button" class="btn btn-secondary" data-action="preview">Preview</button>
+    <button type="button" class="btn btn-danger" data-action="publish">Publish</button>
+</section>

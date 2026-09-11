@@ -1252,3 +1252,64 @@ pi (--model qwen3.8-flash-next) produced the initial two files from the single `
 - None functional. No settings.py edit (kept the module-local `default_root()` to avoid any settings reflow, per the "only if strictly needed" guardrail). No new models/migrations. No real persistent root, no public static/media, no `~/serverfiles/downloads/db_2026-06-18.sqlite3` touched. Everything left uncommitted for the orchestrator.
 
 [TASK-11 COMPLETE]
+
+## Task 12 (implementing session report)
+
+**Changed/created files**
+- `django-app/report_v2/admin_views.py` (NEW) — function-based views `editor`, `editor_new`, `editor_save_draft`, `editor_preview`, `editor_publish` mirroring `views.py` idiom. Every view passes a `require_admin` decorator built on the shared house gate `report_v2.permissions.can_edit_catalog`/`_is_admin`; anonymous -> 302 to login, authenticated non-admin -> 403, both BEFORE any model/filesystem work. Mutators carry `@require_POST` + `@csrf_protect` on top of the admin gate. Thin UI only: all durable moves delegate to Task 11 `DefinitionRepository` (`save_draft`/`read_draft`/`validate_preview`/`publish`, `StaleRevisionError`->409, `PublishRejectedError`->422), validation to loader 03 + validation 09 via `validate_preview`, preview data to `evaluation.evaluate` (Task 10). No new persistence/validation/evaluation logic, no models, no migrations, no drag-and-drop surface.
+- `django-app/report_v2/urls.py` (EDIT — append-only): `git diff --stat` = `19 +++++++++++++++++++`, 0 code deletions (the only `^-` line in the diff is the `--- a/...` header). The reserved `/report/layout/` + `/report/layout/editor/<action>/` routes are inserted BEFORE the `/report/<slug>/` catch-all; distinct names `editor`, `editor_save_draft`, `editor_preview`, `editor_publish`, `editor_new`. `/report-old/` and `/report/<slug>/` untouched.
+- `django-app/report_v2/templates/report_v2/layout.html` + `_editor_form.html` (NEW) — extend the project base template; report select/create, YAML `<textarea>`, validation-errors panel, Save-draft/Preview/Publish buttons, dirty + revision + conflict indicators. Plain buttons, no DnD.
+- `django-app/report_v2/static/report_v2/editor.js` + `editor.css` (NEW) — framework-free, no CDN; dirty-state tracking + `fetch` calls to the four endpoints with the CSRF token.
+- `django-app/report_v2/tests/test_editor.py` (NEW) — 9 named tests via `django.test.Client`, admin via `force_login` on a gate-admin user, filesystem isolated through an injected scratch `REPORT_V2_ROOT` (`override_settings`/monkeypatched `default_root`). Nothing touches the real persistent root or `~/serverfiles/downloads/db_2026-06-18.sqlite3`.
+
+**Fixes applied this session** (tests were failing on first run):
+- `test_editor.py`: added missing `reverse` import (`from django.urls import Resolver404, resolve, reverse`).
+- `admin_views.py` docstring + `editor.js` header: removed the literal tokens `drag-`/`drag-and-drop` (the no-DnD source guard `assertNotIn('drag-')` matched the prose). No functional change.
+
+**Test commands (from `django-app/`, project venv)**
+```
+.venv/bin/python manage.py test report_v2.tests.test_editor --noinput -v 2
+.venv/bin/python manage.py test report_v2 --noinput -v 1
+.venv/bin/python manage.py test lunit_audit --noinput -v 1
+git diff --check
+```
+Real output tails:
+- editor suite: `Found 9 test(s).` ... `Ran 9 tests in 0.463s` / `OK` (all 9 individually `ok`).
+- report_v2: `Ran 334 tests in 0.831s` / `OK` (baseline 325 preserved + 9 new).
+- lunit_audit: `Ran 16 tests in 0.443s` / `OK` (16/16 baseline preserved).
+- `git diff --check`: clean (only the pre-existing CRLF-normalisation warning for `urls.py`).
+- The `lunit_audit.W002 LLM_BASE_URL uses HTTP` warning is the expected pre-existing system-check warning, not a failure.
+
+**Status-code matrix (full HTTP stack; from `test_non_admin_cannot_access_editor` / `test_missing_csrf_rejected` / admin paths)**
+
+| actor | editor page (GET) | save draft (POST) | preview (POST) | publish (POST) |
+|---|---|---|---|---|
+| anonymous | 302 -> `/login` | 302 (redirect, not 200) | 302 | 302 |
+| authenticated non-admin | 403 | 403 | 403 | 403 |
+| admin, no CSRF token | 200 | 403 (CSRF cookie not set) | 403 | 403 |
+| admin, valid | 200 | 200 (returns `revision`) | 200 | 200 (returns `version`) |
+
+Direct hand-crafted `RequestFactory` POSTs (bypassing the client) for `AnonymousUser()` and the normal user also returned non-200 in `(302, 403)` for all four mutators, and the scratch root contained nothing matching `*forbidden*` — proving the gate runs before any filesystem/model work.
+
+**CSRF-missing rejection** (`test_missing_csrf_rejected`, `Client(enforce_csrf_checks=True)`): admin POST to save/preview/publish without a token -> 403 (`Forbidden (CSRF cookie not set.)`), asserted `400 <= status < 500`. Bonus `test_bad_csrf_token_rejected`: a supplied-but-wrong 64-char token -> 403 (`Forbidden (CSRF token from POST incorrect.)`).
+
+**Invalid-YAML publish pointer read-back proof** (`test_invalid_yaml_does_not_replace_published`): publish VALID_YAML -> 200, `pointer_before = repo()._read_pointer("guarded")` is not None; POST INVALID_YAML to publish -> 422 with non-empty `errors`; a **fresh** `DefinitionRepository` instance reads `_read_pointer("guarded")` back `== pointer_before` — pointer byte-for-byte unchanged.
+
+**Preview mail + no-publish proof** (`test_preview_does_not_publish_or_send_mail`): for BOTH valid and invalid YAML, POST preview -> 200 with `errors` in payload, then a fresh repo asserts `_read_pointer("previewer") is None`, `read_draft("previewer")` raises `DraftNotFoundError`, and `len(mail.outbox) == 0`. `editor_preview` contains no `publish` call at all.
+
+**Stale-conflict no-clobber proof** (`test_save_draft_and_stale_conflict`): save -> 200 `revision` rev1 (draft read-back == VALID_YAML); a concurrent writer advances the draft behind the client; stale save with `expected_revision=rev1` -> 409 `status=="conflict"`; on-disk `read_draft("concurrent")[0]` equals the concurrent writer's `advanced` text, NOT the `"attempted-clobber: yes"` body.
+
+**Second-report independence** (`test_admin_can_create_second_report`): `editor_new` report-a + report-b both 200; both pointers initially None; publish report-a -> 200 `version=="report-a@r1"`, `_read_pointer("report-a")=="report-a@r1"` while `_read_pointer("report-b") is None`; republish report-a -> `report-a@r2` and report-b's pointer is still None.
+
+**Route-ordering resolve proof** (`test_editor_route_before_slug`): `resolve("/report/layout/").func is av.editor` with `match.kwargs == {}` (not swallowed as a slug) and `url_name == "editor"`; `resolve("/report/").func is views.index`; every named editor route reverses under `/report/layout/`; `resolve("/report/some-random-slug/")` still raises `Resolver404` (no catch-all added); admin GET `/report/layout/` renders 200 through the full stack (base-template inheritance + static assets verified).
+
+**No drag-and-drop** (`test_no_drag_and_drop`): scans `admin_views.py`, both templates, `editor.js`, `editor.css` for `draggable/ondrag/ondrop/drag-/drag_/grab/dragover/setdata/getdata/dropeffect` — none present.
+
+**Deviations / notes**
+- `editor_publish` surfaces validation failure as HTTP 422 (`status:"rejected"`) carrying the error list — the spec fixed the pointer-unchanged invariant, not the exact status; 422 is a 4xx distinct from 409/403.
+- Preview evaluates `evaluation.evaluate` over an empty synthetic row set for the first published widget; an evaluation/population error is returned as read-only `preview_error` text (never a 500, never a publish).
+- `require_admin` deliberately does not inherit the inner view's `require_POST`/`csrf_protect` attributes (so the gate cannot reject the very POST the view serves); `csrf_exempt` is absent/false so the CSRF middleware keeps protecting every mutator.
+- Permissions/CSRF were NOT weakened to make any test pass; `urls.py` was not reordered; no git state commands were run — tree left uncommitted for the orchestrator.
+- pi was NOT used for any unit this session; all deliverables were authored/written directly (continuation of prior session's authored files).
+
+[TASK-12 COMPLETE]

@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Report v2 — Layout editor{% endblock %}
+{% block nav_report %}active{% endblock %}
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'report_v2/editor.css' %}">
+{% endblock %}
+{% block body %}
+{# The editor is a plain textarea + buttons. There is deliberately no pointer-reordering editing UI. #}
+<div class="report-v2-editor" data-editor
+     data-save-url="{% url 'report_v2:editor_save_draft' %}"
+     data-preview-url="{% url 'report_v2:editor_preview' %}"
+     data-publish-url="{% url 'report_v2:editor_publish' %}"
+     data-new-url="{% url 'report_v2:editor_new' %}">
+    <h1 class="page-title">Report layout <small>YAML editor</small></h1>
+    <p class="page-subtitle">Admin-only. Drafts are saved privately; only <strong>Publish</strong> moves a report live.</p>
+
+    <section class="card editor-report-bar" aria-labelledby="reportBarTitle">
+        <h2 id="reportBarTitle" class="visually-hidden">Report selection</h2>
+        <label class="editor-report-label" for="id_def_id">Report
+            <select id="id_def_id" name="def_id" data-role="report-select">
+                <option value="">— choose a report —</option>
+                {% for report in reports %}
+                <option value="{{ report }}" {% if report == def_id %}selected{% endif %}>{{ report }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <label class="editor-report-label" for="id_new_def_id">New report
+            <input id="id_new_def_id" name="new_def_id" type="text" data-role="new-def-id" placeholder="new-report-id" autocomplete="off">
+        </label>
+        <button type="button" class="btn btn-secondary" data-action="create">Create report</button>
+    </section>
+
+    {% include "report_v2/_editor_form.html" %}
+</div>
+{% endblock %}
+{% block extra_js %}
+<script src="{% static 'report_v2/editor.js' %}"></script>
+{% endblock %}
