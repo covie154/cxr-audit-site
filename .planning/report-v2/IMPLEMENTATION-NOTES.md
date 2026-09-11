@@ -1108,3 +1108,86 @@ widget with `ci.enabled=False` yields render data free of CI keys
   the real ePHI sqlite was never read.
 
 [TASK-09 COMPLETE]
+
+## Task 10 (implementing session report — resume)
+
+Prior attempt wrote results.py then died before the two files that matter. This resume wrote
+ONLY the two missing files against the frozen results.py contract, called the existing modules,
+and verified. results.py was NOT touched (git diff vs HEAD is empty for it). No git state command
+was run; everything is left uncommitted.
+
+### Changed files (exactly the two new files + this notes append)
+- django-app/report_v2/evaluation.py                (NEW — orchestrator + frozen RequestContract)
+- django-app/report_v2/tests/test_evaluation.py     (NEW — 17 invariant tests)
+
+### Test commands (from django-app/, project venv python) and real output tails
+1) .venv/bin/python manage.py test report_v2.tests.test_evaluation --noinput -v 1
+     -> "Ran 17 tests in 0.005s" / "OK"  (EXIT=0)
+2) .venv/bin/python manage.py test report_v2 --noinput -v 1
+     -> "Ran 313 tests in 0.254s" / "OK"  (296 baseline + 17 new = 313; >=296 preserved)
+3) .venv/bin/python manage.py test lunit_audit --noinput -v 1
+     -> "Ran 16 tests in 0.405s" / "OK"   (16/16 baseline preserved)
+   (lunit_audit.W002 LLM_BASE_URL-HTTP system-check warning is the expected pre-existing warning.)
+   git diff --check  -> clean (exit 0).
+
+### Different-anchor scenario (same rows, two measurements)
+rows: 09-01 dur=200 / 09-02 dur=400 / 09-10 gt=None dur=500 (newest row complete for duration,
+incomplete for binary).
+  binary anchor  = 2026-09-02
+  duration anchor= 2026-09-10   (differ=True — the newest incomplete row does NOT advance D)
+
+### Preserved-D + subgroup_latest_date scenario (filter_overrides={'site':'A'})
+rows: 09-20 site=B / 09-10 site=A / 09-05 site=A.
+  anchor D (=window_end) = 2026-09-20 (global max, preserved)
+  subgroup_latest_date   = 2026-09-10  (site-A real latest, strictly < D)  -> True
+
+### Count-reconciliation figures
+matching == eligible + excluded_incomplete held with no other drop (incoming==matching), and the
+four-reason partition over the same bucket set:
+  incoming=5 matching=2 eligible=1 excluded_incomplete=1
+  excluded_by_reason={out_of_window:1, foreign_identifier:1, filtered_out:1, missing_required:1}
+  total_dropped=4 == sum(partition)=4
+
+### Mutually-exclusive exclusion partition
+Each dropped row carried EXACTLY one reason (verified per-reason =1 each across the four reasons),
+and sum(values)==total_dropped — a true partition (single-reason, disjoint, complete).
+
+### Override / invalid-id / raw-rows rejections (+ exact typed errors)
+  unknown widget id          -> InvalidWidgetReferenceError
+  disallowed override (layout/measurement/policy-version/CI) -> DisallowedOverrideError (at
+                                                    RequestContract construction, BEFORE evaluation)
+  unknown measurement id     -> UnknownMeasurementError
+  unknown policy reference   -> UnknownPolicyError
+  aggregate widget asked raw rows -> NonAggregateRowsError
+  groups over max_groups     -> GroupCardinalityError
+  page_size over MAX_PAGE_SIZE(=500) -> PaginationBoundError
+
+### common_population equal-n_complete evidence (paired widget.kappa)
+  {'filter_identity':'widget.kappa:complete_rows','n_complete':3,
+   'sides':{'reference':3,'prediction':3}}  — both sides == n_complete via the SAME shared
+  report_v2.measurements.complete_rows filter.
+
+### evaluation.py IMPORTS-and-CALLS (does not reimplement) — named import points
+  from report_v2.projects import require_project_context, CrossProjectReferenceError, ...
+  from report_v2.dates   import bucket_range, capture_anchor, resolve_request
+  from report_v2.measurements import binary_classification_metrics, cohen_kappa, mcnemar,
+       fn_fp_cases, complete_rows, categorical_count, duration_summary, record_count,
+       pairs_from_rows, wilson_interval, require_proportion_ci, BinaryClassVocabulary
+  from report_v2.results  import ResultPayload, CountAccounting, CommonPopulation, DateMetadata,
+       SourceMetadata, VersionMetadata, EVALUATOR_NAME, SCHEMA_VERSION
+  (test test_calls_existing_modules_not_reimplemented asserts these names appear in the source;
+   test_evaluation_module_is_pure asserts no django.db / ORM token appears.)
+
+### Bailed out of pi?
+Yes — wrote both files directly (the sanctioned bail-out). No pi process was ever backgrounded, so
+nothing was left running. Verified via the three real suites, not a pi-shaped artifact.
+
+### Deviations / notes
+- evaluate() accepts injectable `widgets=` + `published_widget_ids=` so an
+  UnsupportedMeasurementId can be exercised through an explicit bogus WidgetSpec without touching
+  the frozen PUBLISHED catalogue.
+- The reserved-block assertion uses a seed-derived in-span offset (FIXED_SEED % 1000 + idx) so all
+  accessions stay inside [RESERVED_ACCESSION_BASE, +1_000_000).
+- No DB writes; SimpleTestCase only; no new models/migrations; real ePHI sqlite never read.
+
+[TASK-10 COMPLETE]
