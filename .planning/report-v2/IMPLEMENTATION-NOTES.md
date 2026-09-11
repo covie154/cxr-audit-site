@@ -1191,3 +1191,64 @@ nothing was left running. Verified via the three real suites, not a pi-shaped ar
 - No DB writes; SimpleTestCase only; no new models/migrations; real ePHI sqlite never read.
 
 [TASK-10 COMPLETE]
+
+## Task 11 (implementing session report)
+
+### Changed files (all left UNCOMMITTED for the orchestrator; no git state commands run)
+- ADDED `django-app/report_v2/definitions/repository.py` — `DefinitionRepository(root, *, project_id)`, `PublishReceipt`, typed errors (`RepositoryError` base + `InvalidDefinitionIdError`, `PathTraversalError`, `PathEscapeError`, `StaleRevisionError`, `DuplicateVersionError`, `PublishRejectedError`, `DraftNotFoundError`), `validate_definition_id`, `default_root()`.
+- ADDED `django-app/report_v2/tests/test_repository.py` — 12 Django `SimpleTestCase` tests, hermetic `tempfile.mkdtemp()` roots only, synthetic YAML, NO DB writes.
+- settings.py NOT modified. The non-public-static assertion is satisfied by a module-local `default_root()` that reads `settings.REPORT_V2_ROOT` and falls back to `<BASE_DIR>/private_data/report_v2_definitions` (outside STATIC_ROOT and every STATICFILES_DIRS source). No settings reflow was needed.
+
+### Reuse (not reimplemented)
+- loader (Task 03): `load_report_definition` / `DefinitionError` for strict-YAML validation.
+- validation (Task 09): `validate_display`, `ensure_whisker_is_not_ci`, `ensure_no_calculated_baseline_band`, `DisplayValidationError` — `validate_display` is run before publish, so a failing-preview definition cannot be published.
+- projects (Task 04): `require_project_context` / `CrossProjectReferenceError` for the wrong-project guard (injected test `ProjectRegistry`).
+
+### Verification commands + real output tails (from django-app/, venv python)
+- `.venv/bin/python manage.py test report_v2.tests.test_repository --noinput -v 2`  ->  EXIT=0, `Ran 12 tests in 0.091s` / `OK` (12/12 green)
+- `.venv/bin/python manage.py test report_v2 --noinput -v 1`                        ->  EXIT=0, `Ran 325 tests in 0.310s` / `OK` (313 baseline + 12 new preserved)
+- `.venv/bin/python manage.py test lunit_audit --noinput -v 1`                      ->  EXIT=0, `Ran 16 tests in 0.449s` / `OK` (16 baseline)
+- `git diff --check` -> clean (exit 0). `git status --short` -> only the two intended `??` files.
+- Pre-existing `lunit_audit.W002` LLM_BASE_URL-HTTP system-check warning is expected, not a failure.
+
+### Typed error raised for EACH rejection class (live evidence)
+- traversal `../escape` / `/etc/passwd` / NUL -> `InvalidDefinitionIdError` (validate_definition_id runs before any path join)
+- symlink-escape (draft symlink resolving outside root on read) -> `PathEscapeError`
+- logical containment breach after normpath -> `PathTraversalError`
+- wrong-project ref (measurement owned by another registered project) -> `CrossProjectReferenceError`
+- duplicate version (existing blob, differing content) -> `DuplicateVersionError`
+- stale revision on save_draft AND on publish -> `StaleRevisionError`
+- invalid/anchor YAML at publish and display-validation failure at publish -> `PublishRejectedError` (pointer UNCHANGED)
+- missing draft read -> `DraftNotFoundError`
+
+### Failed-publish crash-safety evidence (pointer is the last durable move)
+Injected `os.replace` failure on the pointer temp file AFTER the blob was fsync'd+replaced:
+`crash old_bytes = b'cs@r1' after_bytes = b'cs@r1' UNCHANGED= True`
+i.e. the on-disk pointer still references the OLD version (`cs@r1`), never blank/partial. Blob write (tmp + os.fsync + os.replace) completes BEFORE any pointer move; the pointer itself is flipped atomically via its own tmp+fsync+os.replace.
+
+### Concurrency mechanism + no-loss result
+Mechanism: **fcntl.flock(LOCK_EX) on a per-def_id lockfile** under `<root>/.locks/<def_id>`. Documented in the module docstring + publish() docstring. The read-pointer -> next-version -> write-blob -> flip-pointer sequence is serialised inside the exclusive lock; different def_ids use independent lockfiles/pointer files (independent publishing).
+Same-def contention proof (N=8 threads, barrier-synchronised, identical def_id `hot`):
+`CONC n= 8 errs= [] distinct= 8 final= hot@r8 final-exists= True`
+All 8 versions distinct (serialised +1 never repeats), zero escaped exceptions, final pointer is one complete `hot@r8` token and its blob is durable — no lost update, no interleaved/partial content.
+
+### Container-mount inode-swap evidence (immutable blobs; pointer swapped by inode, never in-place)
+Republish of `mnt`: `inode before 156858 after 156860 CHANGED= True oldblob-stable= True`
+The pointer file's inode changes across the swap (os.replace inode swap, container/bind-mount-safe) while the previously published blob's inode is stable — old blobs are never mutated in place; a changed republish yields a NEW version blob and the old one is retained.
+
+### Not-public-static assertion
+`test_runtime_definitions_not_public_static` proves the injected temp root AND the configured default (`default_root()`) are not inside `STATIC_ROOT` nor any `STATICFILES_DIRS` collectstatic source, and that an operator `REPORT_V2_ROOT` override (via `self.settings(...)`) stays private. Result: green.
+
+### Fixes made as verifier (beyond pi's first draft)
+1. `publish()` accepted `expected_revision` but never enforced it -> added a value-correct stale-revision guard executed under the lock, before any durable move (satisfies the Done-when "stale on publish" item; new test `test_stale_revision_rejected_on_publish`).
+2. Latent identity-vs-equality bug in the revision compare (`is not` instead of `!=`): a revision re-read from disk is always a distinct str object with equal value, so the happy-path publish wrongly raised StaleRevisionError. Fixed in both `save_draft` and the publish guard. Masked in pi's original suite because its callers passed `None` or genuinely-different tokens.
+3. Strengthened `test_concurrent_publishers_no_loss` with a same-def_id contention case (the actual flock target).
+4. Non-static test made non-vacuous (was `if default_root is not None` skipping because no configured root existed) via the module `default_root()` + STATICFILES_DIRS check.
+
+### pi / bail-out
+pi (--model qwen3.8-flash-next) produced the initial two files from the single `/tmp/pi_task11_spec.md`; it exited 0 and reported green, but I did NOT take that on faith — I verified all three suites myself and found+fixed the gaps above. No bail-out to hand-authoring was required (pi's output was usable after my fixes); pi was invoked once for this unit.
+
+### Deviations / blockers
+- None functional. No settings.py edit (kept the module-local `default_root()` to avoid any settings reflow, per the "only if strictly needed" guardrail). No new models/migrations. No real persistent root, no public static/media, no `~/serverfiles/downloads/db_2026-06-18.sqlite3` touched. Everything left uncommitted for the orchestrator.
+
+[TASK-11 COMPLETE]
