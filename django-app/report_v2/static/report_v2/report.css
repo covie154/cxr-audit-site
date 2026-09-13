@@ -5,3 +5,9 @@
 .report-v2-page h2 { margin-bottom: 12px; }
 .report-v2-page [role="status"] { color: var(--c-text-muted); }
 .report-v2-chart { width: 100%; height: 320px; }
+/* Long tables scroll inside the frame body instead of clipping the frame or overflowing the page. */
+.widget-body { max-height: 360px; overflow: auto; }
+.widget-body .widget-table { border-collapse: collapse; width: 100%; }
+.report-grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 16px; margin-bottom: 24px; }
+.report-grid > .widget-frame { min-width: 0; }
+@media (max-width: 720px) { .report-grid { grid-template-columns: repeat(1, minmax(0, 1fr)); } .report-grid > .widget-frame { grid-column: span 12 !important; } }

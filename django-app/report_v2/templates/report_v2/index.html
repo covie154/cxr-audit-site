@@ -10,6 +10,21 @@
     <h1 class="page-title">Report <small>v2</small></h1>
     <p class="page-subtitle">A new workspace for audit reports.</p>
     <p class="report-v2-legacy"><a href="{% url 'report:index' %}">Open the previous report</a> to generate reports, export results, or send email reports.</p>
+    <section class="card" aria-labelledby="publishedTitle">
+        <h2 id="publishedTitle">Published reports</h2>
+        {% if published_reports %}
+        <ul class="report-v2-list">
+            {% for entry in published_reports %}
+            <li class="report-v2-list-item">
+                <a class="report-v2-list-link" href="{% url 'report_v2:page' entry.slug %}">{{ entry.title|default:entry.slug }}</a>
+                <small class="report-v2-list-meta">{{ entry.slug }} · {{ entry.version }} · {{ entry.section_count }} section{{ entry.section_count|pluralize }}</small>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p id="noPublished" role="status">No reports are published yet. Published reports will appear here once an administrator publishes one from the layout editor.</p>
+        {% endif %}
+    </section>
     <section class="card" aria-labelledby="overviewTitle">
         <h2 id="overviewTitle">Overview</h2>
         <p id="chartStatus" role="status">Report sections are not configured yet. No study data are displayed.</p>

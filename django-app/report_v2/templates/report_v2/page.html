@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}{{ title }} — Report — PRIMER-LLM{% endblock %}
+{% block nav_report %}active{% endblock %}
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'report_v2/report.css' %}">
+{% endblock %}
+{% block body %}
+{# Server-hydrated, fault-isolated widget frames. All client behaviour lives in report.js and reads #}
+{# only the data-* contract below. Ordinary users receive no draft/editor/configuration affordances; #}
+{# those render only under the is_admin branch. The initial payload <pre> holds a view-side #}
+{# escape(json.dumps(...)) blob, so |safe below cannot introduce markup (XSS-safe by construction). #}
+<div class="report-v2-page" data-report-page data-slug="{{ slug }}" data-version="{{ version }}">
+    {# House pattern (cf. base.html logout form): the tag emits the hidden token field AND primes #}
+    {# the csrftoken cookie, which report.js then reads for its X-CSRFToken header. #}
+    <span class="widget-csrf" data-role="csrf" aria-hidden="true">{% csrf_token %}</span>
+    <h1 class="page-title">{{ title }} <small>{{ version }}</small></h1>
+    <p class="report-v2-legacy"><a href="{{ legacy_report_url }}">Open the previous report</a></p>
+    {% if is_admin %}
+    <p class="report-v2-adminbar">
+        <a class="btn btn-secondary" href="{% url 'report_v2:editor' %}">Edit layout</a>
+        <small>Drafts are private to admins and are never shown on this page.</small>
+    </p>
+    {% endif %}
+    {% for section in sections_ctx %}
+    <section class="report-section" data-section-id="{{ section.id }}">
+        <h2>{{ section.title }}</h2>
+        <div class="report-grid" style="grid-auto-rows: {{ grid.row_height_px|default:64 }}px;">
+            {% for f in section.widgets %}
+            <article class="widget-frame" data-widget-id="{{ f.id }}" data-type="{{ f.type }}"
+                     data-data-url="{{ f.data_url }}" data-context-token="{{ f.context_token }}"
+                     style="grid-column: span {{ f.width }}; grid-row: span {{ f.height }};">
+                <header class="widget-header"><h3>{{ f.title }}</h3></header>
+                <form class="widget-controls" data-role="controls" novalidate>
+                    {% if f.controls.date_range %}
+                    <label>From <input type="date" name="date_start" data-date="start"></label>
+                    <label>To <input type="date" name="date_end" data-date="end"></label>
+                    <label>Window
+                        <select name="date_relative" data-date="relative">
+                            <option value="">Default</option>
+                            <option value="D-7">Last 7 days</option>
+                            <option value="D-30">Last 30 days</option>
+                            <option value="D-90">Last 90 days</option>
+                            <option value="D-365">Last 365 days</option>
+                        </select>
+                    </label>
+                    {% endif %}
+                    {% for name in f.controls.filters %}
+                    <label>{{ name }} <input type="text" name="filter_{{ name }}" data-filter="{{ name }}" autocomplete="off"></label>
+                    {% endfor %}
+                    {% if f.controls.compare_by %}
+                    <label>Compare by
+                        <select name="comparison" data-comparison>
+                            <option value="">Default</option>
+                            {% for dim in f.controls.compare_by %}
+                            <option value="{{ dim }}">{{ dim }}</option>
+                            {% endfor %}
+                        </select>
+                    </label>
+                    {% endif %}
+                    <button type="submit" class="btn btn-primary" data-action="apply">Apply</button>
+                    <button type="reset" class="btn btn-secondary" data-action="reset">Reset</button>
+                </form>
+                <p class="widget-summary" role="status">{{ f.summary }}</p>
+                <div class="widget-body" data-widget-body>
+                    {# Server-side empty message, always present so report.js can read it per frame #}
+                    {# (report.js: node.querySelector('[data-role="empty-message"]')); hidden from view. #}
+                    <p class="widget-empty" data-role="empty-message" hidden>{{ f.empty_message }}</p>
+                    {% if f.payload.rows %}
+                    <table class="widget-table">
+                        <thead><tr>
+                            {% for key in f.payload.rows.0.keys %}<th>{{ key }}</th>{% endfor %}
+                        </tr></thead>
+                        <tbody>
+                        {% for row in f.payload.rows %}
+                            <tr>{% for value in row.values %}<td>{{ value }}</td>{% endfor %}</tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                    {% elif f.payload.error %}
+                    <p class="widget-empty">{{ f.summary }}</p>
+                    {% else %}
+                    <p class="widget-empty">{{ f.empty_message }}</p>
+                    {% endif %}
+                    {% if f.type == "table" %}
+                    <button type="button" class="btn btn-secondary widget-more" data-action="more" hidden>Show more</button>
+                    {% endif %}
+                </div>
+                <pre class="widget-initial" hidden data-initial-payload>{{ f.initial_json|safe }}</pre>
+            </article>
+            {% endfor %}
+        </div>
+    </section>
+    {% endfor %}
+    <noscript>JavaScript is required to update widget controls; the values above are the server-rendered defaults.</noscript>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script src="{% static 'report_v2/vendor/echarts.min.js' %}"></script>
+<script src="{% static 'report_v2/report.js' %}"></script>
+{% endblock %}

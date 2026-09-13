@@ -1313,3 +1313,109 @@ Direct hand-crafted `RequestFactory` POSTs (bypassing the client) for `Anonymous
 - pi was NOT used for any unit this session; all deliverables were authored/written directly (continuation of prior session's authored files).
 
 [TASK-12 COMPLETE]
+
+---
+
+## Task 13 — report routing, page state and widget frames
+
+**Deliverables (all on disk, uncommitted; commit belongs to coder):**
+- `report_v2/views.py` — index (unchanged behaviour + published list), report_page (server-hydrated,
+  fault-isolated frames, signed per-widget context token over slug|version|widget_id with a
+  domain-separated salt; every forged-input gate runs BEFORE the single ORM seam), widget_data
+  (strict order: json body -> top-level key allow-list -> id validity -> token verify/binding ->
+  current-pointer check (403 tampered / 409 stale) -> override validation -> evaluation; domain errors
+  return 200 status error, never 500; no row data in any 4xx body).
+- `report_v2/urls.py` — append-only defid-converter routes page + widget_data; the lowercase-only
+  converter regex keeps the mixed-case probe at resolver 404, preserving task-12 route-order test.
+- `report_v2/data.py` — read-only published-layout access (never drafts, never mkdir at import) plus
+  the single monkeypatchable CXRStudy row seam with explicit AdapterError refusals (unknown source,
+  unsupported cohort).
+- `templates/report_v2/page.html` — 12-col grid frames in YAML order, per-widget controls (date
+  range/relative/filters/comparison), summary status line, hidden initial payload pre, admin-only
+  edit affordance, hidden empty-message element.
+- `static/report_v2/report.js` (rewritten) + `static/report_v2/page_state.mjs` + `report.css` —
+  closure-only page state (fresh navigation resets; no storage APIs), per-widget request sequence
+  ledger so stale responses cannot replace newer selections, cookie-first double-submit CSRF
+  header mirroring the house idiom, table pagination via show-more.
+- `tests/test_pages.py` — 12 named tests, one per Done-when criterion (index list/empty; yaml-order
+  grid; ordinary-user control invisibility; signed-token pinning incl. cross-widget/absent/forged 403;
+  version/anchor forgery 400 with zero seam calls + republish 409; override allow-list matrix incl.
+  nested-filter, >50 list, page bounds, comparison outside compare_by; request_seq echo + reducer
+  ledger; AdapterError 200-not-500 fault isolation; empty-message element everywhere; pagination +
+  css overflow; unknown/mixed-case 404s; no rows/counts in 4xx bodies). CSRF enforced via
+  Client(enforce_csrf_checks=True) with cookie + hidden-x-csrfmiddlewaretoken-header double submit.
+- `tests/js/page_state.test.mjs` — reducer + runtime harness (node --test, six subtests) pinning the
+  stale-safe boot path, exact body keys, headers, stale-drop counting, rejected/stale summary
+  behaviour, and a no-storage-APIs source scan.
+
+**Verification (independently re-run by the supervising worker, real tails):**
+- node --test tests/js/page_state.test.mjs -> `# tests 6 / # pass 6 / # fail 0`
+- node --check static/report_v2/report.js -> clean; node --check harness -> clean
+- ./.venv/bin/python manage.py test report_v2 --noinput -> `Ran 346 tests in 1.963s / OK`
+  (334 task-12 baseline preserved + 12 new page tests; the Conflict:/report/t13report/... line is
+  the expected stale-409 log from the forgery test, not a failure)
+- ./.venv/bin/python manage.py test lunit_audit --noinput -> `Ran 16 tests in 0.476s / OK`
+- py_compile clean on views.py/urls.py/data.py/test_pages.py; scratch roots under tempfile only;
+  no production db inspected; no git state commands run by the worker lanes; tree left uncommitted.
+
+**Process notes / deviations**
+- All code was authored through the pi CLI (runs 1-4); pi --print exited silently at the end of run
+  4, so completion was gated on disk truth + independently re-run suites, never on a child claim.
+- One-off environment defect: run 2's DIRECT (non-pi) writes silently lower-cased mixed-case
+  identifiers inside report.js AND inside the js harness (the header-key lookup). Run 3/4 restored
+  the canonical spellings, verified by case-sensitive ripgrep count-queries against the committed
+  house exemplars (upload.js: five matches for the canonical x-csrf header key; editor.js cookie
+  idiom). Recommendation: every future worker lane authors via pi only; supervising workers must
+  case-check any directly-written file before trusting it.
+- CSRF header precedence is cookie-first (the header mirrors the csrftoken cookie the django
+  middleware compares); the hidden form-holder value is fallback-only. The node harness pins this.
+- The stale 409 keeps the last good render visible and disables that frame's controls with an
+  explicit reload message; empty frames keep their server copy plus the hidden empty-message
+  element so client re-renders can restore it; long tables paginate at page-size 50 with a
+  show-more control and the body scrolls rather than clipping (css overflow rule added).
+- views' published list wraps data.list_published in a broad guard so a broken definition tree can
+  never break the login-only index; index still touches no database (pinned by the task-10 routing
+  test with a mock user whose seam call would raise).
+
+[TASK-13 COMPLETE]
+
+## Task 13 — review round 2 (coding-worker, run 5)
+
+Reviewer round-1 verdict REQUEST CHANGES addressed via one Pi run (qwen3.8-flash-next,
+spec /tmp/task13-spec-run5.md, exited rc=0 with full report to /tmp/pi-task13-run5.log).
+Fixed exactly the three blockers plus the non-blocking wording-parity item; server trust
+boundary untouched; only the four round-2 files changed (verified by mtime isolation).
+
+- B1 (TDZ boot crash): local chart-observer binding renamed to lowercase `resizeObserver`;
+  `new` expression keeps the canonical capitalised global. Byte probes: lowercase-local=1,
+  self-referential `const ResizeObserver`=0.
+- B2 (read-only Element.children TypeError): renderFrame rewritten to the writable API only --
+  slice-copy sweep + removeChild for server content, per-frame liveNode tracking with
+  Array.prototype.indexOf.call isChild guards (idempotent re-render; never removeChild on a
+  detached node), show-more hidden-managed and re-appended last so it is never duplicated.
+  Byte probes: `body.children =` assignment=0, removeChild=3.
+- B3 (no grid container): report.css gains the container rule (display:grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr)); gap), a min-width:0 track guard, and a
+  max-width:720px breakpoint collapsing to one column with `grid-column: span 12 !important`
+  to beat the inline spans. test 2 now asserts the CONTAINER rule in the shipped stylesheet,
+  not just the child spans (false-assurance case closed).
+- Minor (a) parity: DEFAULT_EMPTY byte-equals views._EMPTY_MESSAGE (oracle PARITY_EMPTY=1);
+  summaryText rebuilt to the server wording ("eligible", U+00B7 via \u escape). New test 13
+  executes the on-disk client formatter under node and compares byte-for-byte with
+  views._summary_text over 4 payloads -- future drift fails the suite.
+- Harness hardening (why the gates missed B1/B2): FakeNode.children is now getter-only
+  (strict-mode assignment to it throws, as in a browser), removeChild implemented, the chart
+  branch actually executes (echarts stub + chart-container selector + recording observers),
+  and step-5 pins single-live-region + single-button idempotency after a second update.
+
+Gates, independently re-run by the supervising worker after Pi exited (never trusted from the
+child's word): report_v2 "Ran 347 tests in 2.012s / OK" (346 prior + 1 new), lunit_audit
+"Ran 16 tests in 0.434s / OK", node harness "# tests 6 / # pass 6 / # fail 0", node --check
+clean, py_compile clean (views/urls/data/test_pages). Deviations: (1) the round-1 declared
+harness header-key restoration stays as accepted by the reviewer; (2) renderFrame gained the
+isChild guards beyond the reviewer's minimum fix -- a direct removeChild of an already-detached
+liveNode/show-more would raise DOMException NotFoundError in a real browser after two updates;
+(3) server-side files (views.py/urls.py/templates) byte-identical to the round-1 submission --
+reviewer verdict on the trust boundary was ACCEPT and remains valid.
+
+[TASK-13-R2 COMPLETE]
