@@ -1419,3 +1419,65 @@ liveNode/show-more would raise DOMException NotFoundError in a real browser afte
 reviewer verdict on the trust boundary was ACCEPT and remains valid.
 
 [TASK-13-R2 COMPLETE]
+
+## Task 14 — value, table, line and bar renderers
+
+**Deliverables (all NEW files on disk, uncommitted; commit belongs to coder):**
+- `report_v2/static/report_v2/widgets/format.mjs` — `formatValue` (rate/ratio/probability → 1-dp
+  percent, seconds → human duration incl. the 300s→"5 minutes" reference, index → 3dp, count →
+  grouped int, non-finite → "—", unknown unit → raw String) and pure FNV-1a `groupColor` over a
+  fixed 8-colour palette (deterministic by group label).
+- `registry.mjs` — `RendererError`; `register/get/render/disposeInstance/disposeAll`; per-container
+  live registry so a re-render disposes the previous instance exactly once before replacement
+  (chart-leak guard); shared `el`/`clearContainer`/`observeLifecycle`/`buildChart` helpers;
+  `window.__rv2widgets.registry` host mirror (classic-script bridge, no host change required).
+- `value.mjs` — dl of aggregate rows via safe DOM text; supported-CI "(95% CI …)" suffix only when
+  `ci[name].available === true`; unavailable CI adds nothing (never fabricated); error/empty states.
+- `table.mjs` — union-column table from `payload.rows`, unit-formatted numeric cells, null → "—",
+  pagination info line; show-more button stays owned by the Task-13 host.
+- `line.mjs` / `bar.mjs` — vendored-`window.echarts`-only charts. Data matrix from the optional
+  `payload.series` cells (group × bucket/category; missing cell → null → visible gap,
+  `connectNulls:false`), single-scalar-aggregate fallback when `series` absent (never invents
+  per-group numbers). Exactly one comparison dimension (one x-axis OBJECT, never an array; one
+  series per group). Benchmarks unit-filtered, dashed `markLine` with `yAxis` entries only (numeric
+  axis), `yAxis scale:true` so benchmarks/data scale; deterministic palette per group; hidden
+  `.widget-alt-table` a11y alternative + role/aria-label; resize/theme observers guarded,
+  lowercase-local bindings (no global shadowing), dispose-once semantics.
+- `report_v2/tests/js/widgets.test.mjs` — node:test harness (FakeNode shim, echarts/observer stubs,
+  `globalThis` idiom copied from the Task-13 harness). 10 subtests pinning: unit rules +
+  determinism, value CI/percent/null, table union/null/pageinfo, weekly mid-window gap stays
+  `null` + `connectNulls:false`, grouped bars + deterministic colours + unit-filtered yAxis-only
+  markLine, replacement-disposes-exactly-once + disposeAll + resize-after-dispose no-op, host
+  mirror, single category axis + one series per group, forbidden-token source scan.
+
+**Verification (independently re-run by the supervising worker, real tails):**
+- `node --test report_v2/tests/js/widgets.test.mjs` → `# tests 10 / # pass 10 / # fail 0`
+- `node --check` clean on all six modules + the harness.
+- `.venv/bin/python manage.py test report_v2 --noinput` → `Ran 347 tests / OK`
+  (baseline preserved: the client layer is additive; zero server files touched — `git status`
+  shows only the two new paths).
+- `.venv/bin/python manage.py test report_v2 lunit_audit --noinput` → `Ran 363 tests / OK`.
+- `git diff --check` clean. Forbidden-token scan (innerHTML/storage/CDN/fetch) zero across the six
+  modules; house byte-truth auditor run over the new files reports only the known
+  lower-case-local-binding false-positive class shared with the committed `report.js`
+  (`resizeObserver`/`mutationObserver` locals vs canonical globals — precedent accepted in Task 13).
+
+**Deviations / decisions**
+- Strictly additive lane: no edits to report.js/page.html/views.py/report.css. Task 14's Done-when
+  covers the renderers + browser tests; the page bridge that routes frames through
+  `window.__rv2widgets` is follow-up work (Task 17/parity lane) and the registry API needs no host
+  change to be consumed.
+- Pinned contract deviation: the current evaluator publishes `groups` + `buckets` but NO
+  per-group numeric matrix, so line/bar consume the optional `payload.series` cell matrix
+  (documented cell shape in the modules) instead of fabricating grouped numbers; server-side
+  emission of `series` is deferred to Task 16 (seeded demo definitions). Absent `series` the
+  charts degrade to the single scalar-aggregate point/bar path — visible, honest, no synthetic
+  clinical values.
+- Benchmarks are passed in via `options.benchmarks` (YAML schema shape `{label,value,unit}`); the
+  layout→options plumbing for published pages lands with the same follow-up bridge task as the
+  registry hookup.
+- All code authored via the pi CLI (single run, provider local-hermes, model qwen3.8-flash-next,
+  spec /tmp/task14-spec.md, log /tmp/pi-task14.log, PI_EXIT=0). Completion gated on disk truth +
+  the supervising worker's own suite runs, not the child's claims.
+
+[TASK-14 PENDING-REVIEW]
