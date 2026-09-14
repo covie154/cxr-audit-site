@@ -1553,3 +1553,87 @@ reviewer verdict on the trust boundary was ACCEPT and remains valid.
 - Playwright 1.62 + cached chromium verified on this host; suite skips cleanly if tooling is absent.
 
 [TASK-14A PENDING-REVIEW]
+
+## Task 15 — pie, confusion matrix and box-plot renderers (coding-worker, run 22)
+
+**Deliverables (all NEW except boot.mjs; uncommitted; commit boundary belongs to coder):**
+- `report_v2/static/report_v2/widgets/pie.mjs` (97 lines) — mutually exclusive `payload.categories`
+  counts (label/count), aggregates fallback when `categories` absent, share = count/total via
+  `formatValue(...,"rate[0,1]")`, optional donut (`options.donut` → radius `["45%","70%"]`, else
+  "70%", mirrored as `data-donut` for the browser). Vendored-echarts-only single pie series,
+  deterministic `groupColor` per category, benchmarks READ-NOT (no markLine at any depth — pinned).
+  Total<=0 / no categories → the shared empty message; `payload.error` → widget-error. Alt table
+  category/count/share with caption; null-safe count cell ("—" for non-finite, amend FIX 2).
+- `confusion.mjs` (84 lines) — DOM table IS the display (export/PDF safe, no echarts, no canvas):
+  consumes the server `ConfusionMatrix.as_dict()` shape verbatim; declared class order on both axes,
+  `rows_are=ground_truth` rows / `columns_are=prediction` columns pinned in header + data-row/class
+  attributes; `options.display:"percent"` normalises per ground-truth ROW (`cell/row_totals[i]` →
+  1-dp percent); a zero-denominator row renders "unavailable" (never "—"/"0.0%"/NaN) with
+  `data-normalised="unavailable"`; count mode prints raw integers incl. n=0 skeleton; accuracy line
+  from `accuracy.value` ("Accuracy: 62.5%" / "Accuracy: unavailable"); idempotent dispose.
+- `boxplot.mjs` (174 lines) — consumes SERVER summaries (`summaries[]` or `summary` fallback), never
+  raw arrays. Box series rows are `[lower_whisker,q1,median,q3,upper_whisker]` — observed-value
+  whiskers, NEVER the ±1.5·IQR fences (pinned by asserting -4.5/15.5 absent); separate scatter
+  outlier series keyed `[groupIndex,value]`, non-finite dropped. Benchmarks unit-filtered like bar.mjs;
+  matched → dashed markLine on the boxes series only, label pre-formatted through `formatValue`
+  (300 s → "5 minutes"); `unit:"seconds"` also installs `yAxis.axisLabel.formatter` (axes format
+  minutes). Alt table n treated as a COUNT (amend FIX 1: "11", not "11 s"), other numerics via
+  formatValue, outliers listed ("none" when empty); caption + aria-label say plainly the whiskers are
+  observed values within 1.5*IQR fences (whisker != CI, per YAML-CONTRACT).
+- `boot.mjs` — now registers SEVEN kinds (pie, confusion_matrix, boxplot added; bootReady stays last).
+- `tests/js/widgets15.test.mjs` (351 lines) — node:test, 20 tests: seven-kind registry resolution +
+  bootReady; donut/plain radius; pie alt-table shares; pie benchmark-proof deep key walk; empty/error/
+  aggregates-fallback/null-count; binary 2×2 percent + multiclass 3×3 count cells vs the fixtures;
+  zero-denominator "unavailable"; dispose-once; boxplot whiskers-not-fences, scatter outliers,
+  markLine yAxis 300 + "5 minutes" (also axis formatter called with 300), unit-mismatch drop, alt-table
+  parity against `formatValue`, n-as-count, empty/error; eight-fixture render contract; forbidden-token
+  source scan. Fixtures are imported from the gallery builder (single source of truth), not restated.
+- `tests/js/gallery/synthetic_gallery.mjs` (161 lines) — PURE string builder + `SEVEN_FIXTURES`
+  (8 sections, 7 kinds, all synthetic); script tags assembled at runtime (no literal tags, no fetch,
+  no CDN); `--dump` emits the fixtures JSON sidecar the browser suite consumes.
+- `tests/js/gallery/gallery.test.mjs` (129 lines) — 6 node tests: coverage, sentinel embedding,
+  exactly eight widget-frame divs, fixtures JSON round-trip, builder source scan, registry render pass.
+- `tests/js/gallery/fixtures.task15.json` — generated sidecar (node --dump), shared with the browser suite.
+- `tests/test_browser_gallery15.py` (252 lines) — Playwright, self-skips without tooling; NO Django,
+  NO subprocess: one routed fake origin serves the built document, the whitelisted widget ES modules and
+  the vendored echarts off disk. Asserts bootReady, 8 sections/7 kinds, ≥4 real canvases, percent
+  confusion cells + accuracy line, multiclass raw counts (60.0% absent there), boxplot alt-table
+  whisker labels + "1 min 40 s" + median "6 s" + n "11", no undefined/NaN text, zero
+  markline/benchmark classes under pie/confusion frames, full-page screenshot to /tmp/rv2-15-evidence.
+
+**Verification (supervising worker's own runs, not the Pi claims):**
+- `node report_v2/tests/js/widgets15.test.mjs` → tests 20 / pass 20 / fail 0
+- `node report_v2/tests/js/gallery/gallery.test.mjs` → tests 6 / pass 6 / fail 0
+- `node report_v2/tests/js/widgets.test.mjs` → 10/0 (untouched); `page_state` 6/0; `page_render_bridge` 5/0
+- `audit_static.mjs` on pie/confusion/boxplot/boot + the three new .mjs test-side files → AUDIT-OK
+- `.venv/bin/python manage.py test report_v2.tests.test_browser_gallery15 -v 2` → Ran 8 tests OK
+  (real Chromium; screenshot /tmp/rv2-15-evidence/gallery-1440.png)
+- `.venv/bin/python manage.py test report_v2 -v 1` → Ran 367 tests OK (359 before + 8 new browser)
+- `git diff --check` clean; `git status` shows only this card's files.
+
+**Deviations / decisions**
+- Two supervisor-review fixes folded into the Pi run via /tmp/task15b-amend.md: boxplot n cell formats
+  as a count (was inheriting the seconds unit); pie count cell is null-safe. Both pinned by t15b/t7b.
+- The "5 minutes" benchmark-label acceptance is asserted at the chart-option level (canvas-drawn label
+  is not DOM text); the browser side asserts the DOM-visible duration cells instead, as the spec directs.
+- Gallery browser suite mirrors buildGalleryHtml in python string concatenation because node .mjs is
+  not importable from python; the shared fixtures JSON sidecar keeps both renderers' inputs identical.
+- Pi ran twice total (spec /tmp/task15-spec.md died empty-returning after ~35 min with zero files —
+  known failure mode; superseded by /tmp/task15a-spec.md renderer-only + /tmp/task15b-spec.md
+  tests/gallery, PI_EXIT=0 both). Repo files were never hand-written by the worker except this log;
+  worker inspected and re-ran everything above independently.
+
+### Review round 1 correction (run 24, 2026-09-14)
+
+Reviewer found the gallery canvases rendered at zero height (1424x0): the inline gallery `<style>` lacked
+the shipped `.widget-chart,.widget-chart-box` sizing rule that production gets from report.css (which the
+routed gallery page never loads), so echarts initialised into unsized containers and painted nothing while
+test_c passed trivially on canvas count alone. Fixed in lockstep in BOTH builders — the node
+`buildGalleryHtml` in synthetic_gallery.mjs and its python mirror `_build_gallery_html` in
+test_browser_gallery15.py — by appending the byte-identical
+`.widget-chart,.widget-chart-box{width:100%;min-height:240px}` inline (parse-time, inside the existing
+`<style>` block, so it cannot re-zero after echarts init the way a late-loading <link> could). test_c
+hardened with a per-canvas `getBoundingClientRect` w>0 / h>0 assertion; g2 gained a byte-exact drift guard on
+that rule; the evidence screenshot was regenerated by the browser suite. Renderers were untouched.
+
+[TASK-15 PENDING-REVIEW]
