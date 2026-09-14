@@ -330,3 +330,77 @@ class EditorAdminSecurityTests(TestCase):
             for token in forbidden:
                 with self.subTest(target=target.name, token=token):
                     self.assertNotIn(token, text)
+
+    # -- 14A.4 selector lists published + drafts with a state label ------------------- #
+    def test_editor_selector_lists_published_and_drafts_with_state(self):
+        admin = self._as_admin()
+        published = admin.post(_MUTATION_PATHS["publish"], {"def_id": "listed", "yaml_text": VALID_YAML})
+        self.assertEqual(published.status_code, 200)
+        created = self._as_admin().post(_MUTATION_PATHS["new"], {"def_id": "drafted"})
+        self.assertEqual(created.status_code, 200)
+
+        body = self._as_admin().get("/report/layout/").content.decode("utf-8")
+        self.assertIn('value="listed"', body)
+        self.assertIn('value="drafted"', body)
+        self.assertIn('data-state="published"', body)
+        self.assertIn('data-state="draft only"', body)
+        self.assertIn("listed — published", body)
+        self.assertIn("drafted — draft only", body)
+
+        # Saving a draft for the published def flips its label to the combined state.
+        self._as_admin().post(_MUTATION_PATHS["save"], {"def_id": "listed", "yaml_text": VALID_YAML})
+        again = self._as_admin().get("/report/layout/").content.decode("utf-8")
+        self.assertIn('data-state="published + draft"', again)
+
+    # -- 14A.5 opening a published-only report is read-only in memory ------------------ #
+    def test_opening_published_only_report_is_read_only_in_memory(self):
+        published = self._as_admin().post(
+            _MUTATION_PATHS["publish"], {"def_id": "listed", "yaml_text": VALID_YAML}
+        )
+        self.assertEqual(published.status_code, 200)
+        response = self._as_admin().get("/report/layout/editor/listed/")
+        self.assertEqual(response.status_code, 200)
+        body = response.content.decode("utf-8")
+        self.assertIn("title: T", body)
+        self.assertIn('data-source-state="published-only"', body)
+        self.assertIn("Revision:", body)
+        self.assertIn("(no draft yet)", body)
+        self.assertIn('data-role="source-indicator"', body)
+        self.assertFalse((self.root / "drafts" / "listed").exists())
+
+    # -- 14A.6 saving a draft from the published view creates the private draft -------- #
+    def test_save_draft_from_published_view_creates_private_draft(self):
+        published = self._as_admin().post(
+            _MUTATION_PATHS["publish"], {"def_id": "listed", "yaml_text": VALID_YAML}
+        )
+        self.assertEqual(published.status_code, 200)
+        published_text = self._repo()._blob_path("listed", published.json()["version"]).read_text(encoding="utf-8")
+        self.assertFalse((self.root / "drafts" / "listed").exists())
+
+        saved = self._as_admin().post(
+            _MUTATION_PATHS["save"], {"def_id": "listed", "yaml_text": published_text}
+        )
+        self.assertEqual(saved.status_code, 200)
+        self.assertTrue(saved.json()["revision"])
+        self.assertTrue((self.root / "drafts" / "listed").exists())
+        self.assertEqual(self._repo().read_draft("listed")[0], published_text)
+
+        again = self._as_admin().get("/report/layout/editor/listed/").content.decode("utf-8")
+        self.assertIn('data-source-state="draft"', again)
+
+    # -- 14A.7 previewing from the published view still writes nothing ------------------- #
+    def test_preview_from_published_view_still_writes_nothing(self):
+        published = self._as_admin().post(
+            _MUTATION_PATHS["publish"], {"def_id": "listed", "yaml_text": VALID_YAML}
+        )
+        self.assertEqual(published.status_code, 200)
+        pointer_before = self._repo()._read_pointer("listed")
+        published_text = self._repo()._blob_path("listed", published.json()["version"]).read_text(encoding="utf-8")
+
+        preview = self._as_admin().post(
+            _MUTATION_PATHS["preview"], {"def_id": "listed", "yaml_text": published_text}
+        )
+        self.assertEqual(preview.status_code, 200)
+        self.assertFalse((self.root / "drafts" / "listed").exists())
+        self.assertEqual(self._repo()._read_pointer("listed"), pointer_before)
+        self.assertEqual(pointer_before, published.json()["version"])

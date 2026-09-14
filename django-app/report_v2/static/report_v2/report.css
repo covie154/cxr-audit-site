@@ -1,13 +1,38 @@
-.report-v2-page { max-width: 1400px; margin: 0 auto; }
+/* Report v2 layout + widget structural stabilisation.
+
+   The 12-column grid, the fault-isolated widget frames and the long-table scroll region are the
+   observable contract the page tests pin (see report_v2/tests/test_pages.py). The additions below
+   keep that contract byte-for-byte while stopping horizontal page overflow, letting cards/tables
+   grow vertically instead of clipping, and keeping keyboard focus rings visible (no absolute/
+   fixed positioning, no negative margins, no overflow:hidden on the frames). */
+
+.report-v2-page { max-width: 1400px; margin: 0 auto; min-width: 0; }
 .report-v2-page h1 small { color: var(--c-text-muted); font-size: .6em; }
 .report-v2-legacy { margin-bottom: 24px; color: var(--c-text-muted); }
 .report-v2-page .card { padding: 24px; }
 .report-v2-page h2 { margin-bottom: 12px; }
 .report-v2-page [role="status"] { color: var(--c-text-muted); }
 .report-v2-chart { width: 100%; height: 320px; }
+
 /* Long tables scroll inside the frame body instead of clipping the frame or overflowing the page. */
 .widget-body { max-height: 360px; overflow: auto; }
 .widget-body .widget-table { border-collapse: collapse; width: 100%; }
+.widget-body table td, .widget-body table th { overflow-wrap: anywhere; }
+
 .report-grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 16px; margin-bottom: 24px; }
-.report-grid > .widget-frame { min-width: 0; }
+.report-grid > .widget-frame { min-width: 0; max-width: 100%; display: flex; flex-direction: column; gap: 8px; }
+.widget-frame .widget-header, .widget-frame .widget-summary, .widget-frame .widget-controls, .widget-frame .widget-body { min-width: 0; max-width: 100%; overflow-wrap: anywhere; }
+
+.widget-summary { overflow-wrap: anywhere; word-break: normal; }
+.widget-controls { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px; min-width: 0; }
+.widget-controls label { display: flex; flex-direction: column; gap: 2px; min-width: 0; max-width: 100%; font-size: 0.85rem; }
+.widget-controls input, .widget-controls select { max-width: 100%; min-width: 0; box-sizing: border-box; padding: 0.35rem 0.5rem; border: 1px solid var(--border, #c9d1d8); border-radius: 4px; background: var(--surface, #ffffff); color: var(--c-text, #111a2b); }
+.widget-controls .btn { flex: 0 0 auto; }
+.widget-live { min-width: 0; }
+.widget-chart, .widget-chart-box { width: 100%; min-height: 240px; max-width: 100%; }
+.widget-values { display: grid; gap: 4px 16px; min-width: 0; }
+.widget-value { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+
+.widget-controls input:focus-visible, .widget-controls select:focus-visible, .widget-controls .btn:focus-visible, .widget-more:focus-visible { outline: 2px solid var(--accent, #2f6feb); outline-offset: 1px; }
+
 @media (max-width: 720px) { .report-grid { grid-template-columns: repeat(1, minmax(0, 1fr)); } .report-grid > .widget-frame { grid-column: span 12 !important; } }

@@ -592,3 +592,49 @@ class PublishedReportPageTests(TestCase):
         self.assertEqual(
             json.loads(completed.stdout), [views._summary_text(case) for case in cases]
         )
+
+    # -- 14A. the admin Edit-layout link is report-specific, ordinary users get no affordance ----- #
+    def test_admin_edit_layout_links_to_report_specific_editor(self):
+        self._publish("t13report")
+        with mock.patch("report_v2.data.fetch_project_rows", side_effect=_make_seam(empty_ids={"v2"})):
+            admin = self._page(self._login(self.admin, enforce_csrf=False), "t13report")
+            ordinary = self._page(self._login(self.normal, enforce_csrf=False), "t13report")
+        self.assertIn('href="/report/layout/editor/t13report/"', admin)
+        self.assertIn('data-role="edit-layout"', admin)
+        for forbidden in ("Edit layout", "/report/layout/"):
+            with self.subTest(token=forbidden):
+                self.assertNotIn(forbidden, ordinary)
+
+    # -- 14A. grid rows grow with content and the css contract stays pinned ---------------------- #
+    def test_grid_rows_grow_with_content(self):
+        template = (
+            Path(views.__file__).resolve().parent / "templates" / "report_v2" / "page.html"
+        ).read_text(encoding="utf-8")
+        self.assertIn("grid-auto-rows: minmax(", template)
+        self.assertIn("px, auto)", template)
+        css = (
+            Path(views.__file__).resolve().parent / "static" / "report_v2" / "report.css"
+        ).read_text(encoding="utf-8")
+        self.assertRegex(css, r"\.report-grid\s*\{[^}]*display\s*:\s*grid")
+        self.assertRegex(css, r"\.report-grid\s*\{[^}]*grid-template-columns\s*:\s*repeat\(\s*12\s*,")
+        self.assertRegex(
+            css,
+            r"@media[^{]*\{[\s\S]*\.report-grid\s*>\s*\.widget-frame\s*\{[^}]*grid-column\s*:\s*span\s*12\s*!important",
+        )
+
+    # -- 14A. the registry boot module is wired into the page and shipped on disk ---------------- #
+    def test_registry_boot_script_is_wired(self):
+        self._publish("t13report")
+        with mock.patch("report_v2.data.fetch_project_rows", side_effect=_make_seam(empty_ids={"v2"})):
+            admin = self._page(self._login(self.admin, enforce_csrf=False), "t13report")
+        self.assertIn('type="module"', admin)
+        self.assertIn("widgets/boot.mjs", admin)
+        self.assertNotIn("widgets/test-synthetic", admin)
+        boot = (
+            Path(views.__file__).resolve().parent / "static" / "report_v2" / "widgets" / "boot.mjs"
+        )
+        self.assertTrue(boot.exists(), f"missing deliverable: {boot}")
+        boot_text = boot.read_text(encoding="utf-8")
+        for kind in ("value", "table", "line", "bar"):
+            with self.subTest(kind=kind):
+                self.assertRegex(boot_text, r"register\(\s*[\"']" + kind + r"[\"']")

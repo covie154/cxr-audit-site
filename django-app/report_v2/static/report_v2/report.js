@@ -33,8 +33,8 @@
             }));
         };
         renderCharts();
-        const resizeObserver = new ResizeObserver(() => charts.forEach((chart) => chart.resize()));
-        chartContainers.forEach((container) => resizeObserver.observe(container));
+        const resizeHandler = new ResizeObserver(() => charts.forEach((chart) => chart.resize()));
+        chartContainers.forEach((container) => resizeHandler.observe(container));
         const themeObserver = new MutationObserver (renderCharts);
         themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
     } else if (chartContainers.length) {
@@ -204,6 +204,16 @@
         return text;
     }
 
+    // The registry bridge: when boot.mjs has published window.__rv2widgets.registry (the shipped
+    // value/table/line/bar renderers), an eligible frame is painted through it. When the host is
+    // absent (node harnesses, or a failed module load) widgetRegistry() is null and the legacy
+    // table/aggregates/empty path below runs byte-for-byte unchanged.
+    const widgetRegistry = () => {
+        const host = window.__rv2widgets;
+        const reg = host && host.registry;
+        return reg && typeof reg.render === 'function' && typeof reg.disposeInstance === 'function' ? reg : null;
+    };
+
     function renderFrame(frame, payload) {
         const body = frame.body;
         if (!body) { return; }
@@ -219,6 +229,31 @@
         if (frame.more && isChild(frame.more)) { body.removeChild(frame.more); }
         const live = el('div', 'widget-live');
         live.setAttribute('data-live-region', '');
+        // Registry path (fallback-safe): dispose the previous instance once, render into the fresh
+        // live node, and on any throw fall through to the legacy builder below.
+        const reg = widgetRegistry();
+        const kind = frame.type;
+        let usedRegistry = false;
+        if (reg && (kind === 'value' || kind === 'table' || kind === 'line' || kind === 'bar')) {
+            try {
+                if (frame.regInstance && !frame.regDisposed) {
+                    reg.disposeInstance(frame.regInstance);
+                }
+                frame.regDisposed = true;
+                // The shipped renderers own (and re-class) their container element (line/bar set
+                // widget-chart classes on it), so they receive a dedicated mount child; the live
+                // wrapper itself keeps its widget-live class + data-live-region marker intact.
+                const mount = el('div', 'widget-mount');
+                live.append(mount);
+                const regInstance = reg.render(kind, mount, payload, {});
+                frame.regInstance = regInstance || null;
+                frame.regDisposed = false;
+                usedRegistry = true;
+            } catch (regError) {
+                usedRegistry = false;
+            }
+        }
+        if (!usedRegistry) {
         const empty = !payload || payload.error || payload.empty;
         if (empty) {
             const note = el('p', 'widget-empty');
@@ -232,6 +267,7 @@
             const note = el('p', 'widget-empty');
             note.textContent = frame.emptyMessage;
             live.append(note);
+        }
         }
         body.append(live);
         frame.liveNode = live;

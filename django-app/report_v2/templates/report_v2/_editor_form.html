@@ -4,6 +4,7 @@
     <p class="editor-revision" data-role="revision-indicator" data-revision="{{ revision }}">
         Revision: <code>{{ revision|default:"(no draft yet)" }}</code>
     </p>
+    <p class="editor-source" role="status" data-role="source-indicator" data-source-state="{{ source_state }}">Source: {{ source_label }}{% if published_version %} <code>{{ published_version }}</code>{% endif %}</p>
     <textarea id="id_yaml_text" name="yaml_text" class="editor-yaml" rows="24" spellcheck="off"
               data-role="yaml-textarea" aria-label="Report YAML definition">{% if draft_text %}{{ draft_text }}{% endif %}</textarea>
     <p class="editor-status" role="status" data-role="dirty-indicator" data-dirty="false">Saved state: clean</p>

@@ -20,8 +20,8 @@
         <label class="editor-report-label" for="id_def_id">Report
             <select id="id_def_id" name="def_id" data-role="report-select">
                 <option value="">— choose a report —</option>
-                {% for report in reports %}
-                <option value="{{ report }}" {% if report == def_id %}selected{% endif %}>{{ report }}</option>
+                {% for entry in reports %}
+                <option value="{{ entry.def_id }}" {% if entry.def_id == def_id %}selected{% endif %} data-state="{{ entry.state_label }}">{{ entry.def_id }} — {{ entry.state_label }}</option>
                 {% endfor %}
             </select>
         </label>

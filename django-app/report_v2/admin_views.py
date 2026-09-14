@@ -36,6 +36,7 @@ from django.shortcuts import render
 from django.views.decorators.csrf import csrf_protect
 from django.views.decorators.http import require_GET, require_POST
 
+from . import data
 from . import permissions
 from .definitions.repository import (
     DefinitionRepository,
@@ -178,6 +179,33 @@ def _draft_ids(repo: DefinitionRepository) -> list[str]:
     return sorted(p.name for p in drafts.iterdir() if p.is_file())
 
 
+def _report_entries(repo: DefinitionRepository) -> list[dict[str, str]]:
+    """Selector entries: the union of published slugs and drafted def_ids, each with a state label.
+
+    ``state_label`` is exactly one of ``draft only`` (draft, no pointer), ``published`` (pointer,
+    no draft) or ``published + draft`` (both). A failing ``data.list_published`` read is treated as
+    "no published entries" so the editor never 500s on a broken published tree.
+    """
+    published: set[str] = set()
+    try:
+        published = {entry["slug"] for entry in data.list_published(project_id=PROJECT_ID)}
+    except Exception:
+        published = set()
+    drafts = set(_draft_ids(repo))
+    entries: list[dict[str, str]] = []
+    for def_id in sorted(published | drafts):
+        has_draft = def_id in drafts
+        has_published = def_id in published
+        if has_draft and has_published:
+            state_label = "published + draft"
+        elif has_draft:
+            state_label = "draft only"
+        else:
+            state_label = "published"
+        entries.append({"def_id": def_id, "state_label": state_label})
+    return entries
+
+
 def _first_supported_widget() -> str | None:
     """The first published widget id the evaluator accepts (deterministic insertion order)."""
     for widget_id in PUBLISHED_WIDGETS:
@@ -195,11 +223,31 @@ def editor(request, def_id: str | None = None):
     repo = _repository()
     draft_text = ""
     revision = ""
+    source_state = "none"
+    published_version: str | None = None
     if def_id:
         try:
+            # A draft always wins when it exists (the private working copy).
             draft_text, revision = repo.read_draft(def_id)
+            source_state = "draft"
         except (DraftNotFoundError, RepositoryError):
             draft_text, revision = "", ""
+            # Fall back to the PUBLISHED blob text -- read into memory only, never written back.
+            try:
+                published_version = repo.get_current_version(def_id)
+            except (RepositoryError, Exception):
+                published_version = None
+            if published_version:
+                source_state = "published-only"
+                try:
+                    draft_text = repo._blob_path(def_id, published_version).read_text(encoding="utf-8")
+                except (RepositoryError, OSError):
+                    draft_text = ""
+    source_label = {
+        "draft": "Editing private draft",
+        "published-only": "Editing published YAML in memory — not saved as a draft",
+        "none": "New report (no draft yet)",
+    }[source_state]
     return render(
         request,
         "report_v2/layout.html",
@@ -207,8 +255,11 @@ def editor(request, def_id: str | None = None):
             "def_id": def_id or "",
             "draft_text": draft_text,
             "revision": revision,
-            "reports": _draft_ids(repo),
+            "reports": _report_entries(repo),
             "project_id": PROJECT_ID,
+            "source_state": source_state,
+            "published_version": published_version,
+            "source_label": source_label,
         },
     )
 

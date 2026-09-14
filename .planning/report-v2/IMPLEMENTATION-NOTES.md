@@ -1481,3 +1481,75 @@ reviewer verdict on the trust boundary was ACCEPT and remains valid.
   the supervising worker's own suite runs, not the child's claims.
 
 [TASK-14 PENDING-REVIEW]
+
+## Task 14A — Stabilize report UI and YAML editor discoverability (coding-worker, run 19)
+
+**Deliverables (all on disk, uncommitted; commit belongs to coder):**
+- `report_v2/admin_views.py` — `_report_entries()` selector union (published ∪ drafts) with
+  `state_label` ∈ {`draft only`, `published`, `published + draft`}; `editor()` falls back to the
+  CURRENT published blob text read into memory when no draft exists (`source_state`
+  `published-only`, `source_label`, `published_version` context). GET writes nothing; only the
+  explicit save endpoint creates the private draft.
+- `report_v2/templates/report_v2/layout.html`, `_editor_form.html` — selector options carry
+  `data-state`; new `data-role="source-indicator"` badge with `data-source-state`.
+- `report_v2/templates/report_v2/page.html` — admin `Edit layout` links
+  `report_v2:editor_detail` (current def id) with `data-role="edit-layout"`; grid rows
+  `grid-auto-rows: minmax(<row_height_px>px, auto)` (vertical growth, no clipping); loads
+  `widgets/boot.mjs` as `type="module"` before report.js. Ordinary users: no editor affordance (pinned).
+- `report_v2/static/report_v2/report.css` — superset stabilization: pinned 12-col grid / mobile
+  span-12 !important / `.widget-body` overflow:auto contract preserved verbatim; controls flex-wrap,
+  min-width:0, overflow-wrap anywhere, focus-visible rings, chart sizing, no absolute/negative-margin
+  tricks.
+- `report_v2/static/report_v2/widgets/boot.mjs` (NEW) — registers value/table/line/bar with the
+  registry, sets `window.__rv2widgets.bootReady`. Forbidden-token clean (inner*HTML/storage/fetch).
+- `report_v2/static/report_v2/report.js` — fallback-safe registry bridge in `renderFrame`: eligible
+  frames render through `window.__rv2widgets.registry` into a dedicated `widget-mount` child so the
+  `widget-live` wrapper keeps its class/marker even though line/bar re-class their container (Task 14
+  renderer contract); one-time dispose of the previous instance before a re-render; any throw falls
+  through to the byte-for-byte legacy path (node harnesses keep running with no `__rv2widgets`).
+  Pre-existing byte-truth auditor failure fixed (local `resizeObserver` -> `resizeHandler`).
+  `DEFAULT_EMPTY` / `summaryText` server-parity anchors untouched.
+- `report_v2/tests/test_editor.py` — 4 new tests: selector states incl. flip to `published + draft`;
+  published-only open is read-only in memory (drafts dir stays empty on disk); explicit Save draft
+  creates the private draft (round-trip read); preview writes nothing / pointer unchanged.
+- `report_v2/tests/test_pages.py` — 3 new tests: report-specific edit-layout href + ordinary-user
+  absence; grid minmax growth + css contract regexes still pinned; boot module wired + shipped +
+  registers the four kinds.
+- `report_v2/tests/js/page_render_bridge.test.mjs` (NEW, node) — 5 tests: legacy fallback without
+  host; registry path renders via mount child (live wrapper class preserved), dispose-once on
+  re-render; throwing renderer falls back; real registry+boot contract smoke; boot source scan.
+- `report_v2/tests/test_browser_layout.py` + `browser_settings.py` (NEW, Playwright) — 5 tests on a
+  throwaway runserver (temp sqlite via DATABASE_NAME/AUDIT_DATABASE_NAME, REPORT_V2_ROOT mirrored in
+  browser_settings so no stray `private_data/` is written; synthetic SYNTH-SITE rows only):
+  no horizontal overflow + zero pairwise frame/control/body overlap + controls within frame + Tab
+  reaches Apply at 1440/1024/390; long table grows inside its section with working show-more;
+  line/bar paint echarts canvas + a11y table via the registry (no `<`/`undefined`/`NaN` text);
+  admin editor navigation lands on `/report/layout/editor/browser14a/` with published YAML in
+  textarea and no draft on disk; ordinary user has no edit-layout; legacy /report-old/ < 500.
+
+**Verification (supervising worker's own runs, not the child's claims):**
+- `.venv/bin/python manage.py test report_v2.tests.test_editor report_v2.tests.test_pages -v 2` → `Ran 29 tests / OK`
+- `.venv/bin/python manage.py test report_v2 -v 1` → `Ran 359 tests / OK`
+- `.venv/bin/python manage.py test report_v2 lunit_audit` → `Ran 375 tests / OK`
+- `node tests/js/widgets.test.mjs` → 10 pass / 0 fail; `page_state.test.mjs` → 6 pass / 0 fail;
+  `page_render_bridge.test.mjs` → 5 pass / 0 fail; `test_browser_layout.py` → 5 tests OK (real Chromium)
+- `node --check` clean on report.js + editor.js; `audit_static.mjs` → `AUDIT-OK` on report.js, editor.js, boot.mjs
+- `git diff --check` clean; `git status` shows only this card's files.
+- Evidence screenshots (1440/1024/390 + long-table + editor): `/tmp/rv2-14a-evidence/`
+  `page-browser14a-1440.png`, `page-browser14a-1024.png`, `page-browser14a-390.png`,
+  `page-longtable-1440.png`, `editor-1440.png`
+
+**Deviations / decisions**
+- Bridge renders through a dedicated `widget-mount` child instead of the `widget-live` node itself
+  (line/bar set `container.className` per the landed Task 14 contract; handing them the live node
+  would destroy the `widget-live`/`data-live-region` marker). Spec-level correction owned by the
+  supervising worker after observing the red browser run; bridge harness pins the invariant.
+- The single Pi run (qwen3.8-flash-next, spec /tmp/task14a-spec.md, log /tmp/pi-task14a.log,
+  PI_EXIT=0) empty-returned its final report after ~45 min but left most files on disk; the
+  supervising worker then owned the gaps: `set_viewport_size` API fix, the mount-child bridge fix,
+  `browser_settings.REPORT_V2_ROOT` mirroring (kills the stray in-repo `private_data/` writes),
+  mount-contract assertions in the bridge harness, and this log. Two leftover debug `runserver`
+  processes were terminated; the stray synthetic `private_data/` tree was relocated out of the repo.
+- Playwright 1.62 + cached chromium verified on this host; suite skips cleanly if tooling is absent.
+
+[TASK-14A PENDING-REVIEW]

@@ -18,14 +18,14 @@
     <p class="report-v2-legacy"><a href="{{ legacy_report_url }}">Open the previous report</a></p>
     {% if is_admin %}
     <p class="report-v2-adminbar">
-        <a class="btn btn-secondary" href="{% url 'report_v2:editor' %}">Edit layout</a>
+        <a class="btn btn-secondary" href="{% url 'report_v2:editor_detail' def_id=slug %}" data-role="edit-layout">Edit layout</a>
         <small>Drafts are private to admins and are never shown on this page.</small>
     </p>
     {% endif %}
     {% for section in sections_ctx %}
     <section class="report-section" data-section-id="{{ section.id }}">
         <h2>{{ section.title }}</h2>
-        <div class="report-grid" style="grid-auto-rows: {{ grid.row_height_px|default:64 }}px;">
+        <div class="report-grid" style="grid-auto-rows: minmax({{ grid.row_height_px|default:64 }}px, auto);">
             {% for f in section.widgets %}
             <article class="widget-frame" data-widget-id="{{ f.id }}" data-type="{{ f.type }}"
                      data-data-url="{{ f.data_url }}" data-context-token="{{ f.context_token }}"
@@ -97,5 +97,6 @@
 {% endblock %}
 {% block extra_js %}
 <script src="{% static 'report_v2/vendor/echarts.min.js' %}"></script>
+<script type="module" src="{% static 'report_v2/widgets/boot.mjs' %}"></script>
 <script src="{% static 'report_v2/report.js' %}"></script>
 {% endblock %}
