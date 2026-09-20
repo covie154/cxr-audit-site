@@ -1775,5 +1775,5 @@ bookkeeping issues surfaced by running the verification battery on a Windows hos
 - `git diff --check` clean. W002 (LLM_BASE_URL http) remains pre-existing config, not this task.
 
 **Commit:** Task 16 source/tests + the review fixes above + this log, committed as
-`feat(report): task 16 PRIME seed, scoped CSV compatibility actions` (see `git log` for the hash).
-Task 17 (snapshots/print) is the next runbook task and stays out of scope here.
+`c119ef5` — "feat(report): task 16 PRIME seed + scoped CSV compatibility actions" (30 files,
++3722/−72). Task 17 (snapshots/print) is the next runbook task and stays out of scope here.
