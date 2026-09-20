@@ -16,11 +16,9 @@ Task 13's data seam. Two responsibilities, both strictly read-only:
    ``upload.CXRStudy`` rows into the logical mappings the Task-10 evaluator consumes and is the single
    seam the page tests monkeypatch (``unittest.mock.patch("report_v2.data.fetch_project_rows", ...)``).
 
-Security posture: every clinical column read here is a *pass-through* of the stored value -- label /
-score values reach the row unmapped and un-thresholded because policy thresholding is Task 05's
-registered classification concern, not this adapter's. A widget whose ``query.cohort`` names a cohort
-this adapter does not know how to evaluate raises :class:`AdapterError` rather than inventing a
-clinical rule; an unknown catalog ``source_id`` likewise raises rather than reading an arbitrary column.
+The adapter binds registered fields and delegates Lunit score classification to Task 05's pure
+prediction service using the widget's exact policy reference. Stored binarised labels are never used
+for the policy-derived lunit_findings source. Unknown projects, cohorts, sources or policies are rejected.
 ``CXRStudy`` is imported *inside* ``fetch_project_rows`` so importing this module never requires the
 database/apps registry to be ready.
 """
@@ -38,7 +36,8 @@ from .definitions.repository import (
     default_root,
     validate_definition_id,
 )
-from .projects.base import UnknownSourceError
+from .projects.base import ProjectCatalogError, UnknownSourceError
+from .measurements.predictions import classify_prediction, PolicyEvaluationError
 from .projects.prime import get_project_definition
 
 __all__ = [
@@ -56,7 +55,7 @@ _log = logging.getLogger(__name__)
 _RELATIVE_START_RE = re.compile(r"^(?:D|W|M|Y)(?:-\d+)?$")
 
 #: The only cohort id this adapter knows how to restrict on; anything else is refused (no invented rule).
-_SUPPORTED_COHORTS = frozenset({"manual_gt_subset"})
+_SUPPORTED_COHORTS = frozenset({"manual_gt_subset", "manual_label_present"})
 
 
 class PublishedNotFoundError(Exception):
@@ -205,6 +204,15 @@ def _map_inputs(row: dict[str, Any], study: Any, inputs: dict[str, Any], measure
             physical = project.source(str(source_id)).field
         except UnknownSourceError as exc:
             raise AdapterError(f"widget input {source_id!r} is not a known {project.project_id} source") from exc
+        if role in ("ground_truth", "prediction", "alternative_reference"):
+            try:
+                source_kind = project.source(str(source_id)).kind
+            except UnknownSourceError as exc:
+                raise AdapterError(f"widget input {source_id!r} is not a known {project.project_id} source") from exc
+            if source_kind == "score":
+                raise AdapterError(
+                    f"score-valued prediction {source_id!r} needs a findings binding this adapter does not provide"
+                )
         value = getattr(study, physical, None)
         if role == "ground_truth":
             row["gt_label"] = value
@@ -217,6 +225,19 @@ def _map_inputs(row: dict[str, Any], study: Any, inputs: dict[str, Any], measure
                 row[physical] = value
         else:
             row[physical] = value
+
+
+def score_bound_columns(layout_widget, project) -> tuple:
+    """Physical columns of every ``query.inputs`` binding whose source is score-kind (sorted)."""
+    cols = []
+    for source_id in ((layout_widget or {}).get("query", {}) or {}).get("inputs", {}).values():
+        try:
+            source = project.source(str(source_id))
+        except Exception:
+            continue
+        if getattr(source, "kind", None) == "score" and source.field not in cols:
+            cols.append(source.field)
+    return tuple(sorted(cols))
 
 
 def fetch_project_rows(
@@ -243,6 +264,8 @@ def fetch_project_rows(
     from upload.models import CXRStudy  # local import: keep DB/apps out of module import time
 
     project = get_project_definition()
+    if project_id != project.project_id:
+        raise AdapterError("unsupported reporting project")
     query = (layout_widget or {}).get("query", {}) or {}
     inputs = query.get("inputs", {}) or {}
     measurement = query.get("measurement")
@@ -263,10 +286,37 @@ def fetch_project_rows(
             row["event_date"] = event
 
         _map_inputs(row, study, inputs, measurement, project)
+        if "lunit_findings" in inputs.values():
+            policy_ref = query.get("threshold_policy")
+            if not policy_ref:
+                raise AdapterError("Lunit findings require a threshold policy")
+            try:
+                policy = project.policy(policy_ref)
+                findings = {name: getattr(study, name, None) for name in policy.findings}
+                prediction = classify_prediction(findings, project_id=project_id, policy_ref=policy_ref)
+            except (ProjectCatalogError, PolicyEvaluationError) as exc:
+                raise AdapterError("Lunit findings could not be classified under the selected policy") from exc
+            for role, source_id in inputs.items():
+                if source_id == "lunit_findings":
+                    key = {"ground_truth": "gt_label", "prediction": "pred_label"}.get(role)
+                    if key:
+                        row[key] = None if prediction.positive is None else int(prediction.positive)
+                    else:
+                        row[project.source(source_id).field] = None if prediction.positive is None else int(prediction.positive)
+        if measurement == "paired_reference_comparison":
+            alternate = inputs.get("alternative_reference")
+            row["complete"] = bool(alternate) and row.get(project.source(alternate).field) is not None
+        if measurement == "label_count":
+            source_id = inputs.get("value")
+            row["complete"] = bool(source_id) and row.get(project.source(source_id).field) is not None
+        if measurement in ("false_negatives", "false_positives"):
+            for source in project.sources.values():
+                if source.kind == "score" or source.source_id == "report_text":
+                    row[source.field] = getattr(study, source.field, None)
 
         if cohort in (None, ""):
             row["eligible"] = True
-        elif cohort == "manual_gt_subset":
+        elif cohort in _SUPPORTED_COHORTS:
             row["eligible"] = getattr(study, "gt_manual", None) is not None
         rows.append(row)
     return rows

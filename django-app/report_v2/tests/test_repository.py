@@ -176,7 +176,12 @@ class RepositoryTests(SimpleTestCase):
         outside = Path(tempfile.mkdtemp(prefix="outside-"))
         try:
             (outside / "leak.yaml").write_text("secret", encoding="utf-8")
-            os.symlink(str(outside / "leak.yaml"), str(link_path))
+            try:
+                os.symlink(str(outside / "leak.yaml"), str(link_path))
+            except OSError as exc:
+                # Windows without developer mode / admin cannot create symlinks at all
+                # (WinError 1314); the security control itself is POSIX-only here.
+                self.skipTest(f"symlinks unavailable on this host: {exc}")
             with self.assertRaises(PathEscapeError):
                 repo.read_draft("evil")
         finally:

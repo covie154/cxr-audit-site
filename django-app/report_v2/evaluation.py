@@ -52,6 +52,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import asdict, dataclass, field, is_dataclass
 from datetime import date, datetime
+from math import isfinite as _isfinite
 from typing import Any, Callable, Iterable, Optional, Sequence
 
 from report_v2.projects import (
@@ -65,10 +66,13 @@ from report_v2.measurements import (
     BinaryClassVocabulary,
     binary_classification_metrics,
     categorical_count,
+    classification_summary as _classification_summary,
     cohen_kappa,
     complete_rows,
+    confusion_matrix as _confusion_matrix,
     duration_summary,
     fn_fp_cases,
+    label_count as _label_count_primitive,
     mcnemar,
     pairs_from_rows,
     record_count,
@@ -85,6 +89,12 @@ from report_v2.results import (
     SourceMetadata,
     VersionMetadata,
 )
+
+# ---------------------------------------------------------------------------
+# Module-level binary vocabulary reused by every label-stream handler.
+# ---------------------------------------------------------------------------
+_BINARY_VOCAB = BinaryClassVocabulary(positive_class=1, negative_class=0, label="binary")
+
 
 # ---------------------------------------------------------------------------
 # Typed error model. Every rejection this module raises descends from
@@ -215,6 +225,17 @@ SUPPORTED_MEASUREMENTS = frozenset(
         "agreement_mcnemar",
         "fn_fp_cases",
         "record_count",
+        "label_count",
+        "accuracy",
+        "sensitivity",
+        "specificity",
+        "balanced_accuracy",
+        "classification_summary",
+        "reference_agreement",
+        "paired_reference_comparison",
+        "false_negatives",
+        "false_positives",
+        "confusion_matrix",
     }
 )
 
@@ -230,6 +251,17 @@ REQUIRED_COLUMNS: dict[str, tuple[str, ...]] = {
     "categorical_count": ("category",),
     "prevalence": (),
     "record_count": (),
+    "label_count": (),
+    "accuracy": ("gt_label", "pred_label"),
+    "sensitivity": ("gt_label", "pred_label"),
+    "specificity": ("gt_label", "pred_label"),
+    "balanced_accuracy": ("gt_label", "pred_label"),
+    "classification_summary": ("gt_label", "pred_label"),
+    "reference_agreement": ("gt_label", "pred_label"),
+    "paired_reference_comparison": ("gt_label", "pred_label"),
+    "false_negatives": ("gt_label", "pred_label"),
+    "false_positives": ("gt_label", "pred_label"),
+    "confusion_matrix": ("gt_label", "pred_label"),
 }
 
 #: Per-measurement human units for the ``units`` metadata group (always non-empty).
@@ -240,13 +272,43 @@ MEASUREMENT_UNITS: dict[str, dict[str, str]] = {
         "positive_predictive_value": "rate[0,1]",
         "counts": "count",
     },
-    "agreement_kappa": {"kappa": "index[-1,1]"},
+    "agreement_kappa": {"kappa": "index[-1,1]", "n": "count"},
     "agreement_mcnemar": {"p_value": "probability[0,1]", "discordant": "count"},
     "fn_fp_cases": {"false_negative": "count", "false_positive": "count"},
     "duration_summary": {"mean": "seconds", "median": "seconds", "n": "count"},
     "prevalence": {"count": "count"},
     "categorical_count": {"count": "count"},
     "record_count": {"n": "count"},
+    "label_count": {"label_count": "count", "n": "count"},
+    "accuracy": {"accuracy": "rate[0,1]", "n": "count"},
+    "sensitivity": {"sensitivity": "rate[0,1]", "n": "count"},
+    "specificity": {"specificity": "rate[0,1]", "n": "count"},
+    "balanced_accuracy": {"balanced_accuracy": "rate[0,1]", "n": "count"},
+    "classification_summary": {
+        "accuracy": "rate[0,1]", "balanced_accuracy": "rate[0,1]",
+        "sensitivity": "rate[0,1]", "specificity": "rate[0,1]",
+        "ppv": "rate[0,1]", "npv": "rate[0,1]",
+        "n": "count", "tp": "count", "tn": "count", "fp": "count", "fn": "count",
+    },
+    "reference_agreement": {
+        "agreement": "rate[0,1]", "kappa": "index[-1,1]", "n": "count",
+    },
+    "paired_reference_comparison": {
+        "p_value": "probability[0,1]", "statistic": "index[0,\u221e)",
+        "b": "count", "c": "count", "n": "count",
+    },
+    "false_negatives": {
+        "false_negatives": "count", "n_total": "count",
+        "n_complete": "count", "excluded_incomplete": "count",
+    },
+    "false_positives": {
+        "false_positives": "count", "n_total": "count",
+        "n_complete": "count", "excluded_incomplete": "count",
+    },
+    "confusion_matrix": {
+        "cell": "count", "row_total": "count", "column_total": "count",
+        "n": "count", "accuracy": "rate[0,1]",
+    },
 }
 
 
@@ -418,55 +480,635 @@ def _labels(rows: Sequence[Mapping], key: str) -> list:
     return [row.get(key) for row in rows]
 
 
-def _measure_binary(rows: Sequence[Mapping]) -> tuple[dict, dict]:
+def _measure_binary(rows: Sequence[Mapping], ctx: dict) -> tuple[dict, dict]:
     pairs = pairs_from_rows(
         rows, ground_truth_key="gt_label", prediction_key="pred_label"
     )
-    vocabulary = BinaryClassVocabulary(
-        positive_class=1, negative_class=0, label="binary"
-    )
-    metrics = binary_classification_metrics(pairs, vocabulary=vocabulary)
+    metrics = binary_classification_metrics(pairs, vocabulary=_BINARY_VOCAB)
     return metrics.as_dict(), {}
 
 
-def _measure_kappa(rows: Sequence[Mapping]) -> tuple[dict, dict]:
+def _measure_kappa(rows: Sequence[Mapping], ctx: dict) -> tuple[dict, dict]:
     ref = _labels(rows, "gt_label")
     pred = _labels(rows, "pred_label")
     kappa = cohen_kappa(ref, pred)
     return {"kappa": _snapshot(kappa)}, {}
 
 
-def _measure_mcnemar(rows: Sequence[Mapping]) -> tuple[dict, dict]:
+def _measure_mcnemar(rows: Sequence[Mapping], ctx: dict) -> tuple[dict, dict]:
     ref = _labels(rows, "gt_label")
     pred = _labels(rows, "pred_label")
     return {"mcnemar": _snapshot(mcnemar(ref, pred))}, {}
 
 
-def _measure_fnfp(rows: Sequence[Mapping]) -> tuple[dict, dict]:
+def _measure_fnfp(rows: Sequence[Mapping], ctx: dict) -> tuple[dict, dict]:
     ref = _labels(rows, "gt_label")
     pred = _labels(rows, "pred_label")
     ids = [row.get("accession", index) for index, row in enumerate(rows)]
     return {"fn_fp": _snapshot(fn_fp_cases(ref, pred, ids))}, {}
 
 
-def _measure_duration(rows: Sequence[Mapping]) -> tuple[dict, dict]:
+def _measure_duration(rows: Sequence[Mapping], ctx: dict) -> tuple[dict, dict]:
     values = [row.get("duration_seconds") for row in rows]
-    return {"duration": _snapshot(duration_summary(values))}, {}
+    snap = _snapshot(duration_summary(values))
+    chart: dict[str, Any] = {}
+    if ctx.get("display") == "boxplot":
+        grouping = ctx.get("grouping") or ()
+        if not grouping:
+            chart["summaries"] = [{"name": "values", "unit": "seconds", "summary": snap}]
+        else:
+            chart["summaries"] = []
+            for sig, sub in _partition_by_grouping(rows, grouping):
+                sub_vals = [r.get("duration_seconds") for r in sub]
+                chart["summaries"].append(
+                    {"name": sig, "unit": "seconds", "summary": _snapshot(duration_summary(sub_vals))}
+                )
+    return {"duration": snap}, {"chart": chart}
 
 
-def _measure_prevalence(rows: Sequence[Mapping]) -> tuple[dict, dict]:
-    return {"by_site": categorical_count(rows, column="site")}, {}
+def _measure_prevalence(rows: Sequence[Mapping], ctx: dict) -> tuple[dict, dict]:
+    by_site = categorical_count(rows, column="site")
+    chart: dict[str, Any] = {}
+    if ctx.get("display") == "pie":
+        chart["categories"] = [{"label": k, "count": v} for k, v in sorted(by_site.items())]
+    return {"by_site": by_site}, {"chart": chart}
 
 
-def _measure_categorical(rows: Sequence[Mapping]) -> tuple[dict, dict]:
-    return {"by_category": categorical_count(rows, column="category")}, {}
+def _measure_categorical(rows: Sequence[Mapping], ctx: dict) -> tuple[dict, dict]:
+    by_category = categorical_count(rows, column="category")
+    chart: dict[str, Any] = {}
+    if ctx.get("display") == "pie":
+        chart["categories"] = [{"label": k, "count": v} for k, v in sorted(by_category.items())]
+    return {"by_category": by_category}, {"chart": chart}
 
 
-def _measure_record(rows: Sequence[Mapping]) -> tuple[dict, dict]:
+def _measure_record(rows: Sequence[Mapping], ctx: dict) -> tuple[dict, dict]:
     return {"n": record_count(rows)}, {}
 
 
-_MEASUREMENT_DISPATCH: dict[str, Callable[[Sequence[Mapping]], tuple[dict, dict]]] = {
+# ---------------------------------------------------------------------------
+# Shared helpers for the new measurement handlers (Task-16 A2).
+# ---------------------------------------------------------------------------
+
+def _score_columns_from_inputs(ctx: dict) -> tuple[str, ...]:
+    """Physical columns of every bound source in ``ctx["inputs"]`` whose kind is score."""
+    cols: list[str] = []
+    for source_id in (ctx.get("inputs") or {}).values():
+        try:
+            source = ctx["project"].source(str(source_id))
+        except Exception:
+            continue
+        if getattr(source, "kind", None) == "score" and source.field not in cols:
+            cols.append(source.field)
+    return tuple(sorted(cols))
+
+
+def _bound_column(ctx: dict, role: str, default: Any = None) -> Any:
+    """Resolve a role binding to the physical column name via the project source catalog."""
+    inputs = ctx.get("inputs") or {}
+    sid = inputs.get(role)
+    if sid is None:
+        return default
+    try:
+        return ctx["project"].source(str(sid)).field
+    except Exception:
+        raise UnknownMeasurementError(
+            f"cannot resolve role {role!r} from source {sid!r}"
+        )
+
+
+def _comparison(ctx: dict) -> dict:
+    """Extract the comparison source-id mapping from widget inputs."""
+    inputs = ctx.get("inputs") or {}
+    result: dict[str, Any] = {
+        "reference": inputs.get("ground_truth"),
+        "prediction": inputs.get("prediction"),
+    }
+    alt = inputs.get("alternative_reference")
+    if alt is not None:
+        result["alternative_reference"] = alt
+    return result
+
+
+def _labels2(rows: Sequence[Mapping]) -> tuple[list, list]:
+    """Extract parallel (gt_labels, pred_labels) lists from rows."""
+    return (
+        [r.get("gt_label") for r in rows],
+        [r.get("pred_label") for r in rows],
+    )
+
+
+def _partition_by_grouping(
+    rows: Sequence[Mapping], keys: tuple[str, ...]
+) -> list[tuple[str, list[Mapping]]]:
+    """Partition rows by grouping-key tuples in first-seen order, returning (label, sub-rows) pairs."""
+    seen: dict[tuple, list] = {}
+    for row in rows:
+        sig = tuple(str(row.get(key)) for key in keys)
+        seen.setdefault(sig, []).append(row)
+    return [
+        (
+            " | ".join(f"{key}={val}" for key, val in zip(keys, sig)),
+            sub,
+        )
+        for sig, sub in seen.items()
+    ]
+
+
+def _summary_columns(summary: Any) -> dict:
+    """Extract the 12-column row dict from a ClassificationSummary (binary branch)."""
+    c = summary.counts
+    m = summary.metrics
+
+    def _rv(rate: Any) -> float | None:
+        return rate.value
+
+    return {
+        "n": c.eligible,
+        "accuracy": _rv(m.accuracy),
+        "balanced_accuracy": _rv(m.balanced_accuracy),
+        "sensitivity": _rv(m.sensitivity),
+        "specificity": _rv(m.specificity),
+        "ppv": _rv(m.ppv),
+        "npv": _rv(m.npv),
+        "tp": c.tp,
+        "tn": c.tn,
+        "fp": c.fp,
+        "fn": c.fn,
+        "predicted_negative_fraction": _rv(m.predicted_negative_fraction),
+    }
+
+
+def _bucket_rows(
+    rows: Sequence[Mapping], bucket: Mapping,
+) -> list[Mapping]:
+    """Filter rows whose date falls within a bucket's [start_date, end_date] window."""
+    sd_raw = bucket.get("start_date")
+    ed_raw = bucket.get("end_date")
+    sd = date.fromisoformat(sd_raw) if isinstance(sd_raw, str) else sd_raw
+    ed = date.fromisoformat(ed_raw) if isinstance(ed_raw, str) else ed_raw
+    if sd is None or ed is None:
+        return []
+    out: list[Mapping] = []
+    for row in rows:
+        when = _row_date(row)
+        if when is not None and sd <= when <= ed:
+            out.append(row)
+    return out
+
+
+def _rate_series_cells(
+    rows: Sequence[Mapping],
+    buckets: tuple[Mapping, ...],
+    grouping: tuple[str, ...],
+    metric_name: str,
+) -> tuple[list[dict], dict[str, str]]:
+    """Build line-chart series cells from bucket/group partitions, recomputing per-partition rates."""
+    cells: list[dict] = []
+    extra_units: dict[str, str] = {}
+    for bucket_idx, bucket in enumerate(buckets):
+        b_rows = _bucket_rows(rows, bucket)
+        if grouping:
+            groups = _partition_by_grouping(b_rows, grouping)
+        else:
+            groups = [("value", b_rows)]
+        for gname, grows in groups:
+            if gname not in extra_units:
+                extra_units[gname] = "rate[0,1]"
+            if not grows:
+                cells.append({
+                    "group": gname, "category": None,
+                    "bucket_index": bucket_idx, "value": None,
+                })
+            else:
+                pairs = pairs_from_rows(
+                    grows, ground_truth_key="gt_label", prediction_key="pred_label",
+                )
+                if not pairs:
+                    cells.append({
+                        "group": gname, "category": None,
+                        "bucket_index": bucket_idx, "value": None,
+                    })
+                else:
+                    m = binary_classification_metrics(pairs, vocabulary=_BINARY_VOCAB)
+                    r = m.rate(metric_name)
+                    cells.append({
+                        "group": gname, "category": None,
+                        "bucket_index": bucket_idx, "value": r.value,
+                    })
+    return cells, extra_units
+
+
+def _bar_series_cells(
+    rows: Sequence[Mapping],
+    grouping: tuple[str, ...],
+    metric_name: str,
+) -> tuple[list[dict], dict[str, str]]:
+    """Build bar-chart cells (one per group, no buckets)."""
+    cells: list[dict] = []
+    extra_units: dict[str, str] = {}
+    if grouping:
+        groups = _partition_by_grouping(rows, grouping)
+    else:
+        groups = [("value", list(rows))]
+    for gname, grows in groups:
+        if gname not in extra_units:
+            extra_units[gname] = "rate[0,1]"
+        if not grows:
+            cells.append({
+                "group": gname, "category": gname,
+                "bucket_index": None, "value": None,
+            })
+        else:
+            pairs = pairs_from_rows(
+                grows, ground_truth_key="gt_label", prediction_key="pred_label",
+            )
+            if not pairs:
+                cells.append({
+                    "group": gname, "category": gname,
+                    "bucket_index": None, "value": None,
+                })
+            else:
+                m = binary_classification_metrics(pairs, vocabulary=_BINARY_VOCAB)
+                r = m.rate(metric_name)
+                cells.append({
+                    "group": gname, "category": gname,
+                    "bucket_index": None, "value": r.value,
+                })
+    return cells, extra_units
+
+
+# ---------------------------------------------------------------------------
+# New measurement handlers (Task-16 A2).
+# ---------------------------------------------------------------------------
+
+def _measure_label_count(rows: Sequence[Mapping], ctx: dict) -> tuple[dict, dict]:
+    col = _bound_column(ctx, "value")
+    if col is None:
+        raise UnknownMeasurementError(
+            "label_count requires a 'value' role binding; none found in widget inputs"
+        )
+    counts = _label_count_primitive(rows, label_key=col, vocabulary=None)
+    return (
+        {"label_count": int(sum(counts.values())), "n": record_count(rows)},
+        {
+            "units": {"label_count": "count", "n": "count"},
+            "chart": {"comparison": _comparison(ctx)},
+        },
+    )
+
+
+def _make_binary_rate_handler(metric_name: str):
+    """Return a handler that calls binary_classification_metrics and extracts the named rate."""
+    def handler(rows: Sequence[Mapping], ctx: dict) -> tuple[dict, dict]:
+        pairs = pairs_from_rows(
+            rows, ground_truth_key="gt_label", prediction_key="pred_label",
+        )
+        metrics = binary_classification_metrics(pairs, vocabulary=_BINARY_VOCAB)
+        rate = metrics.rate(metric_name)
+        n = rate.denominator if rate.denominator is not None else record_count(rows)
+        aggregates: dict[str, Any] = {metric_name: rate.value, "n": n}
+        units: dict[str, str] = {metric_name: "rate[0,1]", "n": "count"}
+        chart: dict[str, Any] = {
+            "comparison": _comparison(ctx),
+            "rate_detail": {
+                "label": rate.label,
+                "numerator": rate.numerator,
+                "denominator": rate.denominator,
+                "null_reason": rate.null_reason,
+            },
+        }
+        display = ctx.get("display")
+        grouping = ctx.get("grouping") or ()
+        if display == "line":
+            buckets = ctx.get("buckets") or ()
+            if buckets:
+                cells, extra_units = _rate_series_cells(rows, buckets, grouping, metric_name)
+                chart["series"] = cells
+                units.update(extra_units)
+        elif display == "bar":
+            cells, extra_units = _bar_series_cells(rows, grouping, metric_name)
+            chart["series"] = cells
+            units.update(extra_units)
+        return aggregates, {"units": units, "chart": chart}
+    return handler
+
+
+_measure_accuracy = _make_binary_rate_handler("accuracy")
+_measure_sensitivity = _make_binary_rate_handler("sensitivity")
+_measure_specificity = _make_binary_rate_handler("specificity")
+_measure_balanced_accuracy = _make_binary_rate_handler("balanced_accuracy")
+
+
+def _measure_classification_summary(rows: Sequence[Mapping], ctx: dict) -> tuple[dict, dict]:
+    pairs = pairs_from_rows(
+        rows, ground_truth_key="gt_label", prediction_key="pred_label",
+    )
+    summary = _classification_summary(pairs, vocabulary=_BINARY_VOCAB)
+    aggregates: dict[str, Any] = {"summary": _snapshot(summary.as_dict())}
+    grouping = ctx.get("grouping") or ()
+    if not grouping:
+        extra_rows: tuple[Mapping, ...] = ({"group": "overall", **_summary_columns(summary)},)
+    else:
+        extra_rows_list: list[dict] = []
+        for _label, sub_rows in _partition_by_grouping(rows, grouping):
+            sub_pairs = pairs_from_rows(
+                sub_rows, ground_truth_key="gt_label", prediction_key="pred_label",
+            )
+            if not sub_pairs:
+                continue
+            sub_summary = _classification_summary(sub_pairs, vocabulary=_BINARY_VOCAB)
+            first = sub_rows[0]
+            row: dict[str, Any] = {}
+            for k in grouping:
+                row[k] = first.get(k)
+            row.update(_summary_columns(sub_summary))
+            extra_rows_list.append(row)
+        extra_rows = tuple(extra_rows_list)
+    comparison = _comparison(ctx)
+    chart: dict[str, Any] = {
+        "comparison": comparison,
+        "caption": "Reference {} versus prediction {}".format(
+            comparison.get("reference"), comparison.get("prediction"),
+        ),
+    }
+    units: dict[str, str] = {
+        "accuracy": "rate[0,1]", "balanced_accuracy": "rate[0,1]",
+        "sensitivity": "rate[0,1]", "specificity": "rate[0,1]",
+        "ppv": "rate[0,1]", "npv": "rate[0,1]",
+        "predicted_negative_fraction": "rate[0,1]",
+        "n": "count", "tp": "count", "tn": "count", "fp": "count", "fn": "count",
+    }
+    return aggregates, {"rows": extra_rows, "units": units, "chart": chart}
+
+
+def _measure_reference_agreement(rows: Sequence[Mapping], ctx: dict) -> tuple[dict, dict]:
+    ref, pred = _labels2(rows)
+    rate = cohen_kappa(ref, pred)
+    # The agreement rate is taken from the *same* classification primitive every other reported rate
+    # reads (the single source of truth), never from local arithmetic; it therefore stays undefined
+    # (None) over an empty complete population rather than collapsing to 0.
+    pairs = pairs_from_rows(
+        rows, ground_truth_key="gt_label", prediction_key="pred_label"
+    )
+    metrics = binary_classification_metrics(pairs, vocabulary=_BINARY_VOCAB)
+    agreement_rate = metrics.rate("accuracy")
+    agreement_value: float | None = agreement_rate.value  # None when undefined -- never 0
+    kappa_value = rate.value  # may be None for degenerate marginals
+    n = record_count(rows)
+    aggregates: dict[str, Any] = {"agreement": agreement_value, "kappa": kappa_value, "n": n}
+    units: dict[str, str] = {"agreement": "rate[0,1]", "kappa": "index[-1,1]", "n": "count"}
+    comparison = _comparison(ctx)
+    chart: dict[str, Any] = {
+        "comparison": comparison,
+        "caption": "Reference {} versus prediction {} agreement".format(
+            comparison.get("reference"), comparison.get("prediction"),
+        ),
+        "rate_detail": {
+            "label": rate.label,
+            "numerator": rate.numerator,
+            "denominator": rate.denominator,
+            "null_reason": rate.null_reason,
+        },
+        "agreement_detail": {
+            "label": agreement_rate.label,
+            "numerator": agreement_rate.numerator,
+            "denominator": agreement_rate.denominator,
+            "null_reason": agreement_rate.null_reason,
+        },
+    }
+    extra_rows: tuple[Mapping, ...] = ({
+        "n": n, "agreement": agreement_value, "kappa": kappa_value,
+    },)
+    return aggregates, {"rows": extra_rows, "units": units, "chart": chart}
+
+
+def _measure_paired_reference_comparison(rows: Sequence[Mapping], ctx: dict) -> tuple[dict, dict]:
+    alt_col = _bound_column(ctx, "alternative_reference")
+    if alt_col is None:
+        raise UnknownMeasurementError(
+            "paired_reference_comparison requires an 'alternative_reference' role binding"
+        )
+    ref_ok: list[int] = []
+    alt_ok: list[int] = []
+    excluded_missing_alternate = 0
+    for row in rows:
+        gt = row.get("gt_label")
+        pred = row.get("pred_label")
+        alt = row.get(alt_col)
+        if gt is None or pred is None:
+            continue
+        if alt is None:
+            excluded_missing_alternate += 1
+            continue
+        ref_ok.append(1 if gt == pred else 0)
+        alt_ok.append(1 if alt == pred else 0)
+    result = mcnemar(ref_ok, alt_ok)
+    n = len(ref_ok)
+    aggregates: dict[str, Any] = {"mcnemar": _snapshot(result), "n": n}
+    units: dict[str, str] = {
+        "p_value": "probability[0,1]",
+        "statistic": "index[0,\u221e)",
+        "b": "count", "c": "count", "n": "count",
+    }
+    comparison = _comparison(ctx)
+    chart: dict[str, Any] = {
+        "comparison": comparison,
+        "caption": "Reference {} versus alternative reference {} against prediction {}".format(
+            comparison.get("reference"), comparison.get("alternative_reference"),
+            comparison.get("prediction"),
+        ),
+        "excluded_missing_alternate": excluded_missing_alternate,
+    }
+    extra_rows: tuple[Mapping, ...] = ({
+        "n": n, "b": result.b, "c": result.c, "p_value": result.p_value,
+    },)
+    return aggregates, {"rows": extra_rows, "units": units, "chart": chart}
+
+
+def _highest_score_cell(row: Mapping, columns: Sequence[str]) -> tuple[str | None, float | None]:
+    """Return ``(highest_finding, highest_score)`` for the finite-numeric maximum over ``columns``.
+
+    The single implementation shared by both the explicit-binding and the catalog-fallback branch of the
+    FN/FP case columns. It reproduces the legacy display exactly: the maximum over the finite numeric
+    values, rounded to one decimal place, labelled by the physical column name spelled out (underscores
+    turned into spaces and title-cased). **No threshold is applied** -- the raw maximum, the same posture
+    as the legacy export. An empty / none-finite column set yields ``(None, None)`` rather than a fabrication.
+    """
+    highest_score: float | None = None
+    highest_finding: str | None = None
+    best_val = float("-inf")
+    for col in columns:
+        raw = row.get(col)
+        if raw is None:
+            continue
+        try:
+            v = float(raw)
+        except (TypeError, ValueError):
+            continue
+        if not _isfinite(v):
+            continue
+        if v > best_val:
+            best_val = v
+            highest_score = v
+            highest_finding = col.replace("_", " ").title()
+    if best_val == float("-inf"):
+        highest_score = None
+        highest_finding = None
+    elif highest_score is not None:
+        highest_score = round(highest_score, 1)
+    return highest_finding, highest_score
+
+
+def _catalog_score_columns(ctx: dict) -> tuple[str, ...]:
+    """Physical fields of every score-kind source in the project catalog, in deterministic order.
+
+    A *fallback only*, consulted when the widget binds no score source explicitly. The set is derived from
+    the catalog alone -- no new names, no literals; the reviewed PRIME catalog contributes exactly its ten
+    ``kind == "score"`` sources. When the catalog yields none the caller keeps both case columns ``None``
+    rather than fabricate a score.
+    """
+    try:
+        sources = getattr(ctx["project"], "sources", {}) or {}
+        ordered = sorted(
+            sources.values(),
+            key=lambda s: (str(getattr(s, "field", "")), str(getattr(s, "source_id", ""))),
+        )
+        fields = [
+            source.field
+            for source in ordered
+            if getattr(source, "kind", None) == "score"
+            and getattr(source, "field", None) is not None
+        ]
+    except Exception:  # any catalog error -> treat as "no score sources", never crash the export
+        return ()
+    seen: dict[str, None] = {}
+    for field in fields:
+        seen.setdefault(field, None)
+    return tuple(seen)
+
+
+# FN/FP case-column precedence (a documented *parity* decision, not a clinical rule):
+#   explicit widget role binding  >  reviewed PRIME catalog default  >  None.
+# The reviewed catalog already names the canonical physical columns, so an unbound role falls back to it
+# instead of publishing None; an *explicit* binding always wins and is never overridden. No threshold is
+# applied to the score display -- the highest score is the raw maximum, the same posture as the legacy export.
+def _make_fnfp_handler(measurement_id: str):
+    """Return a handler for false_negatives or false_positives."""
+    is_fn = measurement_id == "false_negatives"
+
+    def handler(rows: Sequence[Mapping], ctx: dict) -> tuple[dict, dict]:
+        ref, pred = _labels2(rows)
+        ids = [row.get("accession", i) for i, row in enumerate(rows)]
+        res = fn_fp_cases(ref, pred, ids, reference="manual", prediction="llm")
+        selected_ids = res.false_negative_ids if is_fn else res.false_positive_ids
+        # Build a lookup from id -> row
+        id_to_row = {row.get("accession", i): row for i, row in enumerate(rows)}
+        # Highest-score column set: explicit widget bindings win; else fall back to the reviewed catalog's
+        # score-kind sources (never fabricated -- an empty catalog leaves both columns None).
+        score_cols = ctx.get("score_columns") or ()
+        fallback_score_cols = () if score_cols else _catalog_score_columns(ctx)
+        # Report-text column: an explicit 'report_text' binding wins; else the reviewed catalog source id
+        # 'report_text' (its .field is the physical row key); else None.
+        report_text_col = _bound_column(ctx, "report_text", None)
+        if report_text_col is None:
+            try:
+                report_text_col = ctx["project"].source("report_text").field
+            except Exception:  # catalog error -> no key, publish None rather than fabricate
+                report_text_col = None
+        case_rows: list[dict] = []
+        for sid in selected_ids:
+            row = id_to_row.get(sid, {})
+            if score_cols:
+                highest_finding, highest_score = _highest_score_cell(row, score_cols)
+            elif fallback_score_cols:
+                highest_finding, highest_score = _highest_score_cell(row, fallback_score_cols)
+            else:
+                highest_finding = None
+                highest_score = None
+            report_text = (
+                row.get(report_text_col) if report_text_col is not None else None
+            )
+            case_rows.append({
+                "accession": sid,
+                "site": row.get("site"),
+                "study_date": row.get("event_date"),
+                "highest_finding": highest_finding,
+                "highest_score": highest_score,
+                "report_text": report_text,
+            })
+        count_key = measurement_id
+        aggregates: dict[str, Any] = {
+            count_key: len(selected_ids),
+            "n_total": res.n_total,
+            "n_complete": res.n_complete,
+            "excluded_incomplete": res.excluded_incomplete,
+        }
+        units: dict[str, str] = {
+            count_key: "count", "n_total": "count",
+            "n_complete": "count", "excluded_incomplete": "count",
+        }
+        chart: dict[str, Any] = {
+            "comparison": _comparison(ctx),
+            "direction": _comparison(ctx),
+        }
+        return aggregates, {"rows": tuple(case_rows), "units": units, "chart": chart}
+    return handler
+
+
+_measure_false_negatives = _make_fnfp_handler("false_negatives")
+_measure_false_positives = _make_fnfp_handler("false_positives")
+
+
+def _measure_confusion_matrix(rows: Sequence[Mapping], ctx: dict) -> tuple[dict, dict]:
+    pairs = pairs_from_rows(
+        rows, ground_truth_key="gt_label", prediction_key="pred_label",
+    )
+    # Collect distinct non-None labels from both streams
+    all_labels: set = set()
+    for gt, pred in pairs:
+        if gt is not None:
+            all_labels.add(gt)
+        if pred is not None:
+            all_labels.add(pred)
+    if not all_labels:
+        raise UnknownMeasurementError(
+            "confusion_matrix requires at least two distinct non-None label classes"
+        )
+    # Check for mixed str/int
+    types = {type(label) for label in all_labels}
+    if len(types) > 1:
+        raise UnknownMeasurementError(
+            f"confusion_matrix cannot mix label types: {types}"
+        )
+    classes = sorted(all_labels, key=repr)
+    if len(classes) < 2:
+        raise UnknownMeasurementError(
+            "confusion_matrix requires at least two distinct non-None label classes"
+        )
+    matrix = _confusion_matrix(pairs, classes=classes)
+    matrix_dict = _snapshot(matrix.as_dict()) if hasattr(matrix, "as_dict") else _snapshot(matrix)
+    # Build renderer contract keys matching confusion.mjs expectations
+    cells_2d = [list(row) for row in matrix.cells]
+    row_totals = list(matrix.row_totals)
+    accuracy_rate = matrix.accuracy
+    aggregates: dict[str, Any] = {
+        "matrix": matrix_dict,
+        "classes": [str(c) for c in classes],
+    }
+    comparison = _comparison(ctx)
+    chart: dict[str, Any] = {
+        "comparison": comparison,
+        "caption": "Declared ground-truth rows versus prediction columns",
+        "classes": [str(c) for c in classes],
+        "cells": cells_2d,
+        "row_totals": row_totals,
+        "accuracy": {"value": accuracy_rate.value},
+    }
+    return aggregates, {"chart": chart}
+
+
+_MEASUREMENT_DISPATCH: dict[str, Callable[..., tuple[dict, dict]]] = {
     "binary_classification": _measure_binary,
     "agreement_kappa": _measure_kappa,
     "agreement_mcnemar": _measure_mcnemar,
@@ -475,10 +1117,29 @@ _MEASUREMENT_DISPATCH: dict[str, Callable[[Sequence[Mapping]], tuple[dict, dict]
     "prevalence": _measure_prevalence,
     "categorical_count": _measure_categorical,
     "record_count": _measure_record,
+    "label_count": _measure_label_count,
+    "accuracy": _measure_accuracy,
+    "sensitivity": _measure_sensitivity,
+    "specificity": _measure_specificity,
+    "balanced_accuracy": _measure_balanced_accuracy,
+    "classification_summary": _measure_classification_summary,
+    "reference_agreement": _measure_reference_agreement,
+    "paired_reference_comparison": _measure_paired_reference_comparison,
+    "false_negatives": _measure_false_negatives,
+    "false_positives": _measure_false_positives,
+    "confusion_matrix": _measure_confusion_matrix,
 }
 
 #: Measurements that compare two label streams and therefore require a *common* population.
-PAIRED_MEASUREMENTS = frozenset({"agreement_kappa", "agreement_mcnemar", "fn_fp_cases"})
+PAIRED_MEASUREMENTS = frozenset(
+    {
+        "agreement_kappa", "agreement_mcnemar", "fn_fp_cases",
+        "accuracy", "sensitivity", "specificity", "balanced_accuracy",
+        "classification_summary", "reference_agreement",
+        "paired_reference_comparison", "false_negatives", "false_positives",
+        "confusion_matrix",
+    }
+)
 
 
 def _common_population(rows: Sequence[Mapping], widget: WidgetSpec) -> CommonPopulation:
@@ -566,6 +1227,11 @@ def _resolve_policy(
     bare = policy_ref.partition("@")[0]
     policies = getattr(project, "policies", {}) or {}
     if bare in policies:
+        if hasattr(project, "policy"):
+            try:
+                project.policy(policy_ref)
+            except ProjectCatalogError as exc:
+                raise UnknownPolicyError("unknown threshold policy version") from exc
         version = getattr(policies[bare], "version", None)
         return (policy_ref, int(version) if version is not None else None)
 
@@ -602,6 +1268,8 @@ def evaluate(
     published_widget_ids: frozenset = PUBLISHED_WIDGET_IDS,
     widgets: Mapping = PUBLISHED_WIDGETS,
     include_rows: bool = False,
+    widget_inputs: Optional[Mapping] = None,
+    selected_rows: list | None = None,
 ) -> ResultPayload:
     """Run the frozen eight-step widget pipeline and publish a :class:`ResultPayload`.
 
@@ -730,6 +1398,8 @@ def evaluate(
             continue
         eligible_rows.append(row)
     eligible = len(eligible_rows)
+    if selected_rows is not None:
+        selected_rows.extend(dict(row) for row in eligible_rows)
     incoming = len(rows)
     excluded_incomplete = matching - eligible
 
@@ -760,15 +1430,47 @@ def evaluate(
                 f"page_size {page_size} exceeds the hard cap {MAX_PAGE_SIZE}"
             )
 
-    # ---- 7b. aggregate widgets may never carry raw rows ------------------------------------
+    # ---- build the evaluation context for the measurement handlers ---------------------------
+    bare_policy = (policy_ref or "").partition("@")[0]
+    resolved_policy = None
+    if bare_policy:
+        resolved_policy = (getattr(project, "policies", {}) or {}).get(bare_policy)
+    ctx: dict[str, Any] = {
+        "inputs": dict(widget_inputs or {}),
+        "project": project,
+        "policy": resolved_policy,
+        "policy_ref": policy_ref,
+        "grouping": group_keys,
+        "buckets": bucket_payloads,
+        "score_columns": _score_columns_from_inputs(
+            {"inputs": dict(widget_inputs or {}), "project": project}
+        ),
+        "display": widget.display,
+    }
+
+    # ---- 8. measurement: call report_v2.measurements ---------------------------------------
+    if measurement_id not in _MEASUREMENT_DISPATCH:
+        raise UnknownMeasurementError(f"no dispatcher for measurement {measurement_id!r}")
+    called_modules.append(f"report_v2.measurements ({measurement_id})")
+    aggregates, extra = _MEASUREMENT_DISPATCH[measurement_id](eligible_rows, ctx)
+
+    # ---- 7b. row payload (after dispatch so handlers can supply rows via extra) ---------------
     row_payload: tuple[Mapping, ...] = ()
+    if "rows" in extra:
+        row_source = tuple(dict(r) for r in extra["rows"])
+    else:
+        row_source = tuple(dict(r) for r in eligible_rows)
+
     if include_rows:
         if widget.aggregate:
             raise NonAggregateRowsError(
                 f"aggregate widget {widget_id!r} cannot publish raw case-level rows"
             )
-        row_payload = tuple(dict(row) for row in eligible_rows)
+        row_payload = row_source
+    elif extra.get("rows") is not None and not widget.aggregate:
+        row_payload = row_source
 
+    # pagination recomputed from the FINAL row_payload
     pagination = None
     if page_size is not None:
         pagination = {
@@ -776,12 +1478,6 @@ def evaluate(
             "returned": len(row_payload),
             "truncated": len(row_payload) > page_size,
         }
-
-    # ---- 8. measurement: call report_v2.measurements ---------------------------------------
-    if measurement_id not in _MEASUREMENT_DISPATCH:
-        raise UnknownMeasurementError(f"no dispatcher for measurement {measurement_id!r}")
-    called_modules.append(f"report_v2.measurements ({measurement_id})")
-    aggregates, _extra = _MEASUREMENT_DISPATCH[measurement_id](eligible_rows)
 
     common_population = None
     if measurement_id in PAIRED_MEASUREMENTS:
@@ -822,6 +1518,9 @@ def evaluate(
         coverage_note=coverage_note,
     )
     units = dict(MEASUREMENT_UNITS.get(measurement_id, {"n": "count"}))
+    units.update(extra.get("units") or {})
+
+    chart_extras: dict[str, Any] = dict(extra.get("chart") or {})
 
     counts = CountAccounting(
         incoming=incoming,
@@ -847,6 +1546,7 @@ def evaluate(
         pagination=pagination,
         buckets=bucket_payloads,
         groups=group_labels,
+        chart=chart_extras,
     )
 
 

@@ -28,13 +28,15 @@ per-widget JSON data endpoint.
 """
 from __future__ import annotations
 
+import csv
 import json
 import re
 from typing import Mapping
+from urllib.parse import urlencode
 
 from django.contrib.auth.decorators import login_required
 from django.core import signing
-from django.http import JsonResponse
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render
 from django.urls import Resolver404, reverse
 from django.utils.html import escape
@@ -43,11 +45,13 @@ from django.views.decorators.http import require_GET, require_POST
 
 from . import data
 from .definitions.repository import InvalidDefinitionIdError, validate_definition_id
-from .evaluation import EvaluationError, RequestContract, WidgetSpec, evaluate
+from .evaluation import (EvaluationError, PAIRED_MEASUREMENTS, RequestContract, WidgetSpec, evaluate,
+                         _catalog_score_columns, _highest_score_cell)
+from .measurements import fn_fp_cases
 from .permissions import can_edit_catalog
 from .projects.prime import get_project_definition
 
-__all__ = ["index", "report_page", "widget_data"]
+__all__ = ["index", "report_page", "widget_data", "report_csv"]
 
 #: The single production project every published report is scoped to (Task 04).
 _PROJECT_ID = "prime"
@@ -72,6 +76,27 @@ _ALLOWED_TOP_KEYS = frozenset({"context", "date", "filters", "comparison", "page
 #: The scalar types an override filter value may be (or a list/tuple of these, bounded in length).
 _SCALAR_TYPES = (str, int, float, bool)
 _MAX_FILTER_LIST = 50
+
+# ---------------------------------------------------------------------------
+# Scoped CSV export (Task 16): the widget's own measurement + filters are the single scope definition.
+# There is deliberately no DEFAULT_FROM_DATE-style global default anywhere here -- the export population
+# is exactly the widget window/filters that the evaluator already resolved (LEGACY-MAP: preserve the
+# selected cohort, no implicit global date range).
+# ---------------------------------------------------------------------------
+_CSV_KINDS = frozenset({"full", "false_negatives", "false_positives"})
+_CSV_DISCREPANCY_MEASUREMENTS = frozenset({
+    "false_negatives", "false_positives", "classification_summary",
+    "reference_agreement", "paired_reference_comparison",
+})
+_CSV_COLUMNS = {
+    "full": ("accession", "site", "study_date", "gt_label", "pred_label"),
+    "false_negatives": ("accession", "site", "study_date", "gt_label", "pred_label",
+                        "highest_finding", "highest_score"),
+    "false_positives": ("accession", "site", "study_date", "gt_label", "pred_label",
+                        "highest_finding", "highest_score"),
+}
+_CSV_MAX_ROWS = _SERVER_PAGE_SIZE * _MAX_PAGE
+_CSV_FILENAME_SAFE_RE = re.compile(r"[^A-Za-z0-9._-]")
 
 
 class TamperedContextError(Exception):
@@ -143,7 +168,7 @@ def _build_specs(layout: dict) -> dict[str, WidgetSpec]:
             display=display,
             measurement=measurement,
             aggregate=(display != "table"),
-            paired=measurement in {"agreement_kappa", "agreement_mcnemar", "fn_fp_cases"},
+            paired=measurement in PAIRED_MEASUREMENTS,
             window=window,
             filters=frozenset(controls.get("filters") or ()),
             dimensions=frozenset(controls.get("compare_by") or ()),
@@ -279,11 +304,16 @@ def _evaluate(
     grouping: list | None = None,
     page: int = 1,
     rows: list | None = None,
+    selected_rows: list | None = None,
 ) -> dict:
     """Evaluate one widget into a JSON-safe payload dict. NEVER raises for a domain failure."""
     if rows is None:
         rows = data.fetch_project_rows(_PROJECT_ID, layout_widget=widget)
     specs = _build_specs(layout)
+    if date_override is None:
+        default_window = dict(widget.get("window") or {})
+        if default_window.get("start") and not _WINDOW_START_RE.match(str(default_window["start"])):
+            date_override = default_window
     request = RequestContract(
         widget_id=widget["id"],
         date_override=date_override,
@@ -291,6 +321,7 @@ def _evaluate(
         comparison=comparison,
     )
     if grouping is None:
+        comparison = comparison or widget.get("default_compare_by")
         grouping = [comparison] if comparison else None
     display = widget.get("type")
     buckets = widget.get("bucket") if display in ("line", "bar") else None
@@ -303,6 +334,8 @@ def _evaluate(
         catalog=None,
         rows=rows,
         ci_registry=ci_registry,
+        policy=policy,
+        selected_rows=selected_rows,
         grouping=grouping,
         buckets=buckets,
         page_size=_SERVER_PAGE_SIZE if is_table else None,
@@ -310,6 +343,7 @@ def _evaluate(
         published_widget_ids=frozenset(specs),
         widgets=specs,
         include_rows=is_table,
+        widget_inputs=dict((widget.get("query") or {}).get("inputs") or {}),
     )
     payload = result.to_dict()
     if is_table:
@@ -371,6 +405,20 @@ def _summary_text(payload: dict) -> str:
 # ---------------------------------------------------------------------------
 # Views
 # ---------------------------------------------------------------------------
+def _csv_links(slug, version, widget, payload):
+    if payload.get("error") or not (payload.get("dates") or {}).get("window_start"):
+        return []
+    dates = payload["dates"]
+    params = urlencode({"widget": widget["id"], "context": _widget_context_token(slug, version, widget["id"]),
+                        "date_from": dates["window_start"], "date_to": dates["window_end"]})
+    kinds = [("full", "Download CSV")]
+    measurement = (widget.get("query") or {}).get("measurement")
+    if measurement in ("false_negatives", "false_positives"):
+        kinds = [(measurement, "Download cases CSV")]
+    return [{"url": reverse("report_v2:csv", args=[slug, kind]) + "?" + params, "label": label}
+            for kind, label in kinds]
+
+
 @login_required
 @require_GET
 def index(request):
@@ -425,6 +473,7 @@ def report_page(request, slug: str):
                     "controls": _allowed_controls(widget),
                     "context_token": _widget_context_token(slug, version, widget_id),
                     "data_url": reverse("report_v2:widget_data", args=[slug, widget_id]),
+                    "csv_links": _csv_links(slug, version, widget, payload),
                     "payload": payload,
                     "summary": _summary_text(payload),
                     "empty_message": _EMPTY_MESSAGE,
@@ -552,3 +601,161 @@ def widget_data(request, slug: str, widget_id: str):
         except (TypeError, ValueError):
             request_seq = None
     return JsonResponse({"status": "ok", "request_seq": request_seq, **payload}, status=200)
+
+
+# ---------------------------------------------------------------------------
+# Scoped CSV export (the read-only compatibility surface for the legacy full / FN / FP downloads)
+# ---------------------------------------------------------------------------
+def _csv_cell(value: object) -> str:
+    """Render one cell for the csv writer: ``None``/missing becomes ``''`` (never a fabricated value)."""
+    text = "" if value is None else str(value)
+    return "'" + text if text.startswith(("=", "+", "-", "@", "\t", "\r", "\n")) else text
+
+
+@login_required
+@require_GET
+def report_csv(request, slug: str, kind: str):
+    """Return one scoped CSV export off a single published widget's resolved scope.
+
+    Mirrors :func:`widget_data`'s discipline: every forged-input gate returns *before* a single row is
+    read, and no error body carries row data. The widget's own measurement + validated filters are the
+    only scope definition -- there is no implicit global date range and no re-derived statistic.
+    """
+    # (a) an unknown kind is simply "no such route" -> 404 (mirrors the malformed-id handling above).
+    if kind not in _CSV_KINDS:
+        raise Resolver404(f"unknown csv kind {kind!r}")
+
+    # (b) identifiers must be well-formed; a malformed slug is "no such report" -> 404.
+    try:
+        validate_definition_id(slug)
+    except InvalidDefinitionIdError as exc:
+        raise Resolver404(f"unknown report {slug!r}") from exc
+
+    # (c) a widget id and a signed context are both mandatory: the export is always widget-scoped.
+    widget = request.GET.get("widget")
+    context = request.GET.get("context")
+    if not widget or not context:
+        return JsonResponse({"error": "widget and signed context are required", "status": "rejected"}, status=400)
+
+    # (d) verify the signed token first; a forged/expired/garbage token is fail-closed tampering -> 403.
+    try:
+        token_slug, token_version, token_widget = _parse_widget_context(context)
+    except TamperedContextError:
+        return JsonResponse({"error": "context token failed to verify", "status": "tampered"}, status=403)
+
+    # (e) the report must be published (drafts are never exported) -> 404 otherwise.
+    try:
+        version, layout = data.load_published_layout(slug, _PROJECT_ID)
+    except data.PublishedNotFoundError:
+        return JsonResponse({"error": "report is not published", "status": "not_found"}, status=404)
+
+    # (f) the token must be bound to this (slug, current version, widget); a moved pointer is stale -> 409.
+    if (token_slug, token_version, token_widget) != (slug, version, widget):
+        if token_version != version:
+            return JsonResponse({"error": "report version has changed; reload", "status": "stale"}, status=409)
+        return JsonResponse({"error": "context does not match this widget", "status": "tampered"}, status=403)
+
+    # (g) the widget must actually be on the current published layout.
+    widget_def = _layout_widgets(layout).get(widget)
+    if widget_def is None:
+        return JsonResponse({"error": "widget is not on this layout", "status": "tampered"}, status=403)
+
+    # (h) the two discrepancy kinds require a widget whose measurement can actually yield FN/FP cases;
+    #     "full" is permitted on any widget. A non-supporting measurement is a semantic rejection -> 422.
+    measurement = (widget_def.get("query") or {}).get("measurement")
+    if kind in ("false_negatives", "false_positives") and measurement not in _CSV_DISCREPANCY_MEASUREMENTS:
+        return JsonResponse(
+            {"error": f"{kind} exports are not available for the {measurement!r} widget",
+             "status": "rejected"},
+            status=422,
+        )
+
+    # (i) query-string overrides are allowed ONLY through the existing validators; nothing else is accepted
+    #     (no implicit global date range, ever). Any unknown key -> 400 before a row is read.
+    for key in request.GET.keys():
+        if key not in frozenset({"widget", "context", "date_from", "date_to", "site"}):
+            return JsonResponse({"error": f"unexpected query parameter {key!r}", "status": "rejected"}, status=400)
+    date_from = request.GET.get("date_from")
+    date_to = request.GET.get("date_to")
+    try:
+        date_override = None if (date_from is None and date_to is None) else _validate_date(
+            {"start": date_from, "end": date_to}
+        )
+        site_values = request.GET.getlist("site")
+        # Only the widget's own declared filter dimensions may be narrowed; the value dict is built from
+        # those names alone so an arbitrary key can never reach the evaluator (else _validate_filters rejects).
+        filters = _validate_filters(widget_def, {"site": site_values} if site_values else {})
+    except OverrideRejectedError as exc:
+        return JsonResponse({"error": str(exc), "status": "rejected"}, status=400)
+
+    # (j)+(k) the single ORM seam + the one evaluation; a domain error is data (200), never a 500.
+    try:
+        rows = data.fetch_project_rows(_PROJECT_ID, layout_widget=widget_def)
+        scoped_rows = []
+        payload = _evaluate(
+            layout,
+            widget_def,
+            date_override=date_override,
+            filters=filters,
+            comparison=None,
+            grouping=None,
+            page=1,
+            rows=rows,
+            selected_rows=scoped_rows,
+        )
+    except (EvaluationError, data.AdapterError) as exc:
+        return JsonResponse({"status": "error", "error": str(exc), "widget_id": widget}, status=200)
+
+    # (l) select the rows to emit, reading every statistic off the already-computed payload.
+    columns = _CSV_COLUMNS[kind]
+    selected_rows = [dict(row, study_date=row.get("event_date")) for row in scoped_rows]
+    if kind != "full":
+        result = fn_fp_cases(
+            [row.get("gt_label") for row in selected_rows],
+            [row.get("pred_label") for row in selected_rows],
+            [row.get("accession") for row in selected_rows],
+            reference="manual", prediction="llm",
+        )
+        selected_ids = set(result.false_negative_ids if kind == "false_negatives" else result.false_positive_ids)
+        selected_rows = [row for row in selected_rows if row.get("accession") in selected_ids]
+        score_columns = _catalog_score_columns({"project": get_project_definition()})
+        for row in selected_rows:
+            row["highest_finding"], row["highest_score"] = _highest_score_cell(row, score_columns)
+
+    # (m) render to CSV over the stdlib writer, then the provenance trailer. Truncation is flagged in-body
+    #     and via a header so a consumer can detect a capped export.
+    truncated = len(selected_rows) > _CSV_MAX_ROWS
+    if truncated:
+        selected_rows = selected_rows[:_CSV_MAX_ROWS]
+
+    response = HttpResponse(content_type="text/csv")
+    writer = csv.writer(response)
+    writer.writerow(list(columns))
+    for row in selected_rows:
+        writer.writerow([_csv_cell(row.get(col)) for col in columns])
+    if truncated:
+        writer.writerow(["# truncated"])
+        response["X-Report-V2-Truncated"] = "1"
+
+    dates = payload.get("dates") or {}
+    inputs = (widget_def.get("query") or {}).get("inputs") or {}
+    trailer = [
+        f"# widget={widget}",
+        f"# measurement={measurement}",
+        f"# reference={inputs.get('ground_truth') or '-'}",
+        f"# prediction={inputs.get('prediction') or '-'}",
+        f"# window={dates.get('window_start')}..{dates.get('window_end')}",
+        f"# anchor={dates.get('anchor_date') or '-'}",
+        f"# filters={json.dumps(filters, sort_keys=True, default=str)}",
+        f"# version={version}",
+        f"# policy={(widget_def.get('query') or {}).get('threshold_policy') or '-'}",
+        f"# kind={kind}",
+    ]
+    for line in trailer:
+        writer.writerow([line])
+
+    safe_slug = _CSV_FILENAME_SAFE_RE.sub("", slug)
+    safe_widget = _CSV_FILENAME_SAFE_RE.sub("", widget)
+    filename = f"{safe_slug}_{safe_widget}_{kind}.csv"
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    return response

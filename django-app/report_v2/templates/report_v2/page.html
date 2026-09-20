@@ -61,6 +61,7 @@
                     <button type="submit" class="btn btn-primary" data-action="apply">Apply</button>
                     <button type="reset" class="btn btn-secondary" data-action="reset">Reset</button>
                 </form>
+                <p class="widget-downloads">{% for link in f.csv_links %}<a href="{{ link.url }}" data-csv-download>{{ link.label }}</a>{% endfor %}</p>
                 <p class="widget-summary" role="status">{{ f.summary }}</p>
                 <div class="widget-body" data-widget-body>
                     {# Server-side empty message, always present so report.js can read it per frame #}

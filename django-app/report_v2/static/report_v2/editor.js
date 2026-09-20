@@ -219,6 +219,36 @@
     });
   }
 
+  function renderSeedResult(result) {
+    if (!result) {
+      return;
+    }
+    var data = result.data || {};
+    if (result.status >= 400) {
+      // Rejected/failed seed: list the violations through the shared, textContent-safe error renderer.
+      showErrors(data.errors || [data.error || "the seed could not be loaded"]);
+      return;
+    }
+    showErrors(data.errors || []);
+    if (data.status === "seeded") {
+      window.location.reload();
+      return;
+    }
+    if (previewOut) {
+      // No raw server text is ever injected as HTML; fill() writes a textContent-only <p>.
+      var label = data.status === "checked" ? "Seed validated (nothing written)." : "Seed drafts loaded.";
+      fill(previewOut, data.def_id ? label + " " + data.def_id : label);
+    }
+  }
+
+  function seedLoad(dry) {
+    // The shared body() helper already carries def_id + expected_revision + csrfmiddlewaretoken; only the
+    // dry_run flag is added here, so both seed actions reuse the exact same signed form encoding.
+    return post(root.getAttribute(dry ? "data-seed-check-url" : "data-seed-load-url"), {
+      dry_run: dry ? "1" : "0"
+    }).then(renderSeedResult);
+  }
+
   if (textarea) {
     textarea.addEventListener("input", function () {
       setDirty(textarea.value !== savedText);
@@ -240,6 +270,10 @@
       publish();
     } else if (action === "create") {
       createReport();
+    } else if (action === "seed-check") {
+      seedLoad(true);
+    } else if (action === "seed-load") {
+      seedLoad(false);
     }
   });
 

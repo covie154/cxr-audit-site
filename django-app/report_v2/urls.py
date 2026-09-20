@@ -18,8 +18,7 @@ urlpatterns += [
     path("layout/editor/preview/", admin_views.editor_preview, name="editor_preview"),
     path("layout/editor/publish/", admin_views.editor_publish, name="editor_publish"),
     path("layout/editor/new/", admin_views.editor_new, name="editor_new"),
-    # Parameterised report-detail view of the editor, declared LAST inside the reserved block so the
-    # literal segments above win first.
+    path("layout/editor/seed/", admin_views.editor_seed, name="editor_seed"),
     path("layout/editor/<str:def_id>/", admin_views.editor, name="editor_detail"),
 ]
 
@@ -51,4 +50,9 @@ register_converter(_DefIdConverter, "defid")
 urlpatterns += [
     path("<defid:slug>/", views.report_page, name="page"),
     path("<defid:slug>/widget/<defid:widget_id>/data/", views.widget_data, name="widget_data"),
+]
+
+# Scoped compatibility downloads use the same published widget context as the page.
+urlpatterns += [
+    path("<defid:slug>/csv/<str:kind>/", views.report_csv, name="csv"),
 ]

@@ -4,6 +4,7 @@ documentation/
 /django-app/db/audit.sqlite3
 /django-app/db/*.sqlite3-*
 /django-app/audit_artifacts/
+/django-app/private_data/
 *.pyc
 *.pyo
 .env

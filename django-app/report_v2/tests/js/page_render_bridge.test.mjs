@@ -14,7 +14,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import readfile from 'node:fs/promises';
 import pathe from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const here = pathe.dirname(fileURLToPath(import.meta.url));
 const staticDir = pathe.join(here, '..', '..', 'static', 'report_v2');
@@ -231,8 +231,8 @@ test('case 4: boot.mjs registers value/table/line/bar and flags bootReady on the
     globalThis.document = { createElement: () => new FakeNode('div'), documentElement: new FakeNode('html') };
     globalThis.ResizeObserver = class { observe() {} disconnect() {} };
     globalThis.MutationObserver = class { observe() {} disconnect() {} };
-    const registryMod = await import(pathe.join(staticDir, 'widgets', 'registry.mjs'));
-    await import(pathe.join(staticDir, 'widgets', 'boot.mjs'));
+    const registryMod = await import(pathToFileURL(pathe.join(staticDir, 'widgets', 'registry.mjs')).href);
+    await import(pathToFileURL(pathe.join(staticDir, 'widgets', 'boot.mjs')).href);
     assert.equal(globalThis.window.__rv2widgets.bootReady, true);
     assert.equal(globalThis.window.__rv2widgets.registry, registryMod.registry);
     // after boot the four renderers resolve through the registry's get()
@@ -250,4 +250,36 @@ test('source scan: boot.mjs carries no forbidden tokens', async () => {
     for (const token of forbidden) {
         assert.equal(text.toLowerCase().includes(token.toLowerCase()), false, 'boot.mjs must not contain ' + token);
     }
+});
+
+
+test('Task 16: updates render every chart kind through the registry', async () => {
+    const { registry, calls } = makeFakeRegistry();
+    const { frames, pending } = await runScript({ types: ['pie', 'confusion_matrix', 'boxplot'], registry });
+    for (const frame of frames) {
+        frame.form.fire('submit', { preventDefault() {} });
+        pending.shift()(RESOLVED);
+        await flush();
+    }
+    assert.deepEqual(calls.render.map(call => call.type), ['pie', 'confusion_matrix', 'boxplot']);
+});
+
+test('Task 16: CSV links follow the applied widget window and site', async () => {
+    const { frames, pending } = await runScript({ types: ['table'], registry: null });
+    window.location = { href: 'http://localhost/report/overview/' };
+    const link = new FakeNode('a');
+    link.href = 'http://localhost/report/overview/csv/full/?widget=w0&context=signed';
+    const site = new FakeNode('input');
+    site.value = 'SYNTH-SITE-B';
+    site.dataset.filter = 'site';
+    frames[0].frame.register('[data-csv-download]', [link]);
+    frames[0].frame.register('[data-filter]', [site]);
+    frames[0].form.fire('submit', { preventDefault() {} });
+    pending.shift()({ ...RESOLVED, dates: { window_start: '2026-08-01', window_end: '2026-08-10' } });
+    await flush();
+    const url = new URL(link.href);
+    assert.equal(url.searchParams.get('site'), 'SYNTH-SITE-B');
+    assert.equal(url.searchParams.get('date_from'), '2026-08-01');
+    assert.equal(url.searchParams.get('date_to'), '2026-08-10');
+    assert.equal(url.searchParams.get('context'), 'signed');
 });

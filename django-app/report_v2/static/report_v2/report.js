@@ -215,6 +215,18 @@
     };
 
     function renderFrame(frame, payload) {
+        frame.el.querySelectorAll('[data-csv-download]').forEach((link) => {
+            const dates = payload.dates || {};
+            link.hidden = !dates.window_start || !dates.window_end;
+            if (link.hidden) { return; }
+            const url = new URL(link.href, window.location.href);
+            url.searchParams.set('date_from', dates.window_start);
+            url.searchParams.set('date_to', dates.window_end);
+            url.searchParams.delete('site');
+            const site = (state.widgets[frame.id].overrides.filters || {}).site;
+            if (site) { (Array.isArray(site) ? site : [site]).forEach((value) => url.searchParams.append('site', value)); }
+            link.href = url.toString();
+        });
         const body = frame.body;
         if (!body) { return; }
         const isChild = (node) => Array.prototype.indexOf.call(body.children, node) >= 0;
@@ -234,7 +246,7 @@
         const reg = widgetRegistry();
         const kind = frame.type;
         let usedRegistry = false;
-        if (reg && (kind === 'value' || kind === 'table' || kind === 'line' || kind === 'bar')) {
+        if (reg && (kind === 'value' || kind === 'table' || kind === 'line' || kind === 'bar' || kind === 'pie' || kind === 'confusion_matrix' || kind === 'boxplot')) {
             try {
                 if (frame.regInstance && !frame.regDisposed) {
                     reg.disposeInstance(frame.regInstance);

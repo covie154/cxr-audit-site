@@ -11,7 +11,9 @@
      data-save-url="{% url 'report_v2:editor_save_draft' %}"
      data-preview-url="{% url 'report_v2:editor_preview' %}"
      data-publish-url="{% url 'report_v2:editor_publish' %}"
-     data-new-url="{% url 'report_v2:editor_new' %}">
+     data-new-url="{% url 'report_v2:editor_new' %}"
+     data-seed-check-url="{% url 'report_v2:editor_seed' %}"
+     data-seed-load-url="{% url 'report_v2:editor_seed' %}">
     <h1 class="page-title">Report layout <small>YAML editor</small></h1>
     <p class="page-subtitle">Admin-only. Drafts are saved privately; only <strong>Publish</strong> moves a report live.</p>
 

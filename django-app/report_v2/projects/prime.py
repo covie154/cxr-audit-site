@@ -72,6 +72,13 @@ def _build_sources():
         Source("llm_abnormal", "label", "gt_llm", label="LLM ground truth"),
         Source("lunit_binarised", "label", "lunit_binarised", label="Lunit binarised"),
         Source(
+            "lunit_findings",
+            "label",
+            "lunit_binarised",
+            label="Lunit findings (policy-derived)",
+            description="Aggregate recomputed from the ten raw finding scores using the widget threshold policy.",
+        ),
+        Source(
             "time_to_clinical_decision",
             "duration",
             "time_to_clinical_decision_seconds",
@@ -120,6 +127,12 @@ def _build_cohorts():
             Cohort(
                 "manual_label_present",
                 description="The legacy manually annotated subset: rows that carry a manual ground-truth label.",
+                predicate={"gt_manual__isnull": False},
+                requires_fields=("gt_manual",),
+            ),
+            Cohort(
+                "manual_gt_subset",
+                description="Canonical name of the manually annotated subset: rows carrying a manual ground-truth label.",
                 predicate={"gt_manual__isnull": False},
                 requires_fields=("gt_manual",),
             ),

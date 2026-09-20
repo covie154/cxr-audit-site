@@ -437,6 +437,12 @@ class ResultPayload:
     * **the four required metadata groups** -- ``sources``, ``versions``,
       ``dates`` and ``units``.  :meth:`to_dict` refuses to publish a payload
       whose groups are not all populated.
+
+    ``chart`` carries renderer-contract extras (rows-series cells, category
+    lists, box summaries, matrix + comparison provenance) emitted by the
+    Task-16 measurement handlers.  Its entries are merged into the published
+    envelope at top level; the envelope's reserved keys can never be shadowed
+    -- a collision raises :class:`PayloadContractError` at publish time.
     """
 
     widget_id: str
@@ -454,6 +460,7 @@ class ResultPayload:
     pagination: Mapping[str, Any] | None = None
     buckets: tuple[Mapping[str, Any], ...] = ()
     groups: tuple[str, ...] = ()
+    chart: Mapping[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         if not _is_non_empty_str(self.widget_id):
@@ -515,7 +522,7 @@ class ResultPayload:
 
     def _build_envelope(self) -> dict[str, Any]:
         """Return the fully normalised envelope dict (no publish-time checks)."""
-        return {
+        out = {
             "widget_id": self.widget_id,
             "display": self.display,
             "aggregate": self.aggregate,
@@ -538,6 +545,13 @@ class ResultPayload:
             "buckets": [json_friendly(bucket) for bucket in self.buckets],
             "groups": list(self.groups),
         }
+        for key, value in json_friendly(self.chart).items():
+            if key in out:
+                raise PayloadContractError(
+                    f"ResultPayload.chart must not shadow envelope key {key!r}"
+                )
+            out[key] = value
+        return out
 
     def as_dict(self) -> dict[str, Any]:
         """Return the JSON-friendly snapshot without the publish-time checks."""

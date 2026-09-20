@@ -38,6 +38,7 @@ from django.views.decorators.http import require_GET, require_POST
 
 from . import data
 from . import permissions
+from . import seeding
 from .definitions.repository import (
     DefinitionRepository,
     DraftNotFoundError,
@@ -60,6 +61,7 @@ __all__ = [
     "editor_preview",
     "editor_publish",
     "editor_save_draft",
+    "editor_seed",
 ]
 
 #: The editor edits the definitions of the single production project (Task 04).
@@ -393,3 +395,54 @@ def editor_new(request):
         {"def_id": def_id, "revision": revision, "yaml_text": scaffold, "status": "created"},
         status=200,
     )
+
+
+@require_POST
+@csrf_protect
+@require_admin
+def editor_seed(request):
+    """Load the reviewed report-v2 seed into admin-editable DRAFTS only. Never validates-to-publish,
+    never publishes, never mails."""
+    def_id = str(_param(request, "def_id", "")).strip() or seeding.SEED_DEF_ID
+    dry_run = str(_param(request, "dry_run", "")).lower() in ("1", "true", "yes", "on")
+    if dry_run:
+        # A dry run is a pure read of the packaged seed bytes: no repository write happens below.
+        violations = seeding.validate_seeds() + seeding.validate_seed_bindings()
+        if violations:
+            return JsonResponse(
+                {"error": "seed rejected", "errors": violations, "def_id": def_id,
+                 "status": "rejected"},
+                status=422,
+            )
+        return JsonResponse(
+            {"def_id": def_id, "errors": [], "valid": True, "dry_run": True, "drafts_only": True,
+             "published": False, "status": "checked"},
+            status=200,
+        )
+    expected = _expected_revision(request)
+    try:
+        receipt = seeding.install_drafts(
+            default_root(),
+            def_id=def_id,
+            expected_revisions=({"report": expected} if expected else None),
+        )
+    except seeding.SeedValidationError as exc:
+        return JsonResponse(
+            {"error": "seed rejected", "errors": exc.violations, "def_id": def_id,
+             "status": "rejected"},
+            status=422,
+        )
+    except StaleRevisionError:
+        return JsonResponse(
+            {"error": "version conflict: reload", "def_id": def_id, "status": "conflict"},
+            status=409,
+        )
+    except RepositoryError as exc:
+        return JsonResponse({"error": str(exc), "def_id": def_id}, status=400)
+    except seeding.SeedError as exc:
+        return JsonResponse(
+            {"error": "seed rejected", "errors": [str(exc)], "def_id": def_id,
+             "status": "rejected"},
+            status=422,
+        )
+    return JsonResponse({**receipt, "status": "seeded", "drafts_only": True, "published": False}, status=200)

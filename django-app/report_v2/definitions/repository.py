@@ -14,10 +14,44 @@ Mechanism:
 """
 from __future__ import annotations
 
-import fcntl
 import hashlib
 import os
 import re
+
+# ---------------------------------------------------------------------------
+# Cross-platform advisory lock (Task 16 portability fix).
+# Production (Linux/Docker) keeps the exact fcntl.flock semantics; Windows local
+# development/test runs -- where the fcntl module does not exist -- fall back to
+# msvcrt byte-range locks on the same lockfile, preserving the same
+# acquire-exclusively / release / close discipline.
+# ---------------------------------------------------------------------------
+try:
+    import fcntl
+except ImportError:  # pragma: no cover -- exercised only on Windows hosts
+
+    def _flock_ex(fd: int) -> None:
+        import msvcrt
+
+        os.lseek(fd, 0, os.SEEK_SET)
+        msvcrt.locking(fd, msvcrt.LK_LOCK, 1)
+
+    def _flock_unlock(fd: int) -> None:
+        import msvcrt
+
+        try:
+            os.lseek(fd, 0, os.SEEK_SET)
+            msvcrt.locking(fd, msvcrt.LK_UNLCK, 1)
+        except OSError:
+            # Unlocking an unlocked region (e.g. when acquisition itself timed out)
+            # must not mask the original failure; closing the fd releases the lock.
+            pass
+else:
+
+    def _flock_ex(fd: int) -> None:
+        fcntl.flock(fd, fcntl.LOCK_EX)
+
+    def _flock_unlock(fd: int) -> None:
+        fcntl.flock(fd, fcntl.LOCK_UN)
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -43,6 +77,19 @@ from ..projects.base import ProjectCatalogError
 # collectstatic does not harvest. default_root() is pure path math (creates no
 # directories) so importing this module never touches the filesystem.
 _DEFAULT_ROOT_SUBPATH = ("private_data", "report_v2_definitions")
+
+
+def _fsync_path(path: Path) -> None:
+    """fsync an existing file's bytes to disk.
+
+    Opens read-write because Windows ``_commit`` (what ``os.fsync`` calls there)
+    rejects read-only handles with EBADF; POSIX behaviour is unchanged.
+    """
+    fd = os.open(str(path), os.O_RDWR)
+    try:
+        os.fsync(fd)
+    finally:
+        os.close(fd)
 
 
 def default_root() -> Path:
@@ -220,12 +267,8 @@ class DefinitionRepository:
             )
         # Atomic write
         tmp = self._tmp_dir / f"draft-{def_id}-{os.getpid()}"
-        tmp.write_text(yaml_text, encoding="utf-8")
-        fd = os.open(str(tmp), os.O_RDONLY)
-        try:
-            os.fsync(fd)
-        finally:
-            os.close(fd)
+        tmp.write_bytes(yaml_text.encode("utf-8"))
+        _fsync_path(tmp)
         os.replace(str(tmp), str(path))
         return _revision_of(yaml_text)
 
@@ -374,7 +417,7 @@ class DefinitionRepository:
         lock_path = self._lock_path(def_id)
         lock_fd = os.open(str(lock_path), os.O_CREAT | os.O_RDWR)
         try:
-            fcntl.flock(lock_fd, fcntl.LOCK_EX)
+            _flock_ex(lock_fd)
 
             # (3.5) optimistic concurrency: when the caller asserts an expected
             # revision, the current on-disk draft revision must match it exactly.
@@ -408,27 +451,19 @@ class DefinitionRepository:
 
             # (5) atomic blob write
             tmp_blob = self._tmp_dir / f"blob-{def_id}-{os.getpid()}-{id(object())}"
-            tmp_blob.write_text(yaml_text, encoding="utf-8")
-            fd = os.open(str(tmp_blob), os.O_RDONLY)
-            try:
-                os.fsync(fd)
-            finally:
-                os.close(fd)
+            tmp_blob.write_bytes(yaml_text.encode("utf-8"))
+            _fsync_path(tmp_blob)
             os.replace(str(tmp_blob), str(blob_path))
 
             # (6) atomic pointer flip (inode swap via os.replace)
             pp = self._pointer_path(def_id)
             tmp_ptr = self._tmp_dir / f"ptr-{def_id}-{os.getpid()}-{id(object())}"
-            tmp_ptr.write_text(version, encoding="utf-8")
-            fd = os.open(str(tmp_ptr), os.O_RDONLY)
-            try:
-                os.fsync(fd)
-            finally:
-                os.close(fd)
+            tmp_ptr.write_bytes(version.encode("utf-8"))
+            _fsync_path(tmp_ptr)
             os.replace(str(tmp_ptr), str(pp))
 
         finally:
-            fcntl.flock(lock_fd, fcntl.LOCK_UN)
+            _flock_unlock(lock_fd)
             os.close(lock_fd)
 
         return PublishReceipt(version=version, blob_path=blob_path, pointer_path=pp)
