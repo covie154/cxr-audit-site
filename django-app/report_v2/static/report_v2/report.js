@@ -396,4 +396,106 @@
             });
         }
     });
+
+    // -- print / export snapshot (Task 17) --------------------------------------------------
+    // Blocks the export while any widget update is pending, then freezes the *server-side*
+    // evaluation of every widget under the current selections and opens the print view.
+    // The snapshot is export state only; nothing here writes it back into widget state.
+    const printButton = document.querySelector('[data-action="print"]');
+    const printStatus = document.querySelector('[data-role="print-status"]');
+    const SNAPSHOT_URL = '/report/' + encodeURIComponent(root.dataset.slug || '') + '/snapshot/';
+    const PRINT_SETTLE_MS = 15000;
+    const PRINT_POLL_MS = 150;
+
+    const updatesSettled = () => {
+        if (inflightByWidget.size) { return false; }
+        return frames.every((frame) => {
+            const widget = state.widgets[frame.id];
+            if (!widget) { return true; }
+            // -1/-1 means never requested (server defaults are on screen); n/n means applied.
+            return widget.pendingSeq <= widget.lastAppliedSeq;
+        });
+    };
+
+    const snapshotEntries = () => frames.map((frame) => {
+        const widget = state.widgets[frame.id] || { overrides: baseDefaults() };
+        const overrides = widget.overrides || baseDefaults();
+        const entry = { context: frame.el.dataset.contextToken };
+        if (overrides.date) { entry.date = overrides.date; }
+        if (overrides.filters && Object.keys(overrides.filters).length) { entry.filters = overrides.filters; }
+        if (overrides.comparison) { entry.comparison = overrides.comparison; }
+        if (frame.type === 'table' && overrides.page > 1) { entry.page = overrides.page; }
+        return entry;
+    });
+
+    const setPrintStatus = (text, href) => {
+        if (!printStatus) { return; }
+        while (printStatus.firstChild) { printStatus.removeChild(printStatus.firstChild); }
+        if (href) {
+            const link = el('a');
+            link.href = href;
+            link.textContent = text;
+            printStatus.append(link);
+        } else {
+            printStatus.textContent = text || '';
+        }
+    };
+
+    const openPrintView = (printUrl) => {
+        const opened = window.open(printUrl, '_blank');
+        if (!opened) {
+            // Popup refused (common with blockers): offer a direct navigation fallback.
+            setPrintStatus('The print view was blocked from opening. Open it here.', printUrl);
+        }
+    };
+
+    const requestSnapshot = (attempt) => {
+        window.fetch(SNAPSHOT_URL, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRFToken() },
+            body: JSON.stringify({ settled: true, widgets: snapshotEntries() })
+        })
+            .then((response) => response.json()
+                .then((payload) => ({ ok: response.ok, status: response.status, payload })))
+            .then((result) => {
+                if (result.status === 201 && result.payload.print_url) {
+                    setPrintStatus('');
+                    openPrintView(result.payload.print_url);
+                    return;
+                }
+                if (result.status === 409 && attempt < 4) {
+                    // The server still sees an unsettled race; wait and retry.
+                    setPrintStatus('Waiting for pending widget updates…');
+                    window.setTimeout(() => { requestSnapshot(attempt + 1); }, PRINT_POLL_MS * 4);
+                    return;
+                }
+                setPrintStatus((result.payload && result.payload.error) ||
+                    ('The export failed (' + result.status + ').'));
+            })
+            .catch((error) => {
+                setPrintStatus('The export failed: ' +
+                    (error && error.message ? error.message : String(error)));
+            });
+    };
+
+    if (printButton) {
+        printButton.addEventListener('click', () => {
+            const started = Date.now();
+            const waitSettled = () => {
+                if (updatesSettled()) {
+                    requestSnapshot(0);
+                    return;
+                }
+                if (Date.now() - started > PRINT_SETTLE_MS) {
+                    setPrintStatus('Widget updates are still pending; the export was not created. ' +
+                        'Try again once they finish.');
+                    return;
+                }
+                setPrintStatus('Waiting for pending widget updates…');
+                window.setTimeout(waitSettled, PRINT_POLL_MS);
+            };
+            waitSettled();
+        });
+    }
 })();

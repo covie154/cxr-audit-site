@@ -1,0 +1,139 @@
+/*
+ * report_v2 print page styles (Task 17).
+ *
+ * A standalone, always-light document: the export must stay readable regardless of
+ * the app theme, so the palette is hardcoded (no CSS variables from the app shell).
+ * Layout rules favour paper: single column, avoid breaking widget blocks across
+ * pages, repeat table headers, and keep the interactive print button on screen only.
+ */
+
+.print-body {
+    margin: 0 auto;
+    padding: 24px;
+    max-width: 900px;
+    background: #ffffff;
+    color: #1f2933;
+    font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    font-size: 13px;
+    line-height: 1.45;
+}
+
+.print-header h1 {
+    font-size: 20px;
+    margin: 0 0 6px;
+}
+
+.print-header h1 small,
+.print-widget h2 small {
+    color: #52606d;
+    font-weight: 400;
+    font-size: 0.75em;
+}
+
+.print-meta {
+    margin: 2px 0;
+    color: #52606d;
+}
+
+.print-button {
+    margin: 10px 0 4px;
+    padding: 6px 14px;
+    border: 1px solid #1f2933;
+    background: #ffffff;
+    color: #1f2933;
+    font: inherit;
+    cursor: pointer;
+}
+
+.print-widget {
+    border: 1px solid #d5dde5;
+    border-radius: 4px;
+    padding: 12px 14px;
+    margin: 14px 0;
+    break-inside: avoid;
+    page-break-inside: avoid;
+}
+
+.print-widget h2 {
+    font-size: 15px;
+    margin: 0 0 8px;
+}
+
+.print-facts {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2px 18px;
+    margin: 0 0 10px;
+}
+
+.print-facts div {
+    display: grid;
+    grid-template-columns: 110px 1fr;
+}
+
+.print-facts dt {
+    color: #52606d;
+}
+
+.print-facts dd {
+    margin: 0;
+    word-break: break-word;
+}
+
+.print-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 8px 0;
+    font-variant-numeric: tabular-nums;
+}
+
+.print-table caption {
+    text-align: left;
+    color: #52606d;
+    padding: 2px 0 4px;
+}
+
+.print-table th,
+.print-table td {
+    border: 1px solid #d5dde5;
+    padding: 4px 7px;
+    text-align: left;
+    vertical-align: top;
+}
+
+.print-table thead {
+    display: table-header-group; /* repeat headers across printed pages */
+}
+
+.print-error,
+.print-empty {
+    color: #8d1f2c;
+    margin: 6px 0 0;
+}
+
+.print-empty {
+    color: #52606d;
+}
+
+.print-footer {
+    margin-top: 18px;
+    color: #52606d;
+    border-top: 1px solid #d5dde5;
+    padding-top: 8px;
+}
+
+@media print {
+    .no-print {
+        display: none;
+    }
+
+    .print-body {
+        max-width: none;
+        padding: 0;
+        font-size: 11px;
+    }
+
+    .print-widget {
+        border-color: #9aa5b1;
+    }
+}

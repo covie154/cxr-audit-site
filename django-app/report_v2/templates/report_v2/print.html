@@ -1,0 +1,67 @@
+{% load static %}<!DOCTYPE html>
+<!--
+  report_v2 print page (Task 17).
+
+  Renders ONLY the frozen render snapshot: no re-evaluation, no database, no widget
+  controls and no page-state contract (a snapshot is export state, never restored user
+  preferences). Static light theme by construction -- every value below is template-
+  escaped plain data from the server-side view model in exports._print_view_model.
+-->
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ print.title }} — {{ print.version }} — Print — PRIMER-LLM</title>
+    <link rel="stylesheet" href="{% static 'report_v2/print.css' %}">
+</head>
+<body class="print-body">
+    <header class="print-header">
+        <h1>{{ print.title }} <small>{{ print.version }}</small></h1>
+        <p class="print-meta">
+            Report <code>{{ print.slug }}</code> · project <code>{{ print.project_id }}</code>
+            · generated {{ print.generated }}
+        </p>
+        <p class="print-meta">Frozen export snapshot: the values below are the ones the open report
+            page showed when the export was requested. They do not change with later data or
+            publication.</p>
+        <button type="button" class="print-button no-print" onclick="window.print()">Print / Save as PDF</button>
+    </header>
+
+    <main class="print-main">
+        {% for w in print.widgets %}
+        <section class="print-widget" data-print-widget="{{ w.id }}">
+            <h2>{{ w.title }} <small>{{ w.type }}</small></h2>
+            <dl class="print-facts">
+                <div><dt>Window</dt><dd>{{ w.window }}</dd></div>
+                <div><dt>Anchor (D)</dt><dd>{{ w.anchor }}</dd></div>
+                {% if w.timezone %}<div><dt>Timezone</dt><dd>{{ w.timezone }}</dd></div>{% endif %}
+                <div><dt>State</dt><dd>{{ w.applied_line }}</dd></div>
+                {% if w.coverage %}<div><dt>Coverage</dt><dd>{{ w.coverage }}</dd></div>{% endif %}
+                {% if w.measurement %}<div><dt>Measurement</dt><dd>{{ w.measurement }}</dd></div>{% endif %}
+                <div><dt>Threshold policy</dt><dd>{{ w.policy }}</dd></div>
+                {% if w.counts_line %}<div><dt>Counts</dt><dd>{{ w.counts_line }}</dd></div>{% endif %}
+            </dl>
+            {% if w.error %}
+            <p class="print-error">This widget could not be evaluated when the export was captured:
+                {{ w.error }}</p>
+            {% else %}
+                {% for t in w.tables %}
+                <table class="print-table">
+                    {% if t.caption %}<caption>{{ t.caption }}</caption>{% endif %}
+                    <thead><tr>{% for c in t.columns %}<th scope="col">{{ c }}</th>{% endfor %}</tr></thead>
+                    <tbody>
+                        {% for row in t.rows %}<tr>{% for cell in row %}<td>{{ cell }}</td>{% endfor %}</tr>{% endfor %}
+                    </tbody>
+                </table>
+                {% endfor %}
+                {% if not w.tables %}<p class="print-empty">{{ w.summary }}</p>{% endif %}
+            {% endif %}
+        </section>
+        {% endfor %}
+    </main>
+
+    <footer class="print-footer">
+        <p>PRIMER-LLM report export · snapshot of report {{ print.slug }} version {{ print.version }}.</p>
+    </footer>
+</body>
+</html>

@@ -16,6 +16,12 @@
     <span class="widget-csrf" data-role="csrf" aria-hidden="true">{% csrf_token %}</span>
     <h1 class="page-title">{{ title }} <small>{{ version }}</small></h1>
     <p class="report-v2-legacy"><a href="{{ legacy_report_url }}">Open the previous report</a></p>
+    {# Task 17: freeze the current widget states server-side and open the print view. #}
+    {# report.js blocks the request until every pending widget update has settled. #}
+    <p class="report-v2-exportbar">
+        <button type="button" class="btn btn-primary" data-action="print">Print / Save as PDF</button>
+        <span class="print-status" data-role="print-status" role="status"></span>
+    </p>
     {% if is_admin %}
     <p class="report-v2-adminbar">
         <a class="btn btn-secondary" href="{% url 'report_v2:editor_detail' def_id=slug %}" data-role="edit-layout">Edit layout</a>

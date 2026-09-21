@@ -1,5 +1,6 @@
 from django.urls import path
 from . import admin_views
+from . import exports
 from . import views
 
 app_name = "report_v2"
@@ -55,4 +56,15 @@ urlpatterns += [
 # Scoped compatibility downloads use the same published widget context as the page.
 urlpatterns += [
     path("<defid:slug>/csv/<str:kind>/", views.report_csv, name="csv"),
+]
+
+# --- APPEND-ONLY (Task 17): snapshot freeze + print export routes -------------------
+# Pure append again. The snapshot POST carries every widget's signed context token, so
+# the freeze is bound to the same pinned published version as the page. The print route
+# takes the opaque server-signed snapshot token (never a filesystem path); its str
+# converter accepts the token's alphabet (":" / "=" / "-" / "_") but nothing with a
+# slash, and the view re-verifies scope before any frozen byte is rendered.
+urlpatterns += [
+    path("<defid:slug>/snapshot/", exports.create_snapshot, name="snapshot"),
+    path("<defid:slug>/print/<str:snap_token>/", exports.print_view, name="print"),
 ]
