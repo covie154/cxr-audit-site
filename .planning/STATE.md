@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-06-14)
 Phase: 6 of 6 (remaining hipaa controls plan)
 Plan: Not started
 Status: Ready to execute
-Last activity: 2026-09-21 - Completed quick task 260920-x5w: Report v2 Task 16 seed + compatibility actions (reviewed, fixed cross-platform gaps, committed)
+Last activity: 2026-09-21 - Completed quick task 260921-uuo: Report v2 Task 17 snapshots + print flow (committed 5988ea2)
 
 Progress: [----------] 0%
 
@@ -89,6 +89,7 @@ None yet.
 | 260910-0ey | Report v2 design, YAML contract and 19-step implementation runbook | 2026-09-10 | 7433e4f | [260910-0ey](./quick/260910-0ey-document-extensible-report-v2-design-yam/) |
 | 260910-tsk1 | Report v2 Task 01: inventory and lock the implementation contract | 2026-09-10 | bc2c5a7 | [260910-tsk1](./quick/260910-tsk1-inventory-contract/) |
 | 260920-x5w | Report v2 Task 16: 17-widget PRIME seed and compatibility actions (review + cross-platform fixes) | 2026-09-21 | c119ef5 | [260920-x5w](./quick/260920-x5w-complete-report-v2-task-16-seed-and-comp/) |
+| 260921-uuo | Report v2 Task 17: temporary render snapshots and print flow | 2026-09-21 | 5988ea2 | [260921-uuo](./quick/260921-uuo-report-v2-task-17-temporary-render-snaps/) |
 
 
 ## Deferred Items

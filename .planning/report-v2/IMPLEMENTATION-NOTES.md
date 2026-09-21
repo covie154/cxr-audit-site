@@ -1777,3 +1777,148 @@ bookkeeping issues surfaced by running the verification battery on a Windows hos
 **Commit:** Task 16 source/tests + the review fixes above + this log, committed as
 `c119ef5` — "feat(report): task 16 PRIME seed + scoped CSV compatibility actions" (30 files,
 +3722/−72). Task 17 (snapshots/print) is the next runbook task and stays out of scope here.
+
+
+## Task 17 — Temporary render snapshots and print flow
+
+Status: complete. Written 2026-09-21. Quick task `260921-uuo`, executed inline in the current
+checkout (same pattern as Task 16's review round). Depends on Task 16 (`c119ef5`). Task 18
+(email) stays out of scope. No clinical DB access, no production seed publication, no
+deployment, no email sent.
+
+### Changed/added files (nine code/test files, all under `django-app/report_v2/`)
+
+- `snapshots.py` (NEW) — the transient snapshot store. No shared cache backend is configured
+  (implicit LocMem is per-process and would not survive gunicorn's multi-worker deployment),
+  so per the runbook's "small explicitly scoped transient store" rule the store is Django's
+  `FileBasedCache` (existing dependency-free infrastructure) rooted at
+  `settings.REPORT_V2_SNAPSHOT_ROOT`, defaulting to the same private `private_data/`
+  convention as the definitions tree (never under STATIC_ROOT/STATICFILES_DIRS; already
+  gitignored). Opaque id = `signing.dumps({sid, u, p, r, x}, salt="report_v2.snapshot.v1")`
+  — domain-separated salt, binds user/project/slug/expiry; the document lives under an
+  unguessable `snap:<hex>` key with the same bounded timeout (default 900 s, clamp
+  [60, 3600]). Typed disjoint failures: `SnapshotTamperedError` (bad signature, malformed
+  claims, store/token mismatch), `SnapshotForeignError` (other user/project/slug),
+  `SnapshotExpiredError` (signed expiry OR store miss/eviction — both carry the explicit
+  "regenerate from the report page" message; never a silent re-freeze). Bounds: ≤ 64
+  widgets, ≤ 4 MB serialised, non-empty widget list, and a plain-data gate whose only
+  tolerated coercion is date/datetime → ISO (the exact leniency the page's own
+  `json.dumps(default=...)` has for date objects riding in table rows; arbitrary objects
+  are still refused). `load_snapshot` performs no writes. Store handle is a lazily built
+  process singleton with `_reset_store_for_tests()`.
+- `exports.py` (NEW) — the export endpoints. `POST /report/<slug>/snapshot/`
+  (`@login_required @require_POST @csrf_protect`): body allow-list `{settled, widgets}`;
+  the pending gate rejects anything without `settled: true` as `409 pending` BEFORE any
+  lookup; then slug validation (404), published-layout load (404), exact-coverage check
+  (every published widget exactly once — count, duplicates and unknown ids all 400/403),
+  per-entry verification (signed context token parsed and bound to the CURRENT published
+  version → tampered 403 / stale 409; overrides re-validated through the Task-13
+  `_validate_overrides` against each widget's own allow-list), and only then one
+  `data.fetch_project_rows` read + `_evaluate` per widget, fault-isolated per frame (an
+  evaluation failure freezes `{"error": str}` exactly like the page render). Returns 201
+  with `print_url` + `expires_in`. `GET /report/<slug>/print/<token>/`
+  (`@login_required @require_GET`): `load_snapshot` → 410 expired (regenerate message) /
+  403 foreign / 403 tampered, then renders **only** the frozen document — no
+  re-evaluation, no ORM, no definitions load (proven by test: the seam is monkeypatched to
+  AssertionError and the print still renders). The pure `_print_view_model` turns each
+  frozen payload into light-theme print blocks: window/anchor/timezone/coverage, the
+  applied state line (window token or explicit dates, `site=…` filters, `compare by …`,
+  page), count reconciliation (matching/incoming/eligible + exclusion reasons),
+  measurement id + threshold policy ref, and accessible tables for aggregates, case rows
+  (+ a pagination block when the server page was truncated), chart series (bucket labels
+  joined via `bucket_index`), categories, distribution summaries and the confusion matrix
+  (GT rows × pred columns + row totals).
+- `templates/report_v2/print.html` (NEW) — standalone print document (does NOT extend
+  base.html: no app chrome, no sidebar, no widget controls, no `data-report-page` /
+  `data-context-token` / `data-initial-payload` contract — a snapshot is export state,
+  never restored user preferences). `data-theme="light"` + hardcoded-light `print.css`;
+  header shows slug/version/project/generated-at and the frozen-snapshot note; a
+  screen-only Print button keeps the browser Save-as-PDF UX.
+- `static/report_v2/print.css` (NEW) — always-light palette, `break-inside: avoid` per
+  widget block, `thead { display: table-header-group }` so long tables repeat headers
+  across pages, `.no-print` hides the button on paper.
+- `urls.py` (EDIT, append-only) — two routes after the CSV block:
+  `<defid:slug>/snapshot/` and `<defid:slug>/print/<str:snap_token>/`; comment notes the
+  token alphabet and re-verification. No existing pattern touched.
+- `templates/report_v2/page.html` (EDIT, +5 lines) — a `Print / Save as PDF` button +
+  `role="status"` status span in a new export bar under the title, for every logged-in
+  viewer (export is a user feature, not an admin one).
+- `static/report_v2/report.js` (EDIT, appended inside the page IIFE) — the client flow:
+  `updatesSettled()` (no in-flight request AND `pendingSeq <= lastAppliedSeq` for every
+  widget) gates the click; while unsettled it polls (150 ms, bounded 15 s) with a
+  "Waiting for pending widget updates…" status; on settle it POSTs `{settled: true,
+  widgets: [<context token + current overrides per frame>]}` with the CSRF header, opens
+  the returned print URL in a new tab (blocked-popup fallback renders a direct link),
+  retries bounded on `409 pending`, and surfaces server errors in the status region.
+  Nothing is written back into widget state.
+- `tests/test_snapshots.py` (NEW, 12 tests) — store guarantees: roundtrip (document
+  returned byte-equal, nothing injected), tamper, foreign user/project/slug, all three
+  expiry paths (signed past expiry, store timeout/eviction, mocked wall clock) with the
+  regenerate message, store/token mismatch = tampering, payload bounds (empty/65
+  widgets/>4 MB/non-plain-data/ttl clamps), private default root, opaque-token material
+  (no row data in the token, exactly the five claims), independent snapshots,
+  JSON-round-trip plain data, and read-only load.
+- `tests/test_print.py` (NEW, 12 tests) — endpoint guarantees against the Task-13
+  synthetic layout/seam (imports `LAYOUT`/`_Seam`/`_SETTINGS` from `test_pages`; scratch
+  `REPORT_V2_ROOT` + `REPORT_V2_SNAPSHOT_ROOT` per test): login gates on both routes,
+  CSRF enforcement (403, zero rows read), the 409 pending gate (zero rows read), print
+  content (per-widget window `2026-08-02 .. 2026-09-01`, anchor, `site=SYNTH-SITE-A`,
+  `compare by site`, `window D-7`, counts line, measurement, policy row, all three widget
+  titles including the empty one, light theme + print.css), freeze/immutability (seam →
+  AssertionError still 200 with original numbers; republish r2 → print keeps r1 and the
+  old title), foreign user 403, expired 410 + regenerate, tampered tokens 403/404,
+  exact-coverage rejections (missing/duplicate/no-context entries, zero rows read),
+  entry validation parity with `widget_data` (bad filter 400, garbage context 403,
+  foreign-slug context 403, stale version 409 — all before any row read), no
+  page-state contract on the print page (and the live page still renders defaults
+  afterwards), oversized-table pagination note + frozen per-widget errors.
+
+### Cross-checks / decisions recorded
+
+- **Settled gate semantics:** the server cannot observe the browser's in-flight requests,
+  so "block export while widget updates are pending" is enforced twice: the client refuses
+  to POST until every frame is settled (poll + bound), and the server refuses any POST
+  without the explicit `settled: true` acknowledgement (409 pending, before any lookup).
+- **Print rendering is server-side static tables** (no echarts on the print page):
+  deterministic light-mode output, offscreen widgets included by construction, and the
+  chart payloads already carry renderer-contract data (series/categories/summaries/matrix)
+  that reads faithfully as tables. Task 18's email CID images will reuse the same frozen
+  documents.
+- **The snapshot POST re-evaluates server-side** (it never trusts browser-posted metrics,
+  per DESIGN "Browser metrics are not authoritative export input"); only the *override
+  selections* — already validated server-side — come from the client.
+- A snapshot created under version r1 keeps printing after r2 is published (pinned inside
+  the document); new page loads open r2. Expired snapshots never regenerate silently.
+- Version numbers: 417 report_v2 tests here vs Task 16's "409 OK" — that 409 was the
+  combined `report_v2 lunit_audit` run (393 + 16); this task adds 24 (12 + 12), and
+  393 + 24 = 417. lunit_audit stays 16.
+
+### Verification (Windows host, Anaconda CPython 3.13.5, run from `django-app/`)
+
+- `python manage.py test report_v2.tests.test_snapshots --noinput` → 12 OK.
+- `python manage.py test report_v2.tests.test_print --noinput` → 12 OK.
+- `python manage.py test report_v2 --noinput` → **Ran 417 tests OK (skipped=1** — the
+  pre-existing Task-16 symlink-privilege skip; includes the Chromium browser suites).
+- `python manage.py test lunit_audit --noinput` → 16 OK.
+- `node --check report_v2/static/report_v2/report.js` (post-edit), `editor.js` → OK.
+- `node --test report_v2/tests/js/` → 72/72 (seed_widgets 23, widgets15 20, widgets 10,
+  page_state 6, page_render_bridge 7 — including the modified report.js — gallery 6).
+- `python manage.py seed_report_v2 --check` → `SEED-CHECK OK overview 17 widgets`.
+- `git diff --check` clean. `git status` shows exactly the nine intended paths. The
+  expected `lunit_audit.W002` warning is pre-existing configuration, untouched.
+
+### Deviations / blockers
+
+- None blocking. Two test-time corrections were made during the round (both mine, found by
+  the suites): the plain-data gate's coercion had to be narrowed from `default=str` to
+  date/datetime-only after the full-suite run caught `object()` silently serialising; and
+  the "no rows read" assertions needed the Task-13 seam-ledger reset after page hydration
+  (the page GET legitimately reads every widget).
+- `REPORT_V2_SNAPSHOT_ROOT` is read via `getattr(settings, ...)` with the private
+  fallback, mirroring `REPORT_V2_ROOT`; `lunit_audit/settings.py` was deliberately NOT
+  edited (operators may set the override; the compose volume story belongs to the release
+  boundary task, like the definitions root note in Task 11).
+- The print view's error paths return plain-text bodies (not JSON): the URL is opened as a
+  page/tab, and the runbook's requirement is an explicit failure + regenerate instruction,
+  which text serves directly.
+
