@@ -2052,3 +2052,149 @@ was sent at any point. No clinical DB access, no deployment.
   lapses, is a legitimate action and works — only the accidental double-click of one
   submission is suppressed.
 
+
+## Task 19 — End-to-end acceptance and handoff
+
+Status: complete. Written 2026-09-22. Quick task `260922-1t6`-successor (acceptance round).
+Every step below was executed this session against synthetic data only; no clinical
+record was opened, no SMTP endpoint contacted, nothing deployed.
+
+### Files added
+
+- `report_v2/tests/test_acceptance_e2e.py` (NEW, 6 tests) — the recorded acceptance
+  evidence: (1) the full journey `editor publish -> viewer page -> per-widget filters
+  (v1 D-7+site+comparison while sibling t2 stays D-30) -> snapshot -> print (each
+  widget's own state) -> email (locmem, CID, pinned version) -> duplicate 409`;
+  (2) two reports published/viewed independently, republishing beta leaves alpha's
+  pinned version untouched; (3) legacy `/report-old/` login-gated and serving its
+  original page; (4) `collectstatic` into an isolated temp root with the PRODUCTION
+  `CompressedManifestStaticFilesStorage` (manifest + report_v2 assets present);
+  (5) nothing-forbidden scans (no PDF/celery/scheduler dependencies, no attachment
+  workflow, no storage APIs in production sources); (6) the seed YAML shape: exactly 17
+  widgets, types within the seven displays, no text box, every widget declares
+  `export: full|summary`.
+
+### Acceptance checklist (EXECUTION-RUNBOOK) — evidence per item
+
+- [x] **One project can publish and view at least two independent reports.**
+      `test_acceptance_e2e.test_two_reports_publish_and_view_independently`;
+      `test_editor.test_admin_can_create_second_report`; repository publication tests.
+- [x] **User cannot access drafts or alter layout/metric/source/policy/CI/buckets.**
+      `test_editor` (non-admin blocked on every editor/preview/mutation route, CSRF
+      enforced, invalid YAML never replaces published); `test_pages` widget-data
+      override allow-list (any extra key/measurement/policy/CI/layout override -> 400);
+      `test_evaluation` forged-input gates; signed context tokens pin slug/version.
+- [x] **All seven display types pass synthetic rendering checks.**
+      `test_browser_gallery15` (real Chromium, seven displays) + `test_browser_seed`
+      (17 seed widgets in Chromium) + node `widgets`/`widgets15`/`seed_widgets`/`gallery`
+      suites (72 checks).
+- [x] **Independent dates and subgroup filters affect only intended widgets.**
+      `test_acceptance_e2e` journey (v1 `2026-08-25..` D-7 window vs sibling t2
+      `2026-08-02..` D-30 window in the same snapshot); `test_pages` stale-safe
+      sequencing; `test_evaluation` per-widget anchors.
+- [x] **Eligibility, matching counts, exclusions and group denominators reconcile.**
+      `results.CountAccounting` construction-time reconciliation; `test_evaluation`
+      count reconciliation incl. the hand-checkable binary example (matching 7 /
+      eligible 6 / excluded 1); `test_classification` denominators.
+- [x] **No missing value is silently converted into a negative label or zero rate.**
+      `test_thresholds` (require-all ineligibility with named reason);
+      `test_classification` (undefined rates are null + reason, never 0).
+- [x] **Threshold changes require new policy versions; no site-specific branch remains
+      in v2.** `test_thresholds` v1/v2 coexistence without overwrite; the shipped
+      policy is uniform `lunit-defaults@1`; `seed_report_v2 --check` clean.
+- [x] **First YAML covers all 17 mapped widgets; no monospaced text report block.**
+      `test_acceptance_e2e.test_initial_seed_yaml_shape_matches_the_legacy_map`;
+      `seed_report_v2 --check` -> "SEED-CHECK OK overview 17 widgets".
+- [x] **Print and email preserve current widget states and pinned definitions.**
+      `test_print` (frozen against later data AND republication), `test_email`
+      (snapshot-only values, states in body), `test_acceptance_e2e` journey.
+- [x] **Legacy `/report-old/` still works; no historical source copies were modified.**
+      `test_acceptance_e2e.test_legacy_report_old_route_still_serves`; every task commit
+      touched only `django-app/report_v2/**` (+ planning docs).
+- [x] **No persisted user preferences, new PDF engine or scheduled email feature was
+      added.** `test_acceptance_e2e` scans (requirements + sources); node
+      `page_state` storage grep; the email modal keeps recipients in-form only.
+- [x] **Tests and configuration/seed procedure are recorded for the next implementer.**
+      This section + the per-task sections above + the seed procedure below.
+
+### Review items (runbook step 2) — pointers
+
+- **Responsive layout**: browser suites render the page/editor at 1440/1024/390 with
+  screenshots (`test_browser_layout`, `test_browser_seed`, evidence folder).
+- **Older subgroup message**: `test_evaluation.test_preserved_anchor_with_older_subgroup_latest_date`
+  (global D preserved, `subgroup_latest_date` exposed and strictly earlier; coverage
+  notes travel into summaries/exports).
+- **CI control**: `test_semantics` (Wilson 95%, registered metric/method combos only,
+  unsupported balanced-accuracy CI refused; CI visibility comes from the admin-owned
+  YAML `ci.enabled`, never a client request).
+- **Initial YAML**: seed shape test + `--check`; parity differences vs legacy are
+  recorded in the Task 16 section (balanced-accuracy relabel, removed baseline band,
+  corrected quartiles) rather than hidden.
+
+### Project isolation (runbook step 3)
+
+`test_catalog` drives the test-only non-CXR `synthx` adapter: the production registry
+resolves only `prime` even after test registration, foreign ids escalate to
+`CrossProjectReferenceError`, and the test registry never feeds production navigation.
+
+### Commands + results (Windows host, Anaconda CPython 3.13.5, from `django-app/`)
+
+```
+python manage.py test --noinput                     # Ran 462 tests ... OK (skipped=1)
+python manage.py test report_v2.tests.test_acceptance_e2e --noinput   # 6 OK
+python manage.py test lunit_audit --noinput         # 16 OK (subset of the 462)
+node --test report_v2/tests/js/                     # 72/72
+node --check report_v2/static/report_v2/report.js   # OK (editor.js OK)
+python manage.py seed_report_v2 --check             # SEED-CHECK OK overview 17 widgets
+git diff --check                                    # clean
+```
+
+The single skip is the pre-existing Windows symlink-privilege skip (`test_repository`);
+the control itself still asserts on POSIX. The `lunit_audit.W002` LLM-HTTP warning is
+pre-existing configuration, untouched.
+
+### Handoff
+
+**Task lineage (code commits):** T01 `bc2c5a7` · T02 `7c7b58f` · T03 `5f91418` ·
+T04 `f2f8b35` · T05 `b6386f9` · T06 `81638d4` · T07 `d47e099` · T08 `e78218e` ·
+T09 `53ac7a2` · T10 `b0fd9f1` · T11 `d7c3909` · T12 `ba7de09` · T13 `a03ed6a` ·
+T14 `272d54f` (+14A `a103fef`) · T15 `95fb511` · T16 `c119ef5` · T17 `5988ea2` ·
+T18 `874e7c3` · T19 (this task's commit, tests only).
+
+**Configuration changes (all optional overrides; `lunit_audit/settings.py` untouched):**
+- `REPORT_V2_ROOT` — published/draft definition tree. Default
+  `django-app/private_data/report_v2_definitions` (gitignored, never collected/served).
+- `REPORT_V2_SNAPSHOT_ROOT` — transient export-snapshot store. Default
+  `django-app/private_data/report_v2_snapshots` (gitignored; bounded TTL/size).
+- No new Python dependencies; static assets are app-local under
+  `report_v2/static/report_v2/` (vendored ECharts).
+
+**Seed procedure for the next operator:**
+1. `python manage.py seed_report_v2 --check` — validate the shipped seeds (must print
+   `SEED-CHECK OK overview 17 widgets`).
+2. Admin -> `/report/layout/` -> seed action installs the PRIME overview as a DRAFT.
+3. Review/edit the draft, preview, then explicitly Publish. Users see the report at
+   `/report/overview/` only after publication.
+
+**Rollback:** the legacy app remains at `/report-old/` (untouched, still the fallback).
+The definitions tree is runtime data — keep `private_data/` when rolling back code so
+published YAML survives. Each task commit is a self-contained revert unit.
+
+**Known limitations (explicit, not marked complete):**
+- The snapshot store is a single-host file cache — correct for the current one-container
+  gunicorn deployment; a multi-host deployment would need a shared volume or a real
+  cache backend before scaling out.
+- `REPORT_V2_ROOT`/`REPORT_V2_SNAPSHOT_ROOT` container volume mounts are NOT yet added
+  to `docker-compose.yml` (deployment was out of scope per the runbook); mount both
+  paths as volumes before production use so drafts/published YAML survive replacement.
+- The print page renders charts as static data tables (deterministic light output; no
+  canvas in print). Email chart images are validated client captures; a widget without
+  a live chart instance ships tables only.
+- The export buttons' click-through (modal interaction, popup open) is verified at
+  HTTP level + node harness; the Chromium suites pin page rendering, not the modal.
+- Threshold policy v2 exists only in synthetic fixtures; production stays
+  `lunit-defaults@1` until a clinical decision changes it (new version, never an edit).
+- The email replay guard is 120 s and single-host; a patient re-send after it lapses is
+  intentional behaviour.
+- `viewer`/`report`/`gt` legacy apps still have no automated suites (pre-existing);
+  `/report-old/` is pinned by the new acceptance test at the route level.

@@ -413,18 +413,18 @@ opens v2 with admin defaults. Never silently regenerate an expired snapshot usin
 
 ## Final acceptance checklist
 
-- [ ] One project can publish and view at least two independent reports.
-- [ ] User cannot access drafts or alter layout/metric/source/policy/CI/buckets.
-- [ ] All seven display types pass synthetic rendering checks.
-- [ ] Independent dates and subgroup filters affect only intended widgets.
-- [ ] Eligibility, matching counts, exclusions and group denominators reconcile.
-- [ ] No missing value is silently converted into a negative label or zero rate.
-- [ ] Threshold changes require new policy versions; no site-specific branch remains in v2.
-- [ ] First YAML covers all 17 mapped widgets; no monospaced text report block.
-- [ ] Print and email preserve current widget states and pinned definitions.
-- [ ] Legacy `/report-old/` still works; no historical source copies were modified.
-- [ ] No persisted user preferences, new PDF engine or scheduled email feature was added.
-- [ ] Tests and configuration/seed procedure are recorded for the next implementer.
+- [x] One project can publish and view at least two independent reports.
+- [x] User cannot access drafts or alter layout/metric/source/policy/CI/buckets.
+- [x] All seven display types pass synthetic rendering checks.
+- [x] Independent dates and subgroup filters affect only intended widgets.
+- [x] Eligibility, matching counts, exclusions and group denominators reconcile.
+- [x] No missing value is silently converted into a negative label or zero rate.
+- [x] Threshold changes require new policy versions; no site-specific branch remains in v2.
+- [x] First YAML covers all 17 mapped widgets; no monospaced text report block.
+- [x] Print and email preserve current widget states and pinned definitions.
+- [x] Legacy `/report-old/` still works; no historical source copies were modified.
+- [x] No persisted user preferences, new PDF engine or scheduled email feature was added.
+- [x] Tests and configuration/seed procedure are recorded for the next implementer.
 
 ## Copy-paste handoff prompt
 
