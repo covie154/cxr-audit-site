@@ -74,6 +74,7 @@ export function render(container, payload, options) {
     const box = el("div", "widget-chart-box widget-chart");
     container.appendChild(box);
     const built = buildChart(box, () => disposed);
+    instance.chart = built.chart; // exposed for client-side PNG capture (email export)
     const outlierData = [];
     for (let gi = 0; gi < groups.length; gi += 1) {
         const outliers = (groups[gi].summary && groups[gi].summary.outliers) || [];

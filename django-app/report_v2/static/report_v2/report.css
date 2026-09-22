@@ -36,3 +36,16 @@
 .widget-controls input:focus-visible, .widget-controls select:focus-visible, .widget-controls .btn:focus-visible, .widget-more:focus-visible { outline: 2px solid var(--accent, #2f6feb); outline-offset: 1px; }
 
 @media (max-width: 720px) { .report-grid { grid-template-columns: repeat(1, minmax(0, 1fr)); } .report-grid > .widget-frame { grid-column: span 12 !important; } }
+
+/* Task 18: the email modal (recipients + optional note). Transient by design -- nothing
+   here persists after the dialog closes, matching the "no saved user settings" rule. */
+.report-v2-exportbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.email-modal { position: fixed; inset: 0; background: rgba(15, 23, 32, 0.45); display: flex; align-items: center; justify-content: center; z-index: 50; }
+.email-modal[hidden] { display: none; }
+.email-modal-card { background: var(--surface, #ffffff); color: var(--c-text, #111a2b); border-radius: 6px; padding: 20px; width: min(520px, calc(100vw - 32px)); box-shadow: 0 12px 32px rgba(15, 23, 32, 0.25); }
+.email-modal-card h3 { margin: 0 0 12px; }
+.email-modal-card form { display: flex; flex-direction: column; gap: 8px; }
+.email-modal-card label { font-size: 0.85rem; color: var(--c-text-muted); }
+.email-modal-card textarea { box-sizing: border-box; width: 100%; padding: 0.45rem 0.55rem; border: 1px solid var(--border, #c9d1d8); border-radius: 4px; background: var(--surface, #ffffff); color: var(--c-text, #111a2b); font: inherit; resize: vertical; }
+.email-modal-card .email-status { min-height: 1.2em; font-size: 0.85rem; color: var(--c-text-muted); overflow-wrap: anywhere; }
+.email-modal-card button { align-self: flex-start; }

@@ -36,6 +36,7 @@ snapshot document is plain-data in and plain-data out.
 from __future__ import annotations
 
 import json
+import re
 import secrets
 import threading
 import time
@@ -60,6 +61,8 @@ __all__ = [
     "default_snapshot_root",
     "create_snapshot",
     "load_snapshot",
+    "transient_get",
+    "transient_set",
 ]
 
 #: Domain-separated salt for the opaque snapshot token (never reused elsewhere).
@@ -282,3 +285,36 @@ def load_snapshot(token: object, *, user_id: int, project_id: str, slug: str) ->
     if not isinstance(document, dict):
         raise SnapshotTamperedError("snapshot store entry is malformed")
     return document
+
+
+# ---------------------------------------------------------------------------
+# Small transient flags (Task 18: duplicate-submission guard)
+# ---------------------------------------------------------------------------
+#: The only key alphabet accepted by the transient flag helpers (defensive; the
+#: file backend hashes keys anyway, but a bounded charset keeps callers honest).
+_TRANSIENT_KEY_RE = re.compile(r"^[a-z0-9_.:-]{1,128}$")
+
+
+def transient_set(key: str, value: str, *, ttl: int) -> None:
+    """Store a short-lived string flag in the same private transient store.
+
+    Used for the email duplicate-submission guard; ``ttl`` obeys the same bounds
+    as snapshot retention so a flag can never outlive its snapshot by much.
+    """
+    if not isinstance(key, str) or not _TRANSIENT_KEY_RE.match(key):
+        raise SnapshotPayloadError("transient key is malformed")
+    if not isinstance(value, str) or len(value.encode("utf-8")) > 1024:
+        raise SnapshotPayloadError("transient value must be a bounded string")
+    if not (MIN_SNAPSHOT_TTL <= ttl <= MAX_SNAPSHOT_TTL):
+        raise SnapshotPayloadError(
+            f"transient ttl must be within [{MIN_SNAPSHOT_TTL}, {MAX_SNAPSHOT_TTL}] seconds"
+        )
+    _store().set(key, value, timeout=ttl)
+
+
+def transient_get(key: str) -> str | None:
+    """Return the transient flag stored under ``key``, or ``None`` when absent/expired."""
+    if not isinstance(key, str) or not _TRANSIENT_KEY_RE.match(key):
+        return None
+    value = _store().get(key)
+    return value if isinstance(value, str) else None

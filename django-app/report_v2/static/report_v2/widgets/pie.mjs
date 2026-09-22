@@ -51,6 +51,7 @@ export function render(container, payload, options) {
     const box = el("div", "widget-chart-box widget-chart");
     container.appendChild(box);
     const built = buildChart(box, () => disposed);
+    instance.chart = built.chart; // exposed for client-side PNG capture (email export)
     built.chart.setOption({
         animation: false,
         color: categories.map((entry) => groupColor(String(entry.label))),

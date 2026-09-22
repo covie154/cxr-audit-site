@@ -28,13 +28,23 @@ payloads, so offscreen widgets and long tables print deterministically.
 """
 from __future__ import annotations
 
+import base64
+import binascii
+import hashlib
 import json
+import re
 from datetime import datetime, timezone as _tz
+from email.mime.image import MIMEImage
+from email.utils import formatdate, make_msgid
 from typing import Any, Mapping
 
+from django.conf import settings
 from django.contrib.auth.decorators import login_required
+from django.core.mail import EmailMessage
+from django.core.mail.message import SafeMIMEMultipart, SafeMIMEText
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render
+from django.template.loader import render_to_string
 from django.urls import Resolver404, reverse
 from django.views.decorators.csrf import csrf_protect
 from django.views.decorators.http import require_GET, require_POST
@@ -53,7 +63,7 @@ from .views import (
     _validate_overrides,
 )
 
-__all__ = ["create_snapshot", "print_view"]
+__all__ = ["create_snapshot", "print_view", "email_report"]
 
 #: The only top-level keys a snapshot-creation body may carry.
 _SNAPSHOT_BODY_KEYS = frozenset({"settled", "widgets"})
@@ -64,6 +74,29 @@ _ENTRY_KEYS = frozenset({"context", "date", "filters", "comparison", "page"})
 
 #: Document discriminator + view contract version frozen into every snapshot.
 _SNAPSHOT_KIND = "report_v2_print_v1"
+
+#: The only top-level keys an email body may carry.
+_EMAIL_BODY_KEYS = frozenset({"snapshot", "recipients", "note", "images"})
+
+#: Recipient/note bounds (legacy UX parity: many addresses in one field, optional note).
+_MAX_RECIPIENTS = 20
+_EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+_MAX_NOTE_CHARS = 2000
+
+#: Chart-image contract: only chart-typed widgets of the snapshot, PNG-only MIME
+#: (echarts getDataURL), a per-image byte bound and a total count bound.
+_CHART_DISPLAYS = frozenset({"line", "bar", "pie", "boxplot"})
+_PNG_DATAURL_PREFIX = "data:image/png;base64,"
+_PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
+_MAX_IMAGE_BYTES = 512 * 1024
+_MAX_IMAGES = 32
+
+#: Case rows in the HTML email: shown only for widgets frozen with ``export: full``,
+#: and capped so an oversized table cannot blow up the MIME payload.
+_EMAIL_ROWS_CAP = 25
+
+#: Duplicate-submission guard lifetime (seconds); obeys the store's TTL floor.
+_EMAIL_REPLAY_TTL = 120
 
 
 class _Rejected(Exception):
@@ -193,6 +226,7 @@ def create_snapshot(request, slug: str):
                 "title": widget.get("title"),
                 "type": widget.get("type"),
                 "section_id": None,
+                "export": widget.get("export"),
                 "applied": {
                     "date": entry.get("date"),
                     "filters": dict(filters or {}),
@@ -222,6 +256,7 @@ def create_snapshot(request, slug: str):
     return JsonResponse(
         {
             "status": "ok",
+            "token": token,
             "print_url": reverse("report_v2:print", args=[slug, token]),
             "expires_in": snapshots.DEFAULT_SNAPSHOT_TTL,
         },
@@ -272,8 +307,8 @@ def _fmt(value: Any) -> str:
     return str(value)
 
 
-def _table(caption: str, columns: list[str], rows: list[list[str]]) -> dict[str, Any]:
-    return {"caption": caption, "columns": columns, "rows": rows}
+def _table(caption: str, columns: list[str], rows: list[list[str]], kind: str = "meta") -> dict[str, Any]:
+    return {"caption": caption, "columns": columns, "rows": rows, "kind": kind}
 
 
 def _applied_line(applied: Mapping[str, Any]) -> str:
@@ -364,6 +399,7 @@ def _widget_tables(payload: Mapping[str, Any]) -> list[dict[str, Any]]:
             "Case rows",
             columns,
             [[_fmt(row.get(col)) for col in columns] for row in payload["rows"]],
+            kind="cases",
         ))
         pagination = payload.get("pagination") or {}
         if pagination.get("truncated"):
@@ -383,7 +419,7 @@ def _widget_tables(payload: Mapping[str, Any]) -> list[dict[str, Any]]:
             label = (_bucket_label(payload, cell.get("bucket_index"))
                      if cell.get("bucket_index") is not None else _fmt(cell.get("category")))
             rows.append([_fmt(cell.get("group")), label, _fmt(cell.get("value"))])
-        tables.append(_table("Chart data (series)", ["Series", "Period", "Value"], rows))
+        tables.append(_table("Chart data (series)", ["Series", "Period", "Value"], rows, kind="chart"))
 
     categories = chart.get("categories")
     if isinstance(categories, list) and categories:
@@ -391,6 +427,7 @@ def _widget_tables(payload: Mapping[str, Any]) -> list[dict[str, Any]]:
             "Chart data (categories)",
             ["Category", "Count"],
             [[_fmt(c.get("label")), _fmt(c.get("count"))] for c in categories],
+            kind="chart",
         ))
 
     summaries = chart.get("summaries")
@@ -401,7 +438,8 @@ def _widget_tables(payload: Mapping[str, Any]) -> list[dict[str, Any]]:
             for key, value in summary.items():
                 rows.append([_fmt(item.get("name")), str(key), _fmt(value)])
         if rows:
-            tables.append(_table("Chart data (distribution summary)", ["Series", "Statistic", "Value"], rows))
+            tables.append(_table("Chart data (distribution summary)",
+                                 ["Series", "Statistic", "Value"], rows, kind="chart"))
 
     return tables
 
@@ -421,6 +459,7 @@ def _print_view_model(document: Mapping[str, Any]) -> dict[str, Any]:
                 "id": widget.get("widget_id"),
                 "title": widget.get("title"),
                 "type": widget.get("type"),
+                "export": widget.get("export"),
                 "error": str(error) if error else "",
                 "summary": _summary_text(payload) if not error else str(error),
                 "applied_line": _applied_line(widget.get("applied") or {}),
@@ -442,3 +481,243 @@ def _print_view_model(document: Mapping[str, Any]) -> dict[str, Any]:
         "generated": document.get("generated"),
         "widgets": widgets,
     }
+
+
+# ---------------------------------------------------------------------------
+# POST /report/<slug>/email/ -- legacy-style HTML email off the frozen snapshot
+# ---------------------------------------------------------------------------
+def _validate_recipients(raw: object) -> list[str]:
+    """Accept only a JSON list of already-split address strings (client splits like legacy)."""
+    if not isinstance(raw, list) or not raw:
+        raise _Rejected("recipients must be a non-empty list of email addresses")
+    if len(raw) > _MAX_RECIPIENTS:
+        raise _Rejected(f"at most {_MAX_RECIPIENTS} recipients are allowed")
+    seen: list[str] = []
+    for item in raw:
+        if not isinstance(item, str):
+            raise _Rejected("each recipient must be a string")
+        address = item.strip()
+        if not address or len(address) > 254 or not _EMAIL_RE.match(address):
+            raise _Rejected(f"invalid email address {item!r}")
+        if address not in seen:  # de-duplicate, preserving order
+            seen.append(address)
+    if not seen:
+        raise _Rejected("no valid recipients")
+    return seen
+
+
+def _validate_note(raw: object) -> str:
+    """Optional free-text note; stripped and length-bounded (the template escapes it)."""
+    if raw is None:
+        return ""
+    if not isinstance(raw, str):
+        raise _Rejected("note must be a string")
+    note = raw.strip()
+    if len(note) > _MAX_NOTE_CHARS:
+        raise _Rejected(f"note is longer than {_MAX_NOTE_CHARS} characters")
+    return note
+
+
+def _validate_images(raw: object, document: Mapping[str, Any]) -> dict[str, bytes]:
+    """Validate client-captured chart PNGs against the frozen snapshot.
+
+    Names must be chart-typed widgets of THIS snapshot; the payload must be a PNG
+    data URL whose bytes carry the real PNG signature and stay within the bound.
+    Nothing is silently dropped -- every invalid entry is an explicit rejection.
+    """
+    if raw is None:
+        return {}
+    if not isinstance(raw, dict):
+        raise _Rejected("images must be an object keyed by widget id")
+    if len(raw) > _MAX_IMAGES:
+        raise _Rejected(f"at most {_MAX_IMAGES} chart images are allowed")
+    by_id = {widget.get("widget_id"): widget for widget in document.get("widgets") or []}
+    out: dict[str, bytes] = {}
+    for name, value in raw.items():
+        widget = by_id.get(name)
+        if widget is None or widget.get("type") not in _CHART_DISPLAYS:
+            raise _Rejected(f"chart image {name!r} is not an allowed widget of this snapshot")
+        if not isinstance(value, str) or not value.startswith(_PNG_DATAURL_PREFIX):
+            raise _Rejected(f"chart image {name!r} must be a PNG data URL")
+        try:
+            img_bytes = base64.b64decode(value[len(_PNG_DATAURL_PREFIX):], validate=True)
+        except (binascii.Error, ValueError) as exc:
+            raise _Rejected(f"chart image {name!r} is not valid base64") from exc
+        if len(img_bytes) > _MAX_IMAGE_BYTES:
+            raise _Rejected(f"chart image {name!r} exceeds {_MAX_IMAGE_BYTES} bytes")
+        if not img_bytes.startswith(_PNG_SIGNATURE):
+            raise _Rejected(f"chart image {name!r} is not PNG content")
+        out[name] = img_bytes
+    return out
+
+
+def _email_view_model(document: Mapping[str, Any], cid_map: Mapping[str, str]) -> dict[str, Any]:
+    """The email body model: the print model plus email-specific disclosure rules.
+
+    Discrepancy case tables stay summary-only (the widget's frozen ``export`` flag
+    must be ``full`` for rows to appear at all, and even then rows are capped);
+    chart-data tables are dropped when a captured chart image carries the widget.
+    """
+    vm = _print_view_model(document)
+    for widget in vm["widgets"]:
+        widget["image_cid"] = cid_map.get(widget["id"])
+        widget["rows_note"] = ""
+        if widget["error"]:
+            continue
+        tables = widget["tables"]
+        if widget["image_cid"]:
+            tables = [t for t in tables if t.get("kind") != "chart"]
+        if widget["type"] == "table":
+            cases = [t for t in tables if t.get("kind") == "cases"]
+            if widget.get("export") != "full":
+                tables = [t for t in tables if t.get("kind") != "cases"]
+                if cases:
+                    widget["rows_note"] = (
+                        f"{len(cases[0]['rows'])} case rows captured; this table is "
+                        "summary-only in email. Open the report page for the full table."
+                    )
+            elif cases and len(cases[0]["rows"]) > _EMAIL_ROWS_CAP:
+                full = cases[0]["rows"]
+                capped = [t for t in tables if t.get("kind") != "cases"]
+                head = dict(cases[0], rows=full[:_EMAIL_ROWS_CAP])
+                capped.append(head)
+                tables = capped
+                widget["rows_note"] = (
+                    f"Showing the first {_EMAIL_ROWS_CAP} of {len(full)} captured rows."
+                )
+        widget["tables"] = tables
+    return vm
+
+
+def _email_text(vm: Mapping[str, Any], note: str, sender: str) -> str:
+    """Readable prose fallback -- explicitly NOT a monospaced data dump."""
+    lines: list[str] = [
+        f"PRIMER-LLM Report - {vm['title']} ({vm['version']})",
+        f"Project {vm['project_id']}, report {vm['slug']}, generated {vm['generated']}.",
+        "",
+    ]
+    if note:
+        lines.extend(["Note from the sender:", note, ""])
+    for widget in vm["widgets"]:
+        lines.append(f"{widget['title']} ({widget['type']})")
+        if widget["error"]:
+            lines.append(f"  Could not be evaluated when captured: {widget['error']}")
+        else:
+            lines.append(f"  Window {widget['window']}, anchor {widget['anchor']}.")
+            lines.append(f"  State: {widget['applied_line']}.")
+            if widget["counts_line"]:
+                lines.append(f"  Counts: {widget['counts_line']}.")
+            if widget["measurement"]:
+                lines.append(f"  Measurement {widget['measurement']}, policy {widget['policy']}.")
+            if widget["image_cid"]:
+                lines.append("  The chart is attached as an image.")
+            if widget["rows_note"]:
+                lines.append(f"  {widget['rows_note']}")
+            for table in widget["tables"]:
+                lines.append(f"  {table['caption']}:")
+                for row in table["rows"][:8]:
+                    lines.append("    " + " - ".join(str(cell) for cell in row))
+                if len(table["rows"]) > 8:
+                    lines.append(f"    ... {len(table['rows']) - 8} more rows in the HTML version.")
+        lines.append("")
+    lines.append(f"Sent via PRIMER-LLM by {sender}.")
+    return "\n".join(lines)
+
+
+@login_required
+@require_POST
+@csrf_protect
+def email_report(request, slug: str):
+    """Send the frozen snapshot as a legacy-style HTML email (explicit user action only).
+
+    Every value in the body is read from the snapshot -- never from posted browser
+    metrics; the only client-supplied presentation input is the validated set of chart
+    PNG captures. Recipients/note/image validation failures are explicit 400s; a
+    duplicate submission of the same snapshot to the same recipients with the same note
+    is rejected 409 without re-sending (the duplicate-click guard).
+    """
+    try:
+        body = json.loads(request.body or b"{}")
+    except Exception:
+        return JsonResponse({"error": "request body is not valid json", "status": "rejected"}, status=400)
+    if not isinstance(body, dict):
+        return JsonResponse({"error": "request body must be a json object", "status": "rejected"}, status=400)
+    for key in body:
+        if key not in _EMAIL_BODY_KEYS:
+            return JsonResponse({"error": f"unexpected top-level key {key!r}", "status": "rejected"}, status=400)
+
+    token = body.get("snapshot")
+    if not isinstance(token, str) or not token:
+        return JsonResponse({"error": "a snapshot token is required", "status": "rejected"}, status=400)
+    try:
+        document = snapshots.load_snapshot(
+            token, user_id=request.user.pk, project_id=_PROJECT_ID, slug=slug
+        )
+    except snapshots.SnapshotExpiredError as exc:
+        return JsonResponse({"error": str(exc), "status": "expired"}, status=410)
+    except snapshots.SnapshotForeignError:
+        return JsonResponse({"error": "snapshot is scoped to another user or report",
+                             "status": "foreign"}, status=403)
+    except snapshots.SnapshotTamperedError:
+        return JsonResponse({"error": "snapshot token failed to verify", "status": "tampered"}, status=403)
+    if document.get("kind") != _SNAPSHOT_KIND:
+        return JsonResponse({"error": "snapshot token failed to verify", "status": "tampered"}, status=403)
+
+    try:
+        recipients = _validate_recipients(body.get("recipients"))
+        note = _validate_note(body.get("note"))
+        images = _validate_images(body.get("images"), document)
+    except _Rejected as exc:
+        return JsonResponse({"error": str(exc), "status": "rejected"}, status=400)
+
+    # Duplicate-click guard: the same snapshot + recipients + note will not re-send
+    # within the guard window (the token is single-snapshot, so the key is stable).
+    replay_key = "email-sent:{}:{}".format(
+        hashlib.sha256(token.encode("utf-8")).hexdigest()[:24],
+        hashlib.sha256(("\x00".join(recipients) + "\x00" + note).encode("utf-8")).hexdigest()[:16],
+    )
+    if snapshots.transient_get(replay_key) is not None:
+        return JsonResponse({"error": "this report was already sent to these recipients "
+                                      "from this snapshot", "status": "duplicate"}, status=409)
+
+    cid_map = {name: f"cid:{name}@primer-llm" for name in images}
+    vm = _email_view_model(document, cid_map)
+    subject = f"PRIMER-LLM Report \u2014 {document.get('title')} ({document.get('version')})"
+    html_content = render_to_string(
+        "report_v2/email.html", {"email": vm, "note": note, "subject": subject}
+    )
+    text_content = _email_text(vm, note, request.user.get_username())
+
+    try:
+        related = SafeMIMEMultipart("related")
+        related["Subject"] = subject
+        related["From"] = settings.DEFAULT_FROM_EMAIL
+        related["To"] = ", ".join(recipients)
+        related["Date"] = formatdate(localtime=True)
+        related["Message-ID"] = make_msgid(domain="primer-llm")
+
+        alt = SafeMIMEMultipart("alternative")
+        alt.attach(SafeMIMEText(text_content, "plain", "utf-8"))
+        alt.attach(SafeMIMEText(html_content, "html", "utf-8"))
+        related.attach(alt)
+        for name, img_bytes in images.items():
+            part = MIMEImage(img_bytes, _subtype="png")
+            part.add_header("Content-ID", f"<{name}@primer-llm>")
+            part.add_header("Content-Disposition", "inline", filename=f"{name}.png")
+            related.attach(part)
+
+        class _CIDEmail(EmailMessage):
+            def message(self_inner):
+                return related
+
+        _CIDEmail(
+            subject=subject,
+            body=text_content,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            to=recipients,
+        ).send(fail_silently=False)
+    except Exception as exc:
+        return JsonResponse({"error": f"email send failed: {exc}", "status": "error"}, status=500)
+
+    snapshots.transient_set(replay_key, "1", ttl=_EMAIL_REPLAY_TTL)
+    return JsonResponse({"status": "sent", "sent_to": recipients})

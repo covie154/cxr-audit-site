@@ -397,13 +397,15 @@
         }
     });
 
-    // -- print / export snapshot (Task 17) --------------------------------------------------
+    // -- print / email exports (Tasks 17 + 18) ----------------------------------------------
     // Blocks the export while any widget update is pending, then freezes the *server-side*
-    // evaluation of every widget under the current selections and opens the print view.
+    // evaluation of every widget under the current selections. The print button opens the
+    // print view; the email modal sends a legacy-style HTML email off the same snapshot.
     // The snapshot is export state only; nothing here writes it back into widget state.
     const printButton = document.querySelector('[data-action="print"]');
     const printStatus = document.querySelector('[data-role="print-status"]');
     const SNAPSHOT_URL = '/report/' + encodeURIComponent(root.dataset.slug || '') + '/snapshot/';
+    const EMAIL_URL = '/report/' + encodeURIComponent(root.dataset.slug || '') + '/email/';
     const PRINT_SETTLE_MS = 15000;
     const PRINT_POLL_MS = 150;
 
@@ -449,53 +451,162 @@
         }
     };
 
-    const requestSnapshot = (attempt) => {
-        window.fetch(SNAPSHOT_URL, {
-            method: 'POST',
-            credentials: 'same-origin',
-            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRFToken() },
-            body: JSON.stringify({ settled: true, widgets: snapshotEntries() })
-        })
-            .then((response) => response.json()
-                .then((payload) => ({ ok: response.ok, status: response.status, payload })))
-            .then((result) => {
-                if (result.status === 201 && result.payload.print_url) {
-                    setPrintStatus('');
-                    openPrintView(result.payload.print_url);
+    // Shared freeze: resolves {print_url, token} once every widget update has settled.
+    const postSnapshot = (onWait) => new Promise((resolve, reject) => {
+        const started = Date.now();
+        const attempt = (n) => {
+            if (!updatesSettled()) {
+                if (Date.now() - started > PRINT_SETTLE_MS) {
+                    reject(new Error('Widget updates are still pending; the export was not created. ' +
+                        'Try again once they finish.'));
                     return;
                 }
-                if (result.status === 409 && attempt < 4) {
-                    // The server still sees an unsettled race; wait and retry.
-                    setPrintStatus('Waiting for pending widget updates…');
-                    window.setTimeout(() => { requestSnapshot(attempt + 1); }, PRINT_POLL_MS * 4);
-                    return;
-                }
-                setPrintStatus((result.payload && result.payload.error) ||
-                    ('The export failed (' + result.status + ').'));
+                if (onWait) { onWait(); }
+                window.setTimeout(() => { attempt(n); }, PRINT_POLL_MS);
+                return;
+            }
+            window.fetch(SNAPSHOT_URL, {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRFToken() },
+                body: JSON.stringify({ settled: true, widgets: snapshotEntries() })
             })
-            .catch((error) => {
-                setPrintStatus('The export failed: ' +
-                    (error && error.message ? error.message : String(error)));
-            });
-    };
+                .then((response) => response.json()
+                    .then((payload) => ({ ok: response.ok, status: response.status, payload })))
+                .then((result) => {
+                    if (result.status === 201 && result.payload.token) {
+                        resolve(result.payload);
+                        return;
+                    }
+                    if (result.status === 409 && n < 4) {
+                        // The server still sees an unsettled race; wait and retry.
+                        if (onWait) { onWait(); }
+                        window.setTimeout(() => { attempt(n + 1); }, PRINT_POLL_MS * 4);
+                        return;
+                    }
+                    reject(new Error((result.payload && result.payload.error) ||
+                        ('The export failed (' + result.status + ').')));
+                })
+                .catch((error) => { reject(error); });
+        };
+        attempt(0);
+    });
 
     if (printButton) {
         printButton.addEventListener('click', () => {
-            const started = Date.now();
-            const waitSettled = () => {
-                if (updatesSettled()) {
-                    requestSnapshot(0);
-                    return;
-                }
-                if (Date.now() - started > PRINT_SETTLE_MS) {
-                    setPrintStatus('Widget updates are still pending; the export was not created. ' +
-                        'Try again once they finish.');
-                    return;
-                }
-                setPrintStatus('Waiting for pending widget updates…');
-                window.setTimeout(waitSettled, PRINT_POLL_MS);
-            };
-            waitSettled();
+            printButton.disabled = true;
+            postSnapshot(() => { setPrintStatus('Waiting for pending widget updates…'); })
+                .then((payload) => {
+                    setPrintStatus('');
+                    openPrintView(payload.print_url);
+                })
+                .catch((error) => { setPrintStatus(error.message || String(error)); })
+                .finally(() => { printButton.disabled = false; });
+        });
+    }
+
+    // -- email modal (Task 18) ---------------------------------------------------------------
+    const CHART_TYPES = { line: 1, bar: 1, pie: 1, boxplot: 1 };
+    const emailModal = document.querySelector('[data-role="email-modal"]');
+    const emailForm = document.querySelector('[data-role="email-form"]');
+    const emailRecipients = document.querySelector('[data-role="email-recipients"]');
+    const emailNote = document.querySelector('[data-role="email-note"]');
+    const emailStatus = document.querySelector('[data-role="email-status"]');
+    const emailSend = document.querySelector('[data-action="email-send"]');
+    const emailCancel = document.querySelector('[data-action="email-cancel"]');
+    const emailButton = document.querySelector('[data-action="email"]');
+
+    const setEmailStatus = (text) => {
+        if (emailStatus) { emailStatus.textContent = text || ''; }
+    };
+
+    // PNG captures of the live charts (only chart-typed frames with a live instance).
+    // The server validates names/content/size against the snapshot; values never come
+    // from the browser -- the email body is rendered from the frozen document.
+    const captureChartImages = () => {
+        const images = {};
+        frames.forEach((frame) => {
+            if (!CHART_TYPES[frame.type]) { return; }
+            const chart = frame.regInstance && frame.regInstance.chart;
+            if (frame.regDisposed || !chart || typeof chart.getDataURL !== 'function') { return; }
+            try {
+                const url = chart.getDataURL({ type: 'png', pixelRatio: 2, backgroundColor: '#ffffff' });
+                if (url && url.indexOf('data:image/png;base64,') === 0) { images[frame.id] = url; }
+            } catch (captureError) {
+                // Not capture-ready; the email falls back to the frozen text tables.
+            }
+        });
+        return images;
+    };
+
+    if (emailButton && emailModal && emailForm) {
+        emailButton.addEventListener('click', () => {
+            setEmailStatus('');
+            if (emailSend) { emailSend.disabled = false; }
+            emailModal.hidden = false;
+            if (emailRecipients) { emailRecipients.focus(); }
+        });
+        const closeModal = () => {
+            emailModal.hidden = true;
+            setEmailStatus('');
+        };
+        if (emailCancel) { emailCancel.addEventListener('click', closeModal); }
+        emailModal.addEventListener('click', (event) => {
+            if (event.target === emailModal) { closeModal(); }
+        });
+        emailForm.addEventListener('submit', (event) => {
+            event.preventDefault();
+            const raw = (emailRecipients && emailRecipients.value) || '';
+            const recipients = raw.split(/[,;\n]+/).map((item) => { return item.trim(); })
+                .filter((item) => { return item !== ''; });
+            if (!recipients.length) {
+                setEmailStatus('Enter at least one email address.');
+                return;
+            }
+            const note = ((emailNote && emailNote.value) || '').trim();
+            if (emailSend) { emailSend.disabled = true; }   // duplicate-click prevention
+            setEmailStatus('Waiting for pending widget updates…');
+            postSnapshot(() => { setEmailStatus('Waiting for pending widget updates…'); })
+                .then((payload) => {
+                    setEmailStatus('Capturing the report…');
+                    const images = captureChartImages();
+                    return window.fetch(EMAIL_URL, {
+                        method: 'POST',
+                        credentials: 'same-origin',
+                        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRFToken() },
+                        body: JSON.stringify({
+                            snapshot: payload.token,
+                            recipients: recipients,
+                            note: note,
+                            images: images
+                        })
+                    })
+                        .then((response) => response.json()
+                            .then((body) => ({ ok: response.ok, status: response.status, body })));
+                })
+                .then((result) => {
+                    if (result.ok && result.body.status === 'sent') {
+                        setEmailStatus('Sent to ' + (result.body.sent_to || []).join(', ') + '.');
+                        window.setTimeout(() => {
+                            emailModal.hidden = true;
+                            setEmailStatus('');
+                        }, 1200);
+                        return;
+                    }
+                    if (result.status === 409 && result.body.status === 'duplicate') {
+                        setEmailStatus('This report was already sent to these recipients from this snapshot.');
+                        return;
+                    }
+                    setEmailStatus((result.body && result.body.error) ||
+                        ('The email failed (' + result.status + ').'));
+                })
+                .catch((error) => {
+                    setEmailStatus('The email failed: ' +
+                        (error && error.message ? error.message : String(error)));
+                })
+                .finally(() => {
+                    if (emailSend) { emailSend.disabled = false; }
+                });
         });
     }
 })();

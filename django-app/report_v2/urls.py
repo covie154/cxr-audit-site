@@ -68,3 +68,10 @@ urlpatterns += [
     path("<defid:slug>/snapshot/", exports.create_snapshot, name="snapshot"),
     path("<defid:slug>/print/<str:snap_token>/", exports.print_view, name="print"),
 ]
+
+# --- APPEND-ONLY (Task 18): snapshot-based legacy-style HTML email -------------------
+# The email POST reads every value from a Task-17 snapshot token; chart PNG captures are
+# validated against the snapshot (allowed names, PNG MIME/signature, bounded size).
+urlpatterns += [
+    path("<defid:slug>/email/", exports.email_report, name="email"),
+]

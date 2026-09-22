@@ -16,12 +16,30 @@
     <span class="widget-csrf" data-role="csrf" aria-hidden="true">{% csrf_token %}</span>
     <h1 class="page-title">{{ title }} <small>{{ version }}</small></h1>
     <p class="report-v2-legacy"><a href="{{ legacy_report_url }}">Open the previous report</a></p>
-    {# Task 17: freeze the current widget states server-side and open the print view. #}
+    {# Task 17/18: freeze the current widget states server-side, then print or email. #}
     {# report.js blocks the request until every pending widget update has settled. #}
     <p class="report-v2-exportbar">
         <button type="button" class="btn btn-primary" data-action="print">Print / Save as PDF</button>
+        <button type="button" class="btn btn-secondary" data-action="email">Email report</button>
         <span class="print-status" data-role="print-status" role="status"></span>
     </p>
+    {# Task 18: the email modal. Recipients/note live only in this form for the current #}
+    {# submission -- nothing is persisted (no storage API, no saved user preferences). #}
+    <div class="email-modal" data-role="email-modal" hidden>
+        <div class="email-modal-card" role="dialog" aria-modal="true" aria-label="Email this report">
+            <h3>Email this report</h3>
+            <form data-role="email-form" novalidate>
+                <label for="emailRecipients">Recipients (comma, semicolon or newline separated)</label>
+                <textarea id="emailRecipients" data-role="email-recipients" rows="2"
+                          placeholder="name@example.org, other@example.org" autocomplete="off"></textarea>
+                <label for="emailNote">Note (optional, included in the email)</label>
+                <textarea id="emailNote" data-role="email-note" rows="3" maxlength="2000"></textarea>
+                <p class="email-status" data-role="email-status" role="status"></p>
+                <button type="submit" class="btn btn-primary" data-action="email-send">Send</button>
+                <button type="button" class="btn btn-secondary" data-action="email-cancel">Cancel</button>
+            </form>
+        </div>
+    </div>
     {% if is_admin %}
     <p class="report-v2-adminbar">
         <a class="btn btn-secondary" href="{% url 'report_v2:editor_detail' def_id=slug %}" data-role="edit-layout">Edit layout</a>
