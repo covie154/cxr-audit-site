@@ -1922,3 +1922,133 @@ deployment, no email sent.
   page/tab, and the runbook's requirement is an explicit failure + regenerate instruction,
   which text serves directly.
 
+
+## Task 18 — Legacy-style HTML email
+
+Status: complete. Written 2026-09-22. Quick task `260922-1t6`, executed inline in the
+current checkout. Depends on Task 17 (`5988ea2`). locmem backend only — no real message
+was sent at any point. No clinical DB access, no deployment.
+
+### Changed/added files (twelve code/test paths under `django-app/report_v2/`)
+
+- `exports.py` (EDIT) — the email surface, appended to the Task-17 module:
+  - `POST /report/<slug>/email/` (`@login_required @require_POST @csrf_protect`; explicit
+    user action only — GET is 405, and the preview/print paths never touch the outbox).
+    Body allow-list `{snapshot, recipients, note, images}`; every rejection is explicit
+    and pre-send. Loads the frozen snapshot through `snapshots.load_snapshot` → typed
+    410 expired (regenerate message) / 403 foreign / 403 tampered; document-kind check.
+  - **Recipients**: only a JSON list of pre-split address strings (the modal splits like
+    legacy on comma/semicolon/newline), regex-validated, ≤ 20 after order-preserving
+    de-duplication. **Note**: optional string, stripped, ≤ 2000 chars, template-escaped.
+  - **Chart images**: names must be chart-typed widgets of THIS snapshot
+    (line/bar/pie/boxplot); payload must be a `data:image/png;base64,` URL whose bytes
+    really start with the PNG signature, ≤ 512 KB each, ≤ 32 total; nothing is silently
+    dropped — every invalid entry is a 400 naming it.
+  - **Values come from the snapshot only** (asserted: the seam monkeypatched to
+    AssertionError cannot break a send — the email path never evaluates). The single
+    client-supplied presentation input is the validated PNG set.
+  - **Disclosure rules** (`_email_view_model`): discrepancy case tables stay
+    summary-only — case rows appear only for widgets frozen with `export: full`, and
+    even those are capped at 25 rows with an explicit "first 25 of N" note; chart-data
+    tables are dropped when a captured PNG carries the widget. `_table` gained a `kind`
+    (`meta`/`cases`/`chart`) so the filter is structural, not caption-string matching.
+  - **Duplicate-click guard**: server-side replay marker
+    (`email-sent:<sha256(token)>:<sha256(recipients+note)>`, TTL 120 s via the new
+    transient helpers) → identical second submission is 409 `duplicate` with no re-send;
+    different recipients is a legitimate new send. Client side, the Send button disables
+    for the whole in-flight chain.
+  - **MIME assembly** mirrors the legacy `email_report` exactly: SafeMIMEMultipart
+    related/alternative, plain-text + HTML alternatives, inline `MIMEImage` PNG parts
+    with `Content-ID <widget_id>@primer-llm`, `From: DEFAULT_FROM_EMAIL`, delivered
+    through the configured Django backend. Subject: `PRIMER-LLM Report — <title>
+    (<version>)`.
+  - **Plain-text fallback** (`_email_text`): readable prose per widget (window, anchor,
+    state line, counts, measurement/policy, image note, up to 8 table rows per table
+    with "… more rows in the HTML version") — explicitly NOT a monospaced dump and not a
+    bare "see HTML" pointer; footer names the sending user.
+  - Additive Task-17 touches: the frozen widget now carries its YAML `export` flag, and
+    the snapshot POST's 201 body also returns `token` (the email flow references the
+    snapshot directly instead of scraping it out of `print_url`). Print rendering is
+    unaffected (417-test suite re-run green).
+- `snapshots.py` (EDIT) — two small public helpers `transient_set`/`transient_get`
+  (bounded charset key, ≤ 1 KB value, TTL clamped to the store's [60, 3600] range) for
+  the email replay guard; snapshots themselves unchanged.
+- `templates/report_v2/email.html` (NEW) — inline-styled, fixed-light HTML email (email
+  clients strip stylesheets): header with title/version/project/generated + frozen-
+  snapshot note, the escaped sender note, per-widget blocks (title/type, window/anchor/
+  timezone, applied state line, coverage, measurement + policy, counts reconciliation,
+  CID `<img>` when a capture exists, rows_note, data tables), footer. Autoescape on.
+- `static/report_v2/widgets/{line,bar,pie,boxplot}.mjs` (EDIT, +1 line each) — chart
+  renderers now expose `instance.chart = built.chart` so the page can capture PNGs
+  (`getDataURL`) for the email; no behaviour change (node suites re-run green).
+- `templates/report_v2/page.html` (EDIT) — an "Email report" button beside print plus
+  the modal (recipients textarea, optional note, status region, Send/Cancel). Nothing
+  persists: no storage API, recipients live only for the current submission.
+- `static/report_v2/report.js` (EDIT) — the Task-17 snapshot flow was refactored into a
+  shared promise-based `postSnapshot()` (settle-wait + 409 retry, resolves
+  `{print_url, token}`); the print button uses it unchanged in behaviour; the email
+  modal flow (open/close/submit) parses recipients legacy-style, waits for settle,
+  freezes, captures chart PNGs from live instances (guarded; frames without a live
+  chart simply send no image), POSTs the email, disables Send while in flight, and
+  surfaces sent/duplicate/error status without ever touching widget state.
+- `static/report_v2/report.css` (EDIT) — modal + export-bar styles (fixed overlay,
+  `[hidden]` respected, status region wraps).
+- `urls.py` (EDIT, append-only) — one route: `<defid:slug>/email/`.
+- `tests/test_email.py` (NEW, 14 tests) — one per done-when item: login + POST-only +
+  CSRF; preview/print never send; a correct send carries recipients, subject with
+  title+version, note, every widget title, window `2026-08-02 .. 2026-09-01`, applied
+  `site=SYNTH-SITE-A`, counts, measurement + policy, `src="cid:c1@primer-llm"`, one PNG
+  part with `Content-ID <c1@primer-llm>` and the exact captured bytes, and a prose
+  plain-text fallback ("Sent via PRIMER-LLM by …", no "See HTML version"); values are
+  frozen (seam → AssertionError still sends the captured numbers); summary-only tables
+  hide accessions while `export: full` tables show them capped ("first 25 of 50");
+  `<script>` notes arrive escaped; six image-rejection cases (unknown name, non-chart
+  widget, wrong MIME, bad base64, non-PNG bytes, oversized) all 400 with an empty
+  outbox; recipient/note bounds and de-duplication; expired/foreign/tampered snapshots
+  410/403/403 with an empty outbox; duplicate submission 409 + no re-send while a
+  different recipient list sends; a failed email leaves the live report page working;
+  the no-storage source scan (mirroring the node rule: cookie WRITES forbidden, the
+  CSRF read idiom allowed); the page carries the email affordance + modal markers.
+
+### Design decisions recorded
+
+- **Snapshot-first email**: the modal's Send creates a fresh Task-17 snapshot (settle
+  gate included), then sends from that token. This reuses every Task-17 freeze guarantee
+  (version pinning, per-widget state, immutability against later data/publication) and
+  means print and email are two consumers of one frozen document format.
+- **Images are presentation, values are frozen**: per DESIGN, browser metrics are not
+  authoritative input — the PNG captures are validated (name/MIME/signature/size) but
+  every number in the body comes from the server-side freeze. A widget whose chart could
+  not be captured simply ships its data tables.
+- **Summary-only disclosure is driven by the published `export` flag** frozen into the
+  snapshot (the same flag the CSV compatibility work introduced), not by a hard-coded
+  measurement list — the discrepancy rule stays declarative and auditable in YAML.
+- **No persisted preferences**: unlike legacy (which cached recipients in
+  localStorage), the v2 modal keeps recipients in the form for the current submission
+  only, honouring the runbook's fixed product decision; the source-scan tests pin it.
+
+### Verification (Windows host, Anaconda CPython 3.13.5, run from `django-app/`)
+
+- `python manage.py test report_v2.tests.test_email --noinput` → 14 OK (locmem outbox;
+  no SMTP configured or contacted).
+- `python manage.py test report_v2 --noinput` → **Ran 431 tests OK (skipped=1** — the
+  pre-existing symlink-privilege skip; includes the Chromium browser suites).
+- `python manage.py test lunit_audit --noinput` → 16 OK.
+- `node --test report_v2/tests/js/` → 72/72 (renderer + page-bridge suites, covering the
+  four touched chart renderers and the refactored report.js).
+- `node --check report_v2/static/report_v2/report.js` (post-edit), `editor.js` → OK.
+- `python manage.py seed_report_v2 --check` → `SEED-CHECK OK overview 17 widgets`.
+- `git diff --check` clean. The expected `lunit_audit.W002` warning is pre-existing
+  configuration, untouched.
+
+### Deviations / blockers
+
+- None blocking. Two corrections during the round (both mine, caught by the suites): the
+  test layout initially omitted the schema-required `controls.compare_by` on the two
+  table widgets (publish 422), and my no-storage scan was stricter than the node
+  contract (it flagged the pre-existing CSRF cookie READ; the rule forbids writes).
+- The replay guard is deliberately short-TTL (120 s) and keyed on token+recipients+note:
+  a user re-sending the same snapshot to NEW recipients, or re-sending after the guard
+  lapses, is a legitimate action and works — only the accidental double-click of one
+  submission is suppressed.
+
