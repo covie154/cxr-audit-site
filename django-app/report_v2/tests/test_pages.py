@@ -520,6 +520,31 @@ class PublishedReportPageTests(TestCase):
         ).read_text(encoding="utf-8")
         self.assertRegex(css, r"\.widget-body\s*\{[^}]*overflow\s*:\s*auto")
 
+    def test_table_navigation_reuses_scope_and_apply_refreshes(self):
+        views._TABLE_PAGES.clear()
+        self._publish("t13report")
+        client = self._login(self.normal)
+        self._page(client, "t13report")
+        token = self._token(client, "t1")
+        with mock.patch("report_v2.data.fetch_project_rows", side_effect=_make_seam(good=_rows(120))) as fetch:
+            first = self._post_data(client, "t13report", "t1", {"context": token}).json()
+            second = self._post_data(client, "t13report", "t1", {"context": token, "page": 2}).json()
+            third = self._post_data(client, "t13report", "t1", {"context": token, "page": 3}).json()
+            self.assertEqual(fetch.call_count, 1)
+            self.assertEqual([first["pagination"]["returned"], second["pagination"]["returned"], third["pagination"]["returned"]], [50, 50, 20])
+            self.assertFalse(third["pagination"]["truncated"])
+            self.assertEqual(first["counts"], second["counts"])
+            self.assertNotEqual(first["rows"], second["rows"])
+            self._post_data(client, "t13report", "t1", {"context": token})
+            self.assertEqual(fetch.call_count, 2)
+            other = self._login(self.admin)
+            self._page(other, "t13report")
+            self._post_data(other, "t13report", "t1", {"context": token, "page": 2})
+            self.assertEqual(fetch.call_count, 3)
+            views._TABLE_PAGES.clear()
+            self._post_data(client, "t13report", "t1", {"context": token, "page": 2})
+            self.assertEqual(fetch.call_count, 4)
+
     # -- 11. unknown paths resolve to 404; cross-report tokens are refused ------------------
     def test_unknown_paths_404(self):
         self._publish("t13report")

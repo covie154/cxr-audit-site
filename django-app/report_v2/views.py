@@ -29,13 +29,16 @@ per-widget JSON data endpoint.
 from __future__ import annotations
 
 import csv
+import hashlib
 import json
+import pickle
 import re
 from typing import Mapping
 from urllib.parse import urlencode
 
 from django.contrib.auth.decorators import login_required
 from django.core import signing
+from django.core.cache.backends.locmem import LocMemCache
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
 from django.urls import Resolver404, reverse
@@ -65,6 +68,27 @@ _CTX_SALT = "report_v2.page_context.v1"
 #: :data:`~report_v2.evaluation.MAX_PAGE_SIZE` cap) and the last page a client may ask for.
 _SERVER_PAGE_SIZE = 50
 _MAX_PAGE = 100
+# ponytail: per-worker paging cache; shared protected cache only if multi-worker misses matter.
+_TABLE_PAGES = LocMemCache("report-v2-table-pages", {"TIMEOUT": 60, "OPTIONS": {"MAX_ENTRIES": 16}})
+_TABLE_CACHE_MAX_BYTES = 2 * 1024 * 1024
+
+
+def _table_page(payload: dict, page: int) -> dict:
+    """Slice evaluated detail rows without changing full-population statistics."""
+    payload = dict(payload)
+    if payload.get("pagination") is not None:
+        rows = payload.get("rows") or []
+        start = (page - 1) * _SERVER_PAGE_SIZE
+        payload["rows"] = rows[start:start + _SERVER_PAGE_SIZE]
+        payload["pagination"] = {
+            "page": page, "page_size": _SERVER_PAGE_SIZE,
+            "returned": len(payload["rows"]),
+            "truncated": page < _MAX_PAGE and start + _SERVER_PAGE_SIZE < len(rows),
+        }
+    if payload.get("time_groups"):
+        payload["time_groups"] = [{**group, "payload": _table_page(group["payload"], page)}
+                                  for group in payload["time_groups"]]
+    return payload
 
 _ISO_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 _RELATIVE_RE = re.compile(r"^(?:D|W|M|Y)(?:-\d+)?$")
@@ -404,13 +428,14 @@ def _evaluate(
         payload["pagination"] = None
     elif is_table:
         all_rows = list(result.rows)
-        page_rows = all_rows[(page - 1) * _SERVER_PAGE_SIZE : page * _SERVER_PAGE_SIZE]
+        # Page zero is internal: retain rows for the bounded navigation cache.
+        page_rows = all_rows if page == 0 else all_rows[(page - 1) * _SERVER_PAGE_SIZE : page * _SERVER_PAGE_SIZE]
         payload["rows"] = page_rows
         payload["pagination"] = {
             "page": page,
             "page_size": _SERVER_PAGE_SIZE,
             "returned": len(page_rows),
-            "truncated": page * _SERVER_PAGE_SIZE < len(all_rows),
+            "truncated": page < _MAX_PAGE and page * _SERVER_PAGE_SIZE < len(all_rows),
         }
     # A synthesized Overall row must not make an empty selection look populated.
     counts = payload.get("counts") or {}
@@ -693,18 +718,27 @@ def widget_data(request, slug: str, widget_id: str):
 
     # (7) the ONLY row read on this path; a domain error is data (200), not a server fault.
     try:
-        rows = data.fetch_project_rows(_PROJECT_ID, layout_widget=widget)
-        payload = _evaluate(
-            layout,
-            widget,
-            date_override=date_override,
-            filters=filters,
-            comparison=comparison,
-            grouping=grouping,
-            page=page,
-            time_grouping=body.get("time_grouping"),
-            rows=rows,
-        )
+        is_table = widget["type"] == "table"
+        # Gates above run on every request, including cache hits. No PHI in cache keys.
+        scope = {key: value for key, value in body.items() if key not in {"page", "request_seq"}}
+        scope["user"] = request.user.pk
+        scope["session"] = request.session.session_key
+        key = hashlib.sha256(json.dumps(scope, sort_keys=True).encode()).hexdigest()
+        payload = _TABLE_PAGES.get(key) if is_table and page > 1 else None
+        if payload is None:
+            rows = data.fetch_project_rows(_PROJECT_ID, layout_widget=widget)
+            payload = _evaluate(
+                layout, widget, date_override=date_override, filters=filters,
+                comparison=comparison, grouping=grouping, page=0 if is_table else page,
+                time_grouping=body.get("time_grouping"), rows=rows,
+            )
+            if is_table and payload.get("pagination") is not None:
+                # Bound retained detail rows to the existing navigation limit.
+                payload["rows"] = payload["rows"][:_SERVER_PAGE_SIZE * _MAX_PAGE + 1]
+                if len(pickle.dumps(payload, protocol=pickle.HIGHEST_PROTOCOL)) <= _TABLE_CACHE_MAX_BYTES:
+                    _TABLE_PAGES.set(key, payload)
+        if is_table:
+            payload = _table_page(payload, page)
     except (EvaluationError, data.AdapterError, DateRangeError, OverrideRejectedError) as exc:
         return JsonResponse({"status": "error", "error": str(exc), "widget_id": widget_id}, status=200)
 

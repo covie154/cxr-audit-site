@@ -127,7 +127,7 @@
             form: node.querySelector('[data-role="controls"]'),
             body: node.querySelector('[data-widget-body]'),
             summary: node.querySelector('.widget-summary'),
-            more: node.querySelector('[data-action="more"]'),
+            pager: node.querySelector('.widget-pagination'),
             controls: node.querySelectorAll('.widget-controls input, .widget-controls select, .widget-controls button'),
             defaults: node.dataset.defaultComparison === undefined ? {} : { comparison: node.dataset.defaultComparison },
             serverRendered: true,
@@ -254,7 +254,6 @@
         }
         if (frame.liveNode && isChild(frame.liveNode)) { body.removeChild(frame.liveNode); }
         frame.liveNode = null;
-        if (frame.more && isChild(frame.more)) { body.removeChild(frame.more); }
         const live = el('div', 'widget-live');
         live.setAttribute('data-live-region', '');
         // Registry path (fallback-safe): dispose the previous instance once, render into the fresh
@@ -300,10 +299,19 @@
         body.append(live);
         frame.liveNode = live;
         renderGroups(frame, payload, false);
-        if (frame.more) {
-            frame.more.hidden = !(payload && payload.pagination && payload.pagination.truncated);
-            body.append(frame.more);
+        if (frame.pager) {
+            const page = payload && payload.pagination;
+            frame.pager.hidden = !page || (!page.truncated && page.page <= 1);
+            if (page) {
+                frame.pager.querySelector('[data-action="previous-page"]').disabled = page.page <= 1;
+                frame.pager.querySelector('[data-action="next-page"]').disabled = !page.truncated;
+                const start = (page.page - 1) * page.page_size + 1;
+                frame.pager.querySelector('[data-page-info]').textContent = page.returned
+                    ? 'Rows ' + start + '–' + (start + page.returned - 1) : 'No rows on this page';
+                state.widgets[frame.id].overrides.page = page.page;
+            }
         }
+        body.scrollTop = 0;
         const reference = frame.el.querySelector('[data-reference]');
         if (reference) { reference.textContent = frame.type === 'value' ? '' : (payload.caption || ''); }
         const summary = frame.summary;
@@ -407,8 +415,7 @@
                     .filter((box) => box.checked).map((box) => box.value);
             }
         }
-        const widget = state.widgets[frame.id];
-        overrides.page = (widget && widget.overrides.page) || 1;
+        overrides.page = 1;
         return overrides;
     }
 
@@ -548,12 +555,15 @@
                 });
             }
         }
-        if (frame.more) {
-            frame.more.addEventListener('click', () => {
-                const widget = state.widgets[frame.id];
-                widget.overrides = Object.assign({}, widget.overrides, { page: (widget.overrides.page || 1) + 1 });
-                fetchFrame(frame, widget.overrides);
-            });
+        if (frame.pager) {
+            for (const [action, step] of [['previous-page', -1], ['next-page', 1]]) {
+                frame.pager.querySelector('[data-action="' + action + '"]').addEventListener('click', () => {
+                    if (frame.el.getAttribute('aria-busy') === 'true') { return; }
+                    const widget = state.widgets[frame.id];
+                    const page = widget.overrides.page || 1;
+                    fetchFrame(frame, Object.assign({}, widget.overrides, { page: Math.max(1, page + step) }));
+                });
+            }
         }
     });
 

@@ -557,8 +557,29 @@ class BrowserLayoutTests(unittest.TestCase):
                 frame.locator('[data-action="apply"]').first.click()
             self.page.wait_for_timeout(300)
             self.assertTrue(frame.locator(".widget-live").first.count() >= 1, "live region missing")
-            more = frame.locator('[data-action="more"]').first
-            self.assertTrue(more.is_visible(), "show-more button should be visible when truncated")
+            pager = frame.locator('.widget-pagination')
+            self.assertTrue(pager.is_visible())
+            previous = pager.locator('[data-action="previous-page"]')
+            next_page = pager.locator('[data-action="next-page"]')
+            self.assertTrue(previous.is_disabled())
+            self.assertEqual(pager.locator('[data-page-info]').inner_text(), 'Rows 1–50')
+            body.evaluate('(node) => { node.scrollTop = node.scrollHeight; }')
+            pager_box = pager.bounding_box()
+            self.assertLessEqual(pager_box['y'] + pager_box['height'], frame.bounding_box()['y'] + frame.bounding_box()['height'])
+            for expected in ('Rows 51–100', 'Rows 101–120'):
+                with self.page.expect_response(lambda r: '/widget/bt/data/' in r.url and r.status == 200):
+                    next_page.click()
+                self.page.wait_for_function("document.querySelector('[data-widget-id=bt] [data-page-info]').textContent === " + json.dumps(expected))
+            self.assertTrue(next_page.is_disabled())
+            self.assertTrue(previous.is_enabled())
+            with self.page.expect_response(lambda r: '/widget/bt/data/' in r.url and r.status == 200):
+                previous.click()
+            self.page.wait_for_function("document.querySelector('[data-widget-id=bt] [data-page-info]').textContent === 'Rows 51–100'")
+            with self.page.expect_response(lambda r: '/widget/bt/data/' in r.url and r.status == 200):
+                frame.locator('[data-action="apply"]').first.click()
+            self.page.wait_for_function("document.querySelector('[data-widget-id=bt] [data-page-info]').textContent === 'Rows 1–50'")
+            self.assertEqual(frame.locator('[data-action="more"]').count(), 0)
+            self.assertEqual(frame.locator('.widget-pageinfo').count(), 0)
             self._assert_no_frame_overlap()
             self._shot(f"page-longtable-1440.png", full_page=True)
         finally:

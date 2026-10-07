@@ -159,6 +159,8 @@
 .widget-confusion_matrix .widget-summary-line { margin: 4px 0 0; flex: 0 0 auto; }
 .widget-primary-value { font-size: clamp(1rem, min(20cqh, 14cqw), 3rem); margin: 4px 0; }
 .widget-frame[data-type="heading"], .widget-frame[data-type="divider"] { background: transparent; border-color: transparent; box-shadow: none; justify-content: center; }
+.report-v2-page .report-grid > .widget-frame[data-type="heading"] { padding: 8px 16px; }
+.widget-frame[data-type="heading"] > h2 { margin: 0; font-size: 1.25rem; line-height: 1.25; }
 .widget-frame[data-type="heading"] .widget-body { display: none; }
 
 .widget-frame[data-type="divider"] hr { margin: auto 0; flex: 0 0 auto; }
@@ -170,3 +172,12 @@
 
 /* Single numbers occupy the body, whose height already excludes the heading. */
 .widget-single-value, .widget-body > .widget-primary-value { align-self: center; flex: 0 0 auto; margin: auto; max-width: 100%; white-space: nowrap; overflow-wrap: normal; line-height: 1; text-align: center; font-size: min(65cqh, 28cqw); }
+
+/* Keep table navigation outside the only scrolling region. */
+.report-v2-page .report-grid > .widget-frame[data-type="table"] { padding: 16px; overflow: visible; }
+.widget-frame[data-type="table"] .widget-body { flex: 1 1 0; overflow: auto; }
+.widget-frame[data-type="table"] .widget-live { height: auto; flex: 0 0 auto; }
+.widget-pagination { flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: .8125rem; }
+.widget-pagination[hidden] { display: none; }
+.widget-pagination .btn { padding: 4px 8px; min-height: 30px; }
+.widget-frame[aria-busy="true"] .widget-pagination { opacity: .6; }

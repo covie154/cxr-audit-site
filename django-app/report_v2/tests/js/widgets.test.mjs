@@ -156,7 +156,7 @@ test("value: error and empty states", () => {
     assert.equal(collectText(findByClass(emptyContainer, "widget-empty")), "No matching records in this window.");
 });
 
-test("table: union columns, formatted numeric, null cell, pageinfo", () => {
+test("table: union columns, formatted numeric, null cell, no duplicate pageinfo", () => {
     const container = makeContainer();
     const rows = [
         { accession: "A1", sensitivity: 0.873 },
@@ -175,7 +175,7 @@ test("table: union columns, formatted numeric, null cell, pageinfo", () => {
     assert.equal(collectText(bodyRows[1].children[2]), "7");
     assert.equal(collectText(bodyRows[2].children[1]), "—");
     assert.equal(collectText(bodyRows[2].children[3]), "5 minutes");
-    assert.equal(collectText(findByClass(container, "widget-pageinfo")), "page 2 (3 shown)");
+    assert.equal(findByClass(container, "widget-pageinfo"), null);
     assert.equal(container.getAttribute("role"), "region");
     assert.ok(container.getAttribute("aria-label"));
 });

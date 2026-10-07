@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-06-14)
 Phase: 6 of 6 (remaining hipaa controls plan)
 Plan: Not started
 Status: Ready to execute
-Last activity: 2026-10-07 - Completed quick task 261007-wbd: fit and centre single-value cards (7a0164d)
+Last activity: 2026-10-07 - Completed quick task 261007-wj7: fixed table pagination and bounded navigation reuse
 
 Progress: [----------] 0%
 
@@ -161,6 +161,8 @@ None yet.
 | 261007-wbd | Fit and centre single-value card text below heading | 2026-10-07 | 7a0164d | [261007-wbd](./quick/261007-wbd-fit-and-centre-single-value-card-text-be/) |
 
 | 261007-w9h | Skeleton-first reports with bounded progressive card loading | 2026-10-07 | 5411b53 | [261007-w9h](./quick/261007-w9h-load-report-shell-first-with-bounded-asy/) |
+
+| 261007-wj7 | Fixed table pagination footer and bounded user-scoped navigation reuse | 2026-10-07 | See quick summary | [261007-wj7](./quick/261007-wj7-replace-table-show-more-with-fixed-pagin/) |
 
 ### Report v2 workstream execution
 

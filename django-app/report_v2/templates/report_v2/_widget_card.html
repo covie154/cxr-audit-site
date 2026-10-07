@@ -87,9 +87,14 @@
         {% else %}
         <p class="widget-empty">{{ f.empty_message }}</p>
         {% endif %}
-        {% if f.type == "table" %}
-        <button type="button" class="btn btn-secondary widget-more" data-action="more" hidden>Show more</button>
-        {% endif %}
+
     </div>
+    {% if f.type == "table" %}
+    <nav class="widget-pagination" aria-label="{{ f.title }} table pages" hidden>
+        <button type="button" class="btn btn-secondary" data-action="previous-page">Previous</button>
+        <span data-page-info role="status" aria-live="polite"></span>
+        <button type="button" class="btn btn-secondary" data-action="next-page">Next</button>
+    </nav>
+    {% endif %}
     <pre class="widget-initial" hidden data-initial-payload>{{ f.initial_json|safe }}</pre>
 </article>

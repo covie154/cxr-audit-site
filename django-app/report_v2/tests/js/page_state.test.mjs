@@ -94,6 +94,7 @@ class FakeNode {
     append(...nodes) { for (const n of nodes) { this.children.push(n); } }
     remove() { this.removed = true; }
     setAttribute(name, value) { this.attributes[name] = value; }
+    getAttribute(name) { return this.attributes[name] ?? null; }
     addEventListener(type, handler) { (this.listeners[type] = this.listeners[type] || []).push(handler); }
     fire(type, event) { for (const h of this.listeners[type] || []) { h(event); } }
     // selector registry: the harness wires exact selector strings to nodes (no real engine)
@@ -160,8 +161,11 @@ async function runReportScript(withControls = true, withGroups = false) {
         if (withControls) { frame.register('[data-role="controls"]', form); }
         forms.push(form);
         if (type === 'table') {
-            const more = new FakeNode('button');
-            frame.register('[data-action="more"]', more);
+            const pager = new FakeNode('nav');
+            pager.register('[data-action="previous-page"]', new FakeNode('button'));
+            pager.register('[data-action="next-page"]', new FakeNode('button'));
+            pager.register('[data-page-info]', new FakeNode('span'));
+            frame.register('.widget-pagination', pager);
         }
         if (withGroups) {
             frame.dataset.defaultComparison = 'site';
@@ -270,14 +274,14 @@ test('the page boots, renders server defaults and drives stale-safe per-widget u
     assert.match(collectText(frames[0].summary), /Reload the page/);
 
     // 5. a second successful update re-renders idempotently: exactly one live region, and the
-    //    show-more control is re-appended, never duplicated.
+    //    pagination stays outside the scroll body.
     frames[0].form.fire('submit', { preventDefault() {} });
     pending.shift()({ status: 'ok', empty: false, counts: { incoming: 4, matching: 4, eligible: 4 }, aggregates: { record_count: 4 } });
     await new Promise((resolve) => setImmediate(resolve));
     assert.match(collectText(frames[0].summary), /matching 4 of 4/);
     assert.equal(frames[0].body.children.filter((n) => n.attributes['data-live-region'] !== undefined).length, 1);
-    assert.equal(frames[1].body.children.filter((n) => n.tag === 'button').length, 1);
-    assert.equal(frames[1].body.children[frames[1].body.children.length - 1].tag, 'button');
+    assert.equal(frames[1].body.children.filter((n) => n.tag === 'button').length, 0);
+    assert.equal(frames[1].frame.querySelector('.widget-pagination').hidden, false);
 });
 
 test('no storage API may ever be referenced from the page script', async () => {
@@ -293,7 +297,7 @@ test('no storage API may ever be referenced from the page script', async () => {
 
 test('tables without settings still load the next page', async () => {
     const { frames, requests } = await runReportScript(false);
-    frames[1].frame.querySelector('[data-action="more"]').fire('click', {});
+    frames[1].frame.querySelector('.widget-pagination').querySelector('[data-action="next-page"]').fire('click', {});
     assert.equal(requests.length, 1);
     assert.equal(JSON.parse(requests[0].init.body).page, 2);
 });

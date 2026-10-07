@@ -47,11 +47,6 @@ export function render(container, payload, options) {
     }
     table.appendChild(body);
     container.appendChild(table);
-    const page = payload && payload.pagination;
-    if (page && typeof page === "object" && page.page !== null && page.page !== undefined) {
-        const shown = page.returned === null || page.returned === undefined ? rows.length : page.returned;
-        container.appendChild(el("p", "widget-pageinfo", "page " + String(page.page) + " (" + String(shown) + " shown)"));
-    }
     container.setAttribute("role", "region");
     container.setAttribute("aria-label", captionText);
     const disconnect = observeLifecycle(instance, container, () => { if (!disposed) { instance.resize(); } });
