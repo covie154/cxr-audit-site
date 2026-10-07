@@ -3,6 +3,7 @@
 {% block title %}Report v2 — Layout editor{% endblock %}
 {% block nav_report_editor %}active{% endblock %}
 {% block extra_head %}
+<link rel="stylesheet" href="{% static 'report_v2/report.css' %}">
 <link rel="stylesheet" href="{% static 'report_v2/editor.css' %}">
 {% endblock %}
 {% block body %}
@@ -15,8 +16,7 @@
      data-new-url="{% url 'report_v2:editor_new' %}"
      data-seed-check-url="{% url 'report_v2:editor_seed' %}"
      data-seed-load-url="{% url 'report_v2:editor_seed' %}">
-    <h1 class="page-title">Report layout <small>YAML editor</small></h1>
-    <p class="page-subtitle">Admin-only. Drafts are saved privately; only <strong>Publish</strong> moves a report live.</p>
+    <header class="editor-header"><div><h1 class="page-title">Report layout</h1><p class="page-subtitle">Edit report definitions and review results before publishing.</p></div><a class="btn btn-outline" href="{% url 'report_v2:index' %}?list=1">All reports</a></header>
 
     <section class="card editor-report-bar" aria-labelledby="reportBarTitle">
         <h2 id="reportBarTitle" class="visually-hidden">Report selection</h2>
@@ -31,12 +31,14 @@
         <label class="editor-report-label" for="id_new_def_id">New report
             <input id="id_new_def_id" name="new_def_id" type="text" data-role="new-def-id" placeholder="new-report-id" autocomplete="off">
         </label>
-        <button type="button" class="btn btn-secondary" data-action="create">Create report</button>
+        <button type="button" class="btn btn-outline" data-action="create">Create report</button>
     </section>
 
     {% include "report_v2/_editor_form.html" %}
 </div>
 {% endblock %}
 {% block extra_js %}
-<script src="{% static 'report_v2/editor.js' %}"></script>
+<script src="{% static 'report_v2/vendor/echarts.min.js' %}"></script>
+<script type="module" src="{% static 'report_v2/widgets/boot.mjs' %}"></script>
+<script defer src="{% static 'report_v2/editor.js' %}"></script>
 {% endblock %}

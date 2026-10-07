@@ -47,13 +47,8 @@ from .definitions.repository import (
     StaleRevisionError,
     default_root,
 )
-from .evaluation import (
-    PUBLISHED_WIDGETS,
-    EvaluationError,
-    RequestContract,
-    evaluate,
-)
-from .projects.prime import get_project_definition
+from .definitions.loader import load_report_definition
+from .views import _evaluate
 
 __all__ = [
     "editor",
@@ -208,13 +203,6 @@ def _report_entries(repo: DefinitionRepository) -> list[dict[str, str]]:
     return entries
 
 
-def _first_supported_widget() -> str | None:
-    """The first published widget id the evaluator accepts (deterministic insertion order)."""
-    for widget_id in PUBLISHED_WIDGETS:
-        return widget_id
-    return None
-
-
 # ---------------------------------------------------------------------------
 # The editor page (read-only)
 # ---------------------------------------------------------------------------
@@ -312,28 +300,19 @@ def editor_preview(request):
     payload: dict[str, Any] = {"def_id": def_id, "errors": errors, "valid": not errors, "preview": None}
     if errors:
         return JsonResponse(payload, status=200)
-    widget_id = _first_supported_widget()
-    if widget_id is None:
-        payload["preview_error"] = "no published widget is available"
+    layout = load_report_definition(yaml_text)
+    widget = next((widget for section in layout.get("sections", [])
+                   for widget in section.get("widgets", [])), None)
+    if widget is None:
+        payload["preview_error"] = "Add a widget to preview this report."
         return JsonResponse(payload, status=200)
     try:
-        result = evaluate(
-            request=RequestContract(widget_id=widget_id),
-            project=get_project_definition(),
-            catalog=None,
-            rows=[],  # a preview paints from no clinical rows; the renderer owns the data fetch
-            include_rows=False,
-        )
-    except Exception as exc:  # read-only preview: never let a render error escape into a 500
-        # A preview is information only. An empty-population / evaluation failure -- e.g. an
-        # EmptyPopulationError raised by the classification layer over an empty synthetic row set --
-        # is reported as preview text. It can NEVER turn into a publication: this code path holds no
-        # publish call at all, and Task 11's publish is reachable only through editor_publish.
-        payload["widget_id"] = widget_id
-        payload["preview_error"] = str(exc)
-        return JsonResponse(payload, status=200)
-    payload["widget_id"] = widget_id
-    payload["preview"] = result.to_dict()
+        payload["preview"] = _evaluate(layout, widget)
+    except Exception:
+        # Do not expose clinical values from adapter or database exceptions.
+        payload["preview_error"] = "Unable to evaluate this widget. Check its configuration and data connection."
+    payload["widget_id"] = widget["id"]
+    payload["widget"] = widget
     return JsonResponse(payload, status=200)
 
 

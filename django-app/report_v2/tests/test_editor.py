@@ -422,3 +422,36 @@ class EditorAdminSecurityTests(TestCase):
         client = Client()
         client.force_login(group_admin)
         self.assertEqual(client.get(reverse("report_v2:editor")).status_code, 200)
+
+    def test_preview_evaluates_submitted_draft_with_data_adapter(self):
+        from unittest.mock import patch
+
+        draft = VALID_YAML.replace("id: w", "id: draft_widget")
+        with patch("report_v2.data.fetch_project_rows", return_value=[]) as fetch:
+            response = self._as_admin().post(_MUTATION_PATHS["preview"], {
+                "def_id": "drafttest", "yaml_text": draft,
+            })
+        payload = response.json()
+        self.assertTrue(payload["valid"])
+        self.assertEqual(payload["widget_id"], "draft_widget")
+        self.assertEqual(payload["widget"]["query"]["measurement"], "record_count")
+        fetch.assert_called_once_with("prime", layout_widget=payload["widget"])
+        self.assertIsNotNone(payload["preview"])
+        self.assertIsNone(self._repo()._read_pointer("drafttest"))
+
+    def test_editor_copy_and_site_styles(self):
+        body = self._as_admin().get("/report/layout/").content.decode()
+        self.assertNotIn("Admin-only. Drafts are saved privately", body)
+        self.assertNotIn("Preview renders from synthetic data only", body)
+        self.assertIn("Starter templates", body)
+        self.assertIn("editor-columns", body)
+
+    def test_preview_data_failure_does_not_expose_exception(self):
+        from unittest.mock import patch
+
+        with patch("report_v2.data.fetch_project_rows", side_effect=RuntimeError("private-data-sentinel")):
+            response = self._as_admin().post(_MUTATION_PATHS["preview"], {
+                "def_id": "failed", "yaml_text": VALID_YAML,
+            })
+        self.assertNotIn("private-data-sentinel", response.content.decode())
+        self.assertIn("preview_error", response.json())

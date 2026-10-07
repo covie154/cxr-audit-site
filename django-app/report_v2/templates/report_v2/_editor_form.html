@@ -1,4 +1,5 @@
 {# Editor form partial. Plain controls only - no pointer-reordering editing anywhere. #}
+<div class="editor-columns">
 <section class="card editor-workspace" aria-labelledby="workspaceTitle">
     <h2 id="workspaceTitle">Draft YAML</h2>
     <p class="editor-revision" data-role="revision-indicator" data-revision="{{ revision }}">
@@ -11,8 +12,15 @@
     <p class="editor-conflict" role="alert" data-role="conflict-indicator" hidden>
         Version conflict: someone else saved this report. Reload before saving again.
     </p>
+    <div class="editor-actions" aria-label="Draft actions">
+        <button type="button" class="btn btn-primary" data-action="save" title="Save YAML without changing the published report">Save draft</button>
+        <button type="button" class="btn btn-outline" data-action="preview" title="Validate YAML and evaluate the first widget using current study data">Preview</button>
+        <button type="button" class="btn btn-success" data-action="publish" title="Validate YAML and make a new report version available">Publish</button>
+    </div>
+    <p class="editor-help">Save keeps your work as a draft. Preview checks the YAML and shows the first widget with current study data. Publish makes this definition the current report version.</p>
 </section>
 
+<div class="editor-review">
 <section class="card editor-errors" aria-labelledby="errorsTitle">
     <h2 id="errorsTitle">Validation errors</h2>
     <ul class="editor-error-list" data-role="error-list"></ul>
@@ -21,17 +29,18 @@
 
 <section class="card editor-preview" aria-labelledby="previewTitle">
     <h2 id="previewTitle">Preview</h2>
-    <p class="editor-preview-note">Preview renders from synthetic data only. It never publishes and never sends mail.</p>
     <div class="editor-preview-output" data-role="preview-output" role="region" aria-label="Widget preview">
-        <p class="editor-empty">Press <em>Preview</em> to render the first supported widget.</p>
+        <p class="editor-empty">Select a report, edit its YAML, then preview the first widget.</p>
     </div>
 </section>
 
-<section class="card editor-actions" aria-labelledby="actionsTitle">
-    <h2 id="actionsTitle" class="visually-hidden">Actions</h2>
-    <button type="button" class="btn" data-action="save">Save draft</button>
-    <button type="button" class="btn btn-secondary" data-action="preview">Preview</button>
-    <button type="button" class="btn btn-danger" data-action="publish">Publish</button>
-    <button type="button" class="btn btn-secondary" data-action="seed-check">Check seed</button>
-    <button type="button" class="btn" data-action="seed-load">Load seed drafts</button>
-</section>
+</div>
+</div>
+<details class="card editor-seeds">
+    <summary>Starter templates</summary>
+    <p class="editor-help">Check seed validates the bundled PRIME report and threshold policy. Load seed drafts replaces the selected report draft with the bundled template and loads its policy draft. Published reports stay as they are.</p>
+    <div class="editor-actions">
+        <button type="button" class="btn btn-outline" data-action="seed-check">Check seed</button>
+        <button type="button" class="btn btn-outline" data-action="seed-load">Load seed drafts</button>
+    </div>
+</details>

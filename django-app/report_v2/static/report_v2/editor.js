@@ -28,6 +28,7 @@
   var savedText = textarea ? textarea.value : "";
   var savedRevision = revisionNode ? revisionNode.getAttribute("data-revision") || "" : "";
   var dirty = false;
+  var previewInstance = null;
 
   function token() {
     var parts = (document.cookie || "").split(";");
@@ -60,7 +61,7 @@
       }
     }
     if (errorsEmpty) {
-      errorsEmpty.hidden = items.length === 0;
+      errorsEmpty.hidden = items.length > 0;
       errorsEmpty.textContent = items.length ? "" : "No validation errors.";
     }
   }
@@ -155,15 +156,37 @@
     showConflict(false);
     return post(root.getAttribute("data-preview-url")).then(function (result) {
       var data = result.data;
-      showErrors(data.errors || []);
+      showErrors(data.errors || (data.error ? [data.error] : []));
       if (!previewOut) {
         return;
       }
-      if (data.preview) {
+      if (previewInstance && window.__rv2widgets) {
+        window.__rv2widgets.registry.disposeInstance(previewInstance);
+        previewInstance = null;
+      }
+      if (data.preview && window.__rv2widgets && window.__rv2widgets.bootReady) {
         previewOut.innerHTML = "";
-        var block = document.createElement("pre");
-        block.textContent = JSON.stringify(data.preview, null, 2);
-        previewOut.appendChild(block);
+        var title = document.createElement("h3");
+        title.textContent = data.widget.title || data.widget.id;
+        var mount = document.createElement("div");
+        mount.className = "widget-body";
+        previewOut.appendChild(title);
+        previewOut.appendChild(mount);
+        try {
+          previewInstance = window.__rv2widgets.registry.render(data.widget.type, mount, data.preview, {
+            measurement: data.widget.query.measurement,
+            primaryOnly: data.widget.type === "value",
+            columns: data.widget.columns,
+            benchmarks: data.widget.benchmarks
+          });
+          var counts = data.preview.counts || {};
+          var summary = document.createElement("p");
+          summary.className = "editor-help";
+          summary.textContent = (counts.matching || 0) + " matching records · " + (counts.eligible || 0) + " eligible";
+          previewOut.appendChild(summary);
+        } catch (error) {
+          fill(previewOut, "Preview could not render. Reload and try again.");
+        }
       } else {
         fill(previewOut, data.preview_error || "Nothing to preview yet.");
       }

@@ -133,6 +133,8 @@ None yet.
 
 | 261007-leb | Fix editor selector navigation URL | 2026-10-07 | See quick summary | [261007-leb](./quick/261007-leb-fix-report-editor-selector-navigation-ur/) |
 
+| 261007-lit | Align report editor and preview live draft data | 2026-10-07 | See quick summary | [261007-lit](./quick/261007-lit-align-report-editor-layout-and-evaluate-/) |
+
 ## Deferred Items
 
 | Category | Item | Status | Deferred At |
