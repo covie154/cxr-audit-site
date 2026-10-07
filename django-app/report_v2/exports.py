@@ -324,7 +324,7 @@ def _applied_line(applied: Mapping[str, Any]) -> str:
     for key in sorted(filters):
         parts.append(f"{key}={_fmt(filters[key])}")
     if applied.get("comparison"):
-        parts.append(f"compare by {applied['comparison']}")
+        parts.append(f"group by {applied['comparison']}")
     if applied.get("page") and int(applied["page"] or 1) > 1:
         parts.append(f"page {applied['page']}")
     return "; ".join(parts) if parts else "default window and filters"
@@ -381,6 +381,13 @@ def _widget_tables(payload: Mapping[str, Any]) -> list[dict[str, Any]]:
         tables.append(_table(
             str(chart.get("caption") or "Ground truth (rows) vs prediction (columns)"),
             ["GT \\ Pred"] + classes + ["Total"], rows,
+        ))
+    elif payload.get("grouped_values"):
+        grouped = payload["grouped_values"]
+        columns = list(grouped[0].get("aggregates") or {})
+        tables.append(_table(
+            "Grouped values", ["Group"] + columns,
+            [[group["name"]] + [_fmt(group["aggregates"].get(key)) for key in columns] for group in grouped],
         ))
     elif aggregates:
         tables.append(_table(

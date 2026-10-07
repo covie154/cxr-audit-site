@@ -133,6 +133,7 @@
             summary: node.querySelector('.widget-summary'),
             more: node.querySelector('[data-action="more"]'),
             controls: node.querySelectorAll('.widget-controls input, .widget-controls select, .widget-controls button'),
+            defaults: node.dataset.defaultComparison === undefined ? {} : { comparison: node.dataset.defaultComparison },
             serverRendered: true,
             liveNode: null,
             emptyMessage: placeholder ? placeholder.textContent.trim() || DEFAULT_EMPTY : DEFAULT_EMPTY
@@ -283,12 +284,51 @@
         }
         body.append(live);
         frame.liveNode = live;
+        renderGroups(frame, payload, false);
         if (frame.more) {
             frame.more.hidden = !(payload && payload.pagination && payload.pagination.truncated);
             body.append(frame.more);
         }
         const summary = frame.summary;
-        if (summary) { summary.textContent = summaryText(payload); }
+        if (summary) { summary.textContent = summaryText(payload); summary.hidden = frame.type === 'value'; }
+    }
+
+    function updateGroupCount(frame) {
+        const count = frame.el.querySelector('[data-group-count]');
+        if (!count) { return; }
+        const boxes = Array.from(frame.el.querySelectorAll('[data-group-value]'));
+        count.textContent = '(' + boxes.filter((box) => box.checked).length + ' of ' + boxes.length + ')';
+    }
+
+    function renderGroups(frame, payload, reset) {
+        const picker = frame.el.querySelector('[data-group-picker]');
+        const select = frame.el.querySelector('[data-comparison]');
+        const holder = frame.el.querySelector('[data-group-options]');
+        if (!picker || !select || !holder) { return; }
+        if (payload && payload.group_options) { frame.groupOptions = payload.group_options; }
+        const field = select.value;
+        picker.hidden = !field;
+        if (!field) { frame.groupField = ''; return; }
+        const existing = Array.from(frame.el.querySelectorAll('[data-group-value]'));
+        const chosen = !reset && frame.groupField === field
+            ? new Set(existing.filter((box) => box.checked).map((box) => box.value)) : null;
+        while (holder.firstChild) { holder.removeChild(holder.firstChild); }
+        const legend = el('legend', 'widget-a11y');
+        legend.textContent = 'Included groups';
+        holder.append(legend);
+        for (const value of (frame.groupOptions || {})[field] || []) {
+            const label = el('label');
+            const box = el('input');
+            box.type = 'checkbox';
+            box.value = String(value);
+            box.setAttribute('data-group-value', '');
+            box.checked = chosen === null || chosen.has(box.value);
+            box.addEventListener('change', () => updateGroupCount(frame));
+            label.append(box, document.createTextNode(String(value)));
+            holder.append(label);
+        }
+        frame.groupField = field;
+        updateGroupCount(frame);
     }
 
     function renderInitialFrames() {
@@ -323,7 +363,13 @@
             if (value !== '') { overrides.filters[input.dataset.filter] = value; }
         });
         const comparison = frame.el.querySelector('[data-comparison]');
-        if (comparison && comparison.value) { overrides.comparison = comparison.value; }
+        if (comparison) {
+            overrides.comparison = comparison.value;
+            if (comparison.value && frame.el.querySelector('[data-group-options]')) {
+                overrides.filters[comparison.value] = Array.from(frame.el.querySelectorAll('[data-group-value]'))
+                    .filter((box) => box.checked).map((box) => box.value);
+            }
+        }
         const widget = state.widgets[frame.id];
         overrides.page = (widget && widget.overrides.page) || 1;
         return overrides;
@@ -331,6 +377,7 @@
 
     function showStale(frame, errorText) {
         if (frame.summary) {
+            frame.summary.hidden = false;
             frame.summary.textContent = String(errorText || 'The report version has changed.')
                 + ' Reload the page for the newest published version.';
         }
@@ -349,6 +396,7 @@
         if (failed) {
             if (status === 'stale') { showStale(frame, payload.error); return; }
             if (frame.summary) {
+                frame.summary.hidden = false;
                 frame.summary.textContent = String(payload.error || 'The update failed.');
             }
             return;
@@ -368,7 +416,7 @@
         const body = { context: frame.el.dataset.contextToken, request_seq: seq };
         if (overrides.date) { body.date = overrides.date; }
         if (Object.keys(overrides.filters).length) { body.filters = overrides.filters; }
-        if (overrides.comparison) { body.comparison = overrides.comparison; }
+        if (overrides.comparison !== null) { body.comparison = overrides.comparison; }
         if (frame.type === 'table' && overrides.page > 1) { body.page = overrides.page; }
         window.fetch(frame.el.dataset.dataUrl, {
             method: 'POST',
@@ -384,6 +432,7 @@
                 if (error && error.name === 'AbortError') { return; }   // superseded by a newer request
                 const widget = state.widgets[widgetId];
                 if (widget && widget.pendingSeq=== seq && frame.summary) {
+                    frame.summary.hidden = false;
                     frame.summary.textContent = 'The update failed: '
                         + (error && error.message ? error.message : String(error));
                 }
@@ -401,10 +450,24 @@
             });
             form.addEventListener('reset', () => {
                 window.setTimeout(() => {                        // let the browser clear the controls first
-                    resetWidgetState(state, frame.id);
+                    const groupSelect = frame.el.querySelector('[data-comparison]');
+                if (groupSelect) { groupSelect.value = frame.defaults.comparison || ''; }
+                renderGroups(frame, null, true);
+                resetWidgetState(state, frame.id);
                     fetchFrame(frame, state.widgets[frame.id].overrides);
                 }, 0);
             });
+        }
+        const groupSelect = frame.el.querySelector('[data-comparison]');
+        if (groupSelect) { groupSelect.addEventListener('change', () => renderGroups(frame, null, true)); }
+        for (const [action, checked] of [['select-groups', true], ['clear-groups', false]]) {
+            const button = frame.el.querySelector('[data-action="' + action + '"]');
+            if (button) {
+                button.addEventListener('click', () => {
+                    frame.el.querySelectorAll('[data-group-value]').forEach((box) => { box.checked = checked; });
+                    updateGroupCount(frame);
+                });
+            }
         }
         if (frame.more) {
             frame.more.addEventListener('click', () => {
@@ -443,7 +506,7 @@
         const entry = { context: frame.el.dataset.contextToken };
         if (overrides.date) { entry.date = overrides.date; }
         if (overrides.filters && Object.keys(overrides.filters).length) { entry.filters = overrides.filters; }
-        if (overrides.comparison) { entry.comparison = overrides.comparison; }
+        if (overrides.comparison !== null) { entry.comparison = overrides.comparison; }
         if (frame.type === 'table' && overrides.page > 1) { entry.page = overrides.page; }
         return entry;
     });

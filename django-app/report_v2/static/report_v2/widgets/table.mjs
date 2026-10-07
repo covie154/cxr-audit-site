@@ -36,8 +36,8 @@ export function render(container, payload, options) {
     head.appendChild(headRow);
     table.appendChild(head);
     const body = el("tbody", "widget-tbody");
-    for (const row of rows) {
-        const tr = el("tr", "widget-tr");
+    for (const [index, row] of rows.entries()) {
+        const tr = el("tr", payload.overall_row && index === rows.length - 1 ? "widget-tr overall-row" : "widget-tr");
         for (const key of columns) {
             const value = row && typeof row === "object" ? row[key] : null;
             tr.appendChild(el("td", "widget-td", cellText(value, units[key])));

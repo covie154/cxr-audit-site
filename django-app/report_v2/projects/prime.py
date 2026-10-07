@@ -149,8 +149,11 @@ def _build_dimensions():
                 "site",
                 "workplace",
                 label="Site",
-                # Synthetic demonstration codes only; production site choices come from the PRIME adapter.
-                allowed_values=("SYNTH-SITE-A", "SYNTH-SITE-B"),
+            ),
+            Dimension(
+                "age", "patient_age", label="Age",
+                bands=(("<18", 0, 18), ("18–39", 18, 40), ("40–59", 40, 60),
+                       ("60–79", 60, 80), ("80+", 80, None)),
             ),
         )
     }

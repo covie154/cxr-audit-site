@@ -149,7 +149,7 @@ class AcceptanceFlowTests(TestCase):
         self.assertIn("window D-7", printed_html)       # v1 carries its own override
         self.assertIn("site=SYNTH-SITE-A", printed_html)
         self.assertIn("2026-08-02 .. 2026-09-01", printed_html)  # t2 kept its default window
-        self.assertIn("compare by site", printed_html)
+        self.assertIn("group by site", printed_html)
         self.assertIn(version, printed_html)
 
         # Email the SAME frozen state (locmem; one inline CID image for the pie).

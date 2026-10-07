@@ -12,3 +12,24 @@ Apache ECharts 6.0.0 is vendored locally so report pages do not need a third-par
 Source: https://cdn.jsdelivr.net/npm/echarts@6.0.0/dist/echarts.min.js
 Documentation: https://echarts.apache.org/handbook/en/get-started/
 The vendor directory includes the upstream LICENSE and NOTICE.
+
+
+Published cards use **Group by** and **Include groups**. The widget's `controls.compare_by`
+and `controls.filters` allow-lists declare supported project dimensions; the project catalog
+supplies their labels and the adapter maps their physical fields. Each card has independent
+selection state. Changing the field selects all groups; changing dates keeps the selection.
+`comparison: ""` explicitly means None, while omitting it uses the widget default.
+An empty filter list intentionally matches no records.
+
+`Dimension.bands` defines ordered, non-overlapping half-open ranges `[lower, upper)` as
+`(label, lower, upper)` tuples, with `None` for an unbounded endpoint. PRIME configures
+Age as <18, 18–39, 40–59, 60–79, 80+, plus Unknown for missing/invalid ages. Boundaries
+stay fixed when dates change. Categorical choices come from adapter rows; continuous
+choices come from configuration. Group counts remain capped at 100.
+
+Grouped summary tables end in Overall, recomputed from the selected population rather
+than averaged across groups. Case tables retain case pagination and have no metric total.
+Grouping and group selection are included in frozen print/email snapshots.
+
+The packaged seed enables Site and Age on all 17 cards. Existing published definitions
+retain their own allow-lists; re-publish the updated seed to enable these fields there.

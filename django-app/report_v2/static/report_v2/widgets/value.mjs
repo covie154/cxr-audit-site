@@ -23,8 +23,24 @@ export function render(container, payload, options) {
         container.appendChild(el("p", "widget-error", String(payload.error)));
         return instance;
     }
+    if (payload && payload.empty === true) {
+        container.appendChild(el("p", "widget-empty", "No matching records in this window."));
+        return instance;
+    }
     if (options && options.primaryOnly) {
         const key = options.measurement === "record_count" ? "n" : options.measurement;
+        if (payload && Array.isArray(payload.grouped_values)) {
+            const units = payload.units || {};
+            for (const group of payload.grouped_values) {
+                const row = el("div", "widget-group-value");
+                row.appendChild(el("span", "widget-value-name", group.name));
+                row.appendChild(el("p", "widget-primary-value", formatValue((group.aggregates || {})[key], units[key])));
+                const span = ciSpan((group.ci || {})[key], key, units);
+                if (span) { row.appendChild(span); }
+                container.appendChild(row);
+            }
+            return instance;
+        }
         const value = ((payload && payload.aggregates) || {})[key];
         container.appendChild(el("p", "widget-primary-value", formatValue(value, ((payload && payload.units) || {})[key])));
         return instance;

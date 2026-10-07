@@ -217,6 +217,6 @@ test("t16 drift guard: classification_summary columns the server declares match 
     const container = makeContainer();
     registry.render("table", container, CLASSIFICATION_SUMMARY_PAYLOAD, {});
     const headerCells = findAllWithClass(container, "widget-th").map((node) => node.textContent);
-    assert.equal(headerCells.join(","), SERVER_CLASSIFICATION_SUMMARY_COLUMNS.join(","),
+    assert.equal(headerCells.join(","), SERVER_CLASSIFICATION_SUMMARY_COLUMNS.map((column) => column.replaceAll("_", " ")).join(","),
         "the table renderer's projected columns must equal the server CLASSIFICATION_SUMMARY_COLUMNS literal");
 });

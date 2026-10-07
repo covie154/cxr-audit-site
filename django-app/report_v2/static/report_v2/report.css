@@ -64,3 +64,21 @@
 .widget-frame[data-widget-id="site_metrics"] .widget-table caption { text-align: left; margin-bottom: 12px; }
 
 .widget-more[hidden] { display: none; }
+
+/* Match the legacy report's readable table structure in both themes. */
+.widget-table { font-size: .86em; }
+.widget-table th, .widget-table td { padding: 7px 10px; text-align: right; border-bottom: 1px solid var(--c-border); }
+.widget-table thead th { background: var(--c-surface-subtle); color: var(--c-text-muted); font-weight: 600; }
+.widget-table th:first-child, .widget-table td:first-child { text-align: left; }
+.widget-table tbody tr:hover td { background: var(--c-primary-soft); }
+.widget-table .overall-row td { font-weight: 700; background: var(--c-primary-soft); border-top: 2px solid var(--c-primary); }
+.widget-group-picker[hidden] { display: none; }
+.widget-group-picker { width: 100%; font-size: .8125rem; }
+.widget-group-picker summary { cursor: pointer; padding: 6px 0; }
+.widget-group-actions { display: flex; gap: 6px; margin-bottom: 6px; }
+.widget-group-picker fieldset { display: flex; flex-wrap: wrap; gap: 8px 12px; border: 0; padding: 0; max-height: 160px; overflow: auto; }
+.widget-group-picker label { flex-direction: row; align-items: center; }
+.widget-group-picker input[type="checkbox"] { min-height: auto; }
+.widget-group-value { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px; border-bottom: 1px solid var(--c-border); }
+
+.widget-summary[hidden] { display: none; }

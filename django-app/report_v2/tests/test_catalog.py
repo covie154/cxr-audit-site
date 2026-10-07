@@ -246,7 +246,8 @@ class PrimeMetadataConsistencyTests(SimpleTestCase):
         self.assertEqual(dict(project.cohort("all").predicate), {})
         site = project.dimension("site")
         self.assertEqual(site.field, "workplace")
-        self.assertEqual(site.allowed_values, ("SYNTH-SITE-A", "SYNTH-SITE-B"))
+        self.assertIsNone(site.allowed_values)
+        self.assertEqual(project.dimension("age").field, "patient_age")
 
     def test_measurement_signatures_are_as_specified(self):
         project = prime.get_project_definition()

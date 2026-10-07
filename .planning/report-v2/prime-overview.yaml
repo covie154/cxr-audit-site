@@ -26,7 +26,10 @@ sections:
       date_range: true
       filters:
       - site
-      compare_by: []
+      - age
+      compare_by:
+      - site
+      - age
     ci:
       enabled: false
     export: full
@@ -47,7 +50,10 @@ sections:
       date_range: true
       filters:
       - site
-      compare_by: []
+      - age
+      compare_by:
+      - site
+      - age
     ci:
       enabled: false
     export: full
@@ -70,7 +76,10 @@ sections:
       date_range: true
       filters:
       - site
-      compare_by: []
+      - age
+      compare_by:
+      - site
+      - age
     ci:
       enabled: false
     export: full
@@ -93,7 +102,10 @@ sections:
       date_range: true
       filters:
       - site
-      compare_by: []
+      - age
+      compare_by:
+      - site
+      - age
     ci:
       enabled: false
     export: full
@@ -116,7 +128,10 @@ sections:
       date_range: true
       filters:
       - site
-      compare_by: []
+      - age
+      compare_by:
+      - site
+      - age
     ci:
       enabled: false
     export: full
@@ -142,8 +157,10 @@ sections:
       date_range: true
       filters:
       - site
+      - age
       compare_by:
       - site
+      - age
     ci:
       enabled: false
     export: full
@@ -180,8 +197,10 @@ sections:
       date_range: true
       filters:
       - site
+      - age
       compare_by:
       - site
+      - age
     ci:
       enabled: false
     export: full
@@ -205,8 +224,10 @@ sections:
       date_range: true
       filters:
       - site
+      - age
       compare_by:
       - site
+      - age
     ci:
       enabled: false
     export: full
@@ -231,8 +252,10 @@ sections:
       date_range: true
       filters:
       - site
+      - age
       compare_by:
       - site
+      - age
     ci:
       enabled: false
     export: full
@@ -258,8 +281,10 @@ sections:
       date_range: true
       filters:
       - site
+      - age
       compare_by:
       - site
+      - age
     ci:
       enabled: false
     export: full
@@ -282,8 +307,10 @@ sections:
       date_range: true
       filters:
       - site
+      - age
       compare_by:
       - site
+      - age
     ci:
       enabled: false
     export: full
@@ -316,8 +343,10 @@ sections:
       date_range: true
       filters:
       - site
+      - age
       compare_by:
       - site
+      - age
     ci:
       enabled: false
     export: full
@@ -355,8 +384,10 @@ sections:
       date_range: true
       filters:
       - site
+      - age
       compare_by:
       - site
+      - age
     ci:
       enabled: false
     export: full
@@ -392,7 +423,10 @@ sections:
       date_range: true
       filters:
       - site
-      compare_by: []
+      - age
+      compare_by:
+      - site
+      - age
     ci:
       enabled: false
     export: full
@@ -420,7 +454,10 @@ sections:
       date_range: true
       filters:
       - site
-      compare_by: []
+      - age
+      compare_by:
+      - site
+      - age
     ci:
       enabled: false
     export: full
@@ -447,7 +484,10 @@ sections:
       date_range: true
       filters:
       - site
-      compare_by: []
+      - age
+      compare_by:
+      - site
+      - age
     ci:
       enabled: false
     export: summary
@@ -476,7 +516,10 @@ sections:
       date_range: true
       filters:
       - site
-      compare_by: []
+      - age
+      compare_by:
+      - site
+      - age
     ci:
       enabled: false
     export: summary

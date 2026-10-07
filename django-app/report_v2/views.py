@@ -181,10 +181,13 @@ def _allowed_controls(widget: dict) -> dict:
     controls = widget.get("controls") or {}
     query = widget.get("query") or {}
     return {
-        "enabled": widget.get("type") != "value" and (widget.get("layout") or {}).get("width", 12) >= 3,
+        "enabled": True,
         "date_range": bool(controls.get("date_range")),
         "filters": list(controls.get("filters") or ()),
-        "compare_by": list(controls.get("compare_by") or ()),
+        "compare_by": [
+            {"id": name, "label": get_project_definition().dimension(name).label or name}
+            for name in controls.get("compare_by") or ()
+        ],
         "measurement": query.get("measurement"),
         "inputs": dict(query.get("inputs") or {}),
         "window": dict(widget.get("window") or {}),
@@ -261,6 +264,8 @@ def _validate_comparison(widget: dict, raw: object) -> str | None:
         if default not in allowed:
             raise OverrideRejectedError("default comparison is not permitted on this widget")
         return default
+    if raw == "":
+        return ""  # Explicit None differs from an omitted server default.
     if not isinstance(raw, str) or raw not in allowed:
         raise OverrideRejectedError("comparison is not permitted on this widget")
     return raw
@@ -287,7 +292,7 @@ def _validate_overrides(widget: dict, body: dict) -> tuple[dict | None, dict, st
     date_override = _validate_date(body.get("date"))
     filters = _validate_filters(widget, body.get("filters"))
     comparison = _validate_comparison(widget, body.get("comparison"))
-    grouping = [comparison] if comparison else None
+    grouping = [comparison] if comparison else ([] if comparison == "" else None)
     page = _validate_page(body.get("page"))
     return date_override, filters, comparison, grouping, page
 
@@ -310,6 +315,20 @@ def _evaluate(
     """Evaluate one widget into a JSON-safe payload dict. NEVER raises for a domain failure."""
     if rows is None:
         rows = data.fetch_project_rows(_PROJECT_ID, layout_widget=widget)
+    project = get_project_definition()
+    rows = [dict(row) for row in rows]
+    dimensions = project.dimensions
+    for row in rows:
+        for name, dimension in dimensions.items():
+            row[name] = dimension.group_value(row.get(name, row.get(dimension.field)))
+    group_options = {}
+    for name in (widget.get("controls") or {}).get("compare_by") or ():
+        dimension = project.dimension(name)
+        values = {row[name] for row in rows if not row.get("cross_project") and row.get("eligible", True)}
+        if len(values) > 100:
+            raise OverrideRejectedError("group selection exceeds the 100-group limit")
+        group_options[name] = ([label for label, _, _ in dimension.bands] + ["Unknown"]
+                               if dimension.bands else sorted(values))
     specs = _build_specs(layout)
     if date_override is None:
         default_window = dict(widget.get("window") or {})
@@ -319,7 +338,7 @@ def _evaluate(
         widget_id=widget["id"],
         date_override=date_override,
         filter_overrides=dict(filters or {}),
-        comparison=comparison,
+        comparison=comparison or None,
     )
     if grouping is None:
         comparison = comparison or widget.get("default_compare_by")
@@ -329,10 +348,12 @@ def _evaluate(
     ci_registry = {"positive_predictive_value"} if (widget.get("ci") or {}).get("enabled") else None
     policy = (widget.get("query") or {}).get("threshold_policy")
     is_table = display == "table"
-    is_summary_table = is_table and (widget.get("query") or {}).get("measurement") == "classification_summary"
+    is_summary_table = is_table and (widget.get("query") or {}).get("measurement") in {
+        "classification_summary", "reference_agreement", "paired_reference_comparison", "duration_summary"
+    } or (is_table and bool(grouping) and (widget.get("query") or {}).get("measurement") in {"record_count", "label_count"})
     result = evaluate(
         request=request,
-        project=get_project_definition(),
+        project=project,
         catalog=None,
         rows=rows,
         ci_registry=ci_registry,
@@ -348,10 +369,10 @@ def _evaluate(
         widget_inputs=dict((widget.get("query") or {}).get("inputs") or {}),
     )
     payload = result.to_dict()
+    payload["group_options"] = group_options
     if is_summary_table:
-        # Group cardinality is already bounded to 100; show every site together.
+        # Group cardinality is already bounded to 100; show every summary group together.
         payload["pagination"] = None
-        visible_rows = bool(result.rows)
     elif is_table:
         all_rows = list(result.rows)
         page_rows = all_rows[(page - 1) * _SERVER_PAGE_SIZE : page * _SERVER_PAGE_SIZE]
@@ -362,14 +383,9 @@ def _evaluate(
             "returned": len(page_rows),
             "truncated": page * _SERVER_PAGE_SIZE < len(all_rows),
         }
-        visible_rows = bool(page_rows)
-    else:
-        visible_rows = False
-    # ``empty`` is the single shared truth for "this frame measured nothing": an aggregate widget
-    # with a zero matching population and a table with no rows in its page are both empty, while a
-    # populated aggregate with zero rows (rows are withheld by contract) is NOT.
+    # A synthesized Overall row must not make an empty selection look populated.
     counts = payload.get("counts") or {}
-    payload["empty"] = (not visible_rows) and not counts.get("matching")
+    payload["empty"] = not counts.get("matching")
     return payload
 
 

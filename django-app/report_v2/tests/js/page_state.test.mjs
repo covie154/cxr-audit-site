@@ -89,6 +89,7 @@ class FakeNode {
         this.removed = false;
     }
     get children() { return this._children; }
+    get firstChild() { return this._children[0] || null; }
     removeChild(node) { const at = this._children.indexOf(node); if (at >= 0) { this._children.splice(at, 1); } node.removed = true; return node; }
     append(...nodes) { for (const n of nodes) { this.children.push(n); } }
     remove() { this.removed = true; }
@@ -99,6 +100,9 @@ class FakeNode {
     register(selector, node) { (this._bySelector = this._bySelector || new Map()).set(selector, node); }
     querySelector(selector) { return (this._bySelector || new Map()).get(selector) || null; }
     querySelectorAll(selector) {
+        if (selector === '[data-group-value]') {
+            return this.descendants().filter((node) => node.attributes['data-group-value'] !== undefined);
+        }
         const hit = (this._bySelector || new Map()).get(selector);
         return hit === undefined ? [] : Array.isArray(hit) ? hit : [hit];
     }
@@ -118,6 +122,7 @@ function collectText(node) {
 function installDom(pageAttributes) {
     const document = {
         createElement: (tag, cls) => new FakeNode(tag, cls),
+        createTextNode: (text) => { const node = new FakeNode('#text'); node.textContent = text; return node; },
         querySelector: null,
         querySelectorAll: null,
         getElementById: () => null,
@@ -134,7 +139,7 @@ function installDom(pageAttributes) {
     return { document, root, FakeNode };
 }
 
-async function runReportScript(withControls = true) {
+async function runReportScript(withControls = true, withGroups = false) {
     const { document, root, FakeNode } = installDom({ slug: 'overview', version: 'overview@r1' });
     const forms = [];
     const frames = [];
@@ -157,6 +162,26 @@ async function runReportScript(withControls = true) {
         if (type === 'table') {
             const more = new FakeNode('button');
             frame.register('[data-action="more"]', more);
+        }
+        if (withGroups) {
+            frame.dataset.defaultComparison = 'site';
+            const select = new FakeNode('select'); select.value = 'site';
+            const picker = new FakeNode('details');
+            const holder = new FakeNode('fieldset');
+            frame.register('[data-comparison]', select);
+            frame.register('[data-group-picker]', picker);
+            frame.register('[data-group-options]', holder);
+            frame.register('[data-group-count]', new FakeNode('span'));
+            for (const action of ['select-groups', 'clear-groups']) {
+                frame.register('[data-action="' + action + '"]', new FakeNode('button'));
+            }
+            const relative = new FakeNode('select'); relative.value = '';
+            frame.register('[data-date="relative"]', relative);
+            frame.children.push(holder);
+            const initial = new FakeNode('pre');
+            initial.textContent = JSON.stringify({ aggregates: { n: 2 }, counts: { matching: 2, incoming: 2, eligible: 2 },
+                group_options: { site: ['A', 'B'], age: ['Young', 'Older', 'Unknown'] } });
+            frame.register('[data-initial-payload]', initial);
         }
         root.children.push(frame);
         frames.push({ frame, body, summary, form });
@@ -266,4 +291,37 @@ test('tables without settings still load the next page', async () => {
     frames[1].frame.querySelector('[data-action="more"]').fire('click', {});
     assert.equal(requests.length, 1);
     assert.equal(JSON.parse(requests[0].init.body).page, 2);
+});
+
+
+test('group selections survive date changes, reset on field changes, and remain card-local', async () => {
+    const { frames, requests, pending } = await runReportScript(true, true);
+    const frame = frames[0].frame;
+    const other = frames[1].frame;
+    let boxes = frame.querySelectorAll('[data-group-value]');
+    assert.equal(boxes.length, 2);
+    assert.ok(boxes.every((box) => box.checked));
+    boxes[1].checked = false;
+    frame.querySelector('[data-date="relative"]').value = 'D-30';
+    frames[0].form.fire('submit', { preventDefault() {} });
+    assert.deepEqual(JSON.parse(requests[0].init.body).filters, { site: ['A'] });
+    pending.shift()({ aggregates: { n: 1 }, counts: { matching: 1, incoming: 2, eligible: 1 },
+        group_options: { site: ['A', 'B'], age: ['Young', 'Older', 'Unknown'] } });
+    await new Promise((resolve) => setImmediate(resolve));
+    boxes = frame.querySelectorAll('[data-group-value]');
+    assert.deepEqual(boxes.map((box) => box.checked), [true, false]);
+    assert.ok(other.querySelectorAll('[data-group-value]').every((box) => box.checked));
+    const select = frame.querySelector('[data-comparison]');
+    select.value = 'age'; select.fire('change');
+    assert.equal(frame.querySelectorAll('[data-group-value]').length, 3);
+    assert.ok(frame.querySelectorAll('[data-group-value]').every((box) => box.checked));
+    frame.querySelector('[data-action="clear-groups"]').fire('click');
+    frames[0].form.fire('submit', { preventDefault() {} });
+    assert.deepEqual(JSON.parse(requests[1].init.body).filters, { age: [] });
+    select.value = ''; select.fire('change');
+    frames[0].form.fire('submit', { preventDefault() {} });
+    const none = JSON.parse(requests[2].init.body);
+    assert.equal(none.comparison, '');
+    assert.equal(none.filters, undefined);
+    assert.equal(frame.querySelector('[data-group-picker]').hidden, true);
 });

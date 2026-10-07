@@ -511,7 +511,8 @@ class SeedSynthEvaluationTests(TestCase):
         prototype = self._fake_fetch(layout_widget=widget)[0]
         rows = [dict(prototype, site=f"SYNTH-SITE-{i}", accession=900001000 + i) for i in range(60)]
         payload = views._evaluate(doc, widget, rows=rows)
-        self.assertEqual(len(payload["rows"]), 60)
+        self.assertEqual(len(payload["rows"]), 61)
+        self.assertEqual(payload["rows"][-1]["site"], "Overall")
         self.assertIsNone(payload["pagination"])
         self.assertFalse(payload["empty"])
 
@@ -939,7 +940,7 @@ class SeedDatabaseIntegrationTests(TestCase):
             client.force_login(User.objects.create_user(username="csv-viewer"))
             page = client.get("/report/overview/")
             self.assertEqual(page.status_code, 200)
-            self.assertContains(page, "data-csv-download", count=17)
+            self.assertNotContains(page, "data-csv-download")
             link = page.context["sections_ctx"][0]["widgets"][0]["csv_links"][0]["url"]
             params = parse_qs(urlparse(link).query)
             self.assertEqual(params["date_from"], ["2025-12-12"])

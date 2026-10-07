@@ -824,9 +824,11 @@ def _measure_classification_summary(rows: Sequence[Mapping], ctx: dict) -> tuple
                 row[k] = first.get(k)
             row.update(_summary_columns(sub_summary))
             extra_rows_list.append(row)
+        extra_rows_list.append({**{key: "Overall" for key in grouping}, **_summary_columns(summary)})
         extra_rows = tuple(extra_rows_list)
     comparison = _comparison(ctx)
     chart: dict[str, Any] = {
+        "overall_row": bool(grouping),
         "comparison": comparison,
         "caption": "Reference {} versus prediction {}".format(
             comparison.get("reference"), comparison.get("prediction"),
@@ -1452,7 +1454,36 @@ def evaluate(
     if measurement_id not in _MEASUREMENT_DISPATCH:
         raise UnknownMeasurementError(f"no dispatcher for measurement {measurement_id!r}")
     called_modules.append(f"report_v2.measurements ({measurement_id})")
-    aggregates, extra = _MEASUREMENT_DISPATCH[measurement_id](eligible_rows, ctx)
+    aggregates, extra = (_MEASUREMENT_DISPATCH[measurement_id](eligible_rows, ctx)
+                         if eligible_rows else ({}, {}))
+    handler = _MEASUREMENT_DISPATCH[measurement_id]
+    if group_keys and widget.display == "value":
+        grouped_values = []
+        for label, subgroup in _partition_by_grouping(eligible_rows, group_keys):
+            values, _ = handler(subgroup, {**ctx, "grouping": ()})
+            grouped_values.append({"name": label, "aggregates": values,
+                                   "ci": _maybe_ci(widget, values, ci_registry)})
+        extra.setdefault("chart", {})["grouped_values"] = grouped_values
+    if eligible_rows and group_keys and widget.display == "table" and measurement_id in {
+        "reference_agreement", "paired_reference_comparison", "duration_summary", "record_count", "label_count"
+    }:
+        def summary_row(subgroup):
+            values, details = handler(subgroup, {**ctx, "grouping": ()})
+            if details.get("rows"):
+                return dict(details["rows"][0])
+            return dict(values.get("duration") or values)
+        grouped_rows = []
+        for _, subgroup in _partition_by_grouping(eligible_rows, group_keys):
+            grouped_rows.append({**{key: subgroup[0].get(key) for key in group_keys}, **summary_row(subgroup)})
+        grouped_rows.append({**{key: "Overall" for key in group_keys}, **summary_row(eligible_rows)})
+        extra["rows"] = tuple(grouped_rows)
+        extra.setdefault("chart", {})["overall_row"] = True
+    if group_keys and measurement_id in {"false_negatives", "false_positives"}:
+        source_rows = {row.get("accession"): row for row in eligible_rows}
+        extra["rows"] = tuple({**{key: source_rows.get(row["accession"], {}).get(key) for key in group_keys}, **row}
+                              for row in extra.get("rows", ()))
+        extra["rows"] = tuple(sorted(extra["rows"], key=lambda row: tuple(str(row.get(key)) for key in group_keys)))
+
 
     # ---- 7b. row payload (after dispatch so handlers can supply rows via extra) ---------------
     row_payload: tuple[Mapping, ...] = ()

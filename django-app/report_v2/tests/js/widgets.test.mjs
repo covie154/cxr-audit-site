@@ -274,3 +274,25 @@ test('primary-only values display one measure and omit denominator text', () => 
     valueRenderer.render(container, {aggregates: {n: 12}, units: {n: 'count'}}, {primaryOnly: true, measurement: 'record_count'});
     assert.equal(container.children[0].textContent, '12');
 });
+
+
+test("grouped value cards label each value and empty selection stays empty", () => {
+    const container = new FakeNode("div");
+    render("value", container, { units: { n: "count" }, aggregates: { n: 7 }, grouped_values: [
+        { name: "Age <18", aggregates: { n: 2 } }, { name: "Age 18–39", aggregates: { n: 5 } }
+    ] }, { primaryOnly: true, measurement: "record_count" });
+    const text = container.descendants().map((node) => node.textContent).join(" ");
+    assert.match(text, /Age <18/);
+    assert.match(text, /Age 18–39/);
+    assert.equal(container.children.length, 2);
+    render("value", container, { empty: true, aggregates: { n: 0 }, grouped_values: [] }, { primaryOnly: true, measurement: "record_count" });
+    assert.equal(container.children[0].className, "widget-empty");
+});
+
+test("summary tables mark only the pooled Overall row", () => {
+    const container = new FakeNode("div");
+    render("table", container, { rows: [{ site: "A", n: 2 }, { site: "Overall", n: 2 }], overall_row: true });
+    const marked = container.descendants().filter((node) => node.className.includes("overall-row"));
+    assert.equal(marked.length, 1);
+    assert.equal(marked[0].children[0].textContent, "Overall");
+});

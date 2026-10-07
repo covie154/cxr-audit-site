@@ -281,6 +281,8 @@ def fetch_project_rows(
     rows: list[dict[str, Any]] = []
     for study in queryset:
         row: dict[str, Any] = {"accession": study.accession_no, "site": study.workplace}
+        for dimension in project.dimensions.values():
+            row[dimension.dimension_id] = getattr(study, dimension.field, None)
         event = _event_date(getattr(study, "procedure_start_date", None))
         if event is not None:
             row["event_date"] = event

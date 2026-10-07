@@ -59,8 +59,8 @@ class ReportRoutingTests(SimpleTestCase):
         for name in ("index.html", "page.html"):
             self.assertNotIn('class="report-v2-legacy"', (source / name).read_text())
 
-    def test_card_settings_only_render_for_non_value_widgets_at_least_three_columns_wide(self):
-        for kind, width, expected in (("value", 12, False), ("table", 2, False), ("bar", 1, False), ("table", 3, True), ("bar", 6, True)):
+    def test_card_settings_render_for_every_kind_and_width(self):
+        for kind, width, expected in (("value", 12, True), ("table", 2, True), ("bar", 1, True), ("table", 3, True), ("bar", 6, True)):
             with self.subTest(kind=kind, width=width):
                 widget = {"type": kind, "layout": {"width": width}, "controls": {"date_range": True}}
                 frame = {"id": "sample", "type": kind, "width": width, "controls": views._allowed_controls(widget)}

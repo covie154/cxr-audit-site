@@ -198,7 +198,7 @@ class PrintFlowTests(TestCase):
         self.assertIn("2026-08-02 .. 2026-09-01", page)  # default D-30 window
         self.assertIn("2026-09-01", page)                # anchor D
         self.assertIn("site=SYNTH-SITE-A", page)
-        self.assertIn("compare by site", page)
+        self.assertIn("group by site", page)
         self.assertIn("window D-7", page)
         # Counts reconciliation and provenance.
         self.assertIn("matching 3 of 3 · 3 eligible for measurement", page)

@@ -203,6 +203,43 @@ class Dimension:
     label: str = ""
     allowed_values: tuple[str, ...] | None = None
 
+    # Half-open ranges [lower, upper); None means no boundary.
+    bands: tuple[tuple[str, float | None, float | None], ...] = ()
+
+    def __post_init__(self):
+        import math
+        labels = set()
+        previous_upper = None
+        for index, (label, lower, upper) in enumerate(self.bands):
+            if not label or label == "Unknown" or label in labels:
+                raise ValueError("dimension bands need unique labels other than Unknown")
+            labels.add(label)
+            for boundary in (lower, upper):
+                if boundary is not None and (isinstance(boundary, bool) or not math.isfinite(boundary)):
+                    raise ValueError("dimension band boundaries must be finite numbers")
+            if lower is not None and upper is not None and lower >= upper:
+                raise ValueError("dimension band lower boundary must precede upper")
+            if index and (previous_upper is None or lower is None or lower < previous_upper):
+                raise ValueError("dimension bands must be ordered and non-overlapping")
+            previous_upper = upper
+
+    def group_value(self, value):
+        if value is None or value == "":
+            return "Unknown"
+        if not self.bands:
+            return str(value)
+        import math
+        try:
+            number = float(value)
+        except (ValueError, TypeError):
+            return "Unknown"
+        if isinstance(value, bool) or not math.isfinite(number):
+            return "Unknown"
+        for label, lower, upper in self.bands:
+            if (lower is None or number >= lower) and (upper is None or number < upper):
+                return label
+        return "Unknown"
+
 
 @dataclass(frozen=True)
 class ThresholdPolicy:
