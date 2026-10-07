@@ -12,3 +12,6 @@ statsmodels>=0.14
 matplotlib>=3.7
 requests>=2.31
 psycopg[binary]>=3.1.8
+# report_v2 definition loader (schema validation + YAML report definitions)
+jsonschema>=4.17
+pyyaml>=6.0

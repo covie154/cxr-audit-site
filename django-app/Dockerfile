@@ -42,6 +42,7 @@ COPY lunit_audit/ lunit_audit/
 COPY upload/ upload/
 COPY viewer/ viewer/
 COPY report/ report/
+COPY report_v2/ report_v2/
 COPY gt/ gt/
 COPY audit/ audit/
 COPY templates/ templates/
