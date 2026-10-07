@@ -129,6 +129,8 @@ None yet.
 
 | 261007-l4m | Display report dates as DD/MM/YYYY and verify native preview pickers | 2026-10-07 | 969424e | [261007-l4m](./quick/261007-l4m-display-report-dates-with-day-first-slas/) |
 
+| 261007-lc4 | Enable admin editor in local synthetic preview | 2026-10-07 | See quick summary | [261007-lc4](./quick/261007-lc4-enable-admin-editor-in-synthetic-preview/) |
+
 ## Deferred Items
 
 | Category | Item | Status | Deferred At |
