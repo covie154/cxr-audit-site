@@ -1,0 +1,3 @@
+# Plan
+
+Implement list-first admin report management at /report/layout/ with create-name/template dialog and confirmed deletion. Detail editor uses Report V2 spacing, report dropdown plus create button, YAML editor heading, combined Revision: token (Draft/Published) label and explicit unsaved status. Offer Basic report with working boilerplate and PRIME overview templates; creation opens the editor. Select cards from submitted YAML for live preview, with no new parser dependency. Retain immutable publication history on deletion; lock save/create/delete against publication and reject stale resurrection or name collisions. Test admin/CSRF/path/conflict controls and browser flow using disposable temporary definitions and read-only live study access.

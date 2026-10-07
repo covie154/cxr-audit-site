@@ -21,6 +21,7 @@ urlpatterns += [
     path("layout/editor/save/", admin_views.editor_save_draft, name="editor_save_draft"),
     path("layout/editor/preview/", admin_views.editor_preview, name="editor_preview"),
     path("layout/editor/publish/", admin_views.editor_publish, name="editor_publish"),
+    path("layout/editor/delete/", admin_views.editor_delete, name="editor_delete"),
     path("layout/editor/new/", admin_views.editor_new, name="editor_new"),
     path("layout/editor/seed/", admin_views.editor_seed, name="editor_seed"),
     path("layout/editor/<str:def_id>/", admin_views.editor, name="editor_detail"),

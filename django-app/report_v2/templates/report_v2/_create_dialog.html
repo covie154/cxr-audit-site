@@ -1,0 +1,16 @@
+<dialog class="editor-dialog" data-role="create-dialog" aria-labelledby="createTitle">
+    <form data-role="create-form">
+        <h2 id="createTitle">Create report</h2>
+        <label class="editor-report-label" for="id_new_name">Report name
+            <input id="id_new_name" name="name" data-role="new-report-name" required maxlength="200" autocomplete="off" autofocus>
+        </label>
+        <label class="editor-report-label" for="id_starter_template">Starter template
+            <select id="id_starter_template" data-role="starter-template"><option value="blank">Basic report</option><option value="prime">PRIME overview</option></select>
+        </label>
+        <p class="editor-help">Basic report starts with a Summary section and a record-count card. PRIME overview starts with the standard report cards.</p>
+        <div class="editor-actions">
+            <button type="submit" class="btn btn-primary">Create report</button>
+            <button type="button" class="btn btn-outline" data-action="cancel-create">Cancel</button>
+        </div>
+    </form>
+</dialog>

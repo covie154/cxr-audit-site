@@ -14,6 +14,7 @@ Mechanism:
 """
 from __future__ import annotations
 
+from contextlib import contextmanager
 import hashlib
 import os
 import re
@@ -239,7 +240,8 @@ class DefinitionRepository:
         self._pointers_dir = self._root / "pointers"
         self._locks_dir = self._root / ".locks"
         self._tmp_dir = self._root / ".tmp"
-        for d in (self._drafts_dir, self._blobs_dir, self._pointers_dir, self._locks_dir, self._tmp_dir):
+        self._deleted_dir = self._root / ".deleted"
+        for d in (self._drafts_dir, self._blobs_dir, self._pointers_dir, self._locks_dir, self._tmp_dir, self._deleted_dir):
             d.mkdir(parents=True, exist_ok=True)
 
     # -- Draft operations ---------------------------------------------------
@@ -247,35 +249,66 @@ class DefinitionRepository:
     def _draft_path(self, def_id: str) -> Path:
         return _build_path(self._root, def_id, "drafts")
 
-    def save_draft(self, def_id: str, yaml_text: str, *, expected_revision: str | None) -> str:
-        """Write (or update) a draft. Returns the new revision token.
+    def is_deleted(self, def_id: str) -> bool:
+        return _build_path(self._root, def_id, ".deleted").exists()
 
-        Optimistic concurrency: if expected_revision does not match the current on-disk
-        revision, raise StaleRevisionError without writing.
-        """
+    @contextmanager
+    def _locked(self, def_id: str):
+        path = self._lock_path(def_id)
+        _realpath_within(self._root, path)
+        fd = os.open(str(path), os.O_CREAT | os.O_RDWR)
+        try:
+            _flock_ex(fd)
+            yield
+        finally:
+            _flock_unlock(fd)
+            os.close(fd)
+
+    def save_draft(self, def_id: str, yaml_text: str, *, expected_revision: str | None,
+                   create_only: bool = False) -> str:
+        """Atomically save a draft under the publication/deletion lock."""
         path = self._draft_path(def_id)
-        # Check current revision
-        current_rev: str | None = None
-        if path.exists():
-            content = path.read_text(encoding="utf-8")
-            current_rev = _revision_of(content)
-        # Compare by VALUE (not identity): the current revision is re-read from disk
-        # so it is always a distinct str object with the same digest.
-        if expected_revision is not None and current_rev != expected_revision:
-            raise StaleRevisionError(
-                f"expected revision {expected_revision!r} but current is {current_rev!r}"
-            )
-        # Atomic write
-        tmp = self._tmp_dir / f"draft-{def_id}-{os.getpid()}"
-        tmp.write_bytes(yaml_text.encode("utf-8"))
-        _fsync_path(tmp)
-        os.replace(str(tmp), str(path))
+        _realpath_within(self._root, path)
+        with self._locked(def_id):
+            if self.is_deleted(def_id):
+                raise RepositoryError("This report was deleted. Create a report with a different name.")
+            if create_only and (path.exists() or self._read_pointer(def_id)
+                                or any(self._blobs_dir.glob(f"{def_id}@r*.yaml"))):
+                raise StaleRevisionError("A report with this name already exists.")
+            current_rev = _revision_of(path.read_text(encoding="utf-8")) if path.exists() else None
+            if expected_revision is not None and current_rev != expected_revision:
+                raise StaleRevisionError("The draft changed. Reload before saving.")
+            tmp = self._tmp_dir / f"draft-{def_id}-{os.getpid()}"
+            _realpath_within(self._root, tmp)
+            tmp.write_bytes(yaml_text.encode("utf-8"))
+            _fsync_path(tmp)
+            os.replace(str(tmp), str(path))
         return _revision_of(yaml_text)
+
+    def delete(self, def_id: str, *, expected_revision: str | None,
+               expected_version: str | None) -> None:
+        """Remove active report content; preserve immutable publication history."""
+        draft = self._draft_path(def_id)
+        pointer = self._pointer_path(def_id)
+        marker = _build_path(self._root, def_id, ".deleted")
+        for path in (draft, pointer, marker):
+            _realpath_within(self._root, path)
+        with self._locked(def_id):
+            if self.is_deleted(def_id) or not (draft.exists() or pointer.exists()):
+                raise DraftNotFoundError("Report not found.")
+            revision = _revision_of(draft.read_text(encoding="utf-8")) if draft.exists() else None
+            if revision != expected_revision or self._read_pointer(def_id) != expected_version:
+                raise StaleRevisionError("The report changed. Reload before deleting.")
+            # Hide the report before removing active files; stale clients cannot recreate it.
+            marker.touch(exist_ok=False)
+            _fsync_path(marker)
+            pointer.unlink(missing_ok=True)
+            draft.unlink(missing_ok=True)
 
     def read_draft(self, def_id: str) -> tuple[str, str]:
         """Return (yaml_text, revision). Raise DraftNotFoundError if absent."""
         path = self._draft_path(def_id)
-        if not path.exists():
+        if self.is_deleted(def_id) or not path.exists():
             raise DraftNotFoundError(f"draft not found: {def_id!r}")
         # symlink safety
         _realpath_within(self._root, path)
@@ -325,7 +358,7 @@ class DefinitionRepository:
 
     def _read_pointer(self, def_id: str) -> str | None:
         pp = self._pointer_path(def_id)
-        if not pp.exists():
+        if self.is_deleted(def_id) or not pp.exists():
             return None
         _realpath_within(self._root, pp)
         return pp.read_text(encoding="utf-8").strip()
@@ -418,6 +451,8 @@ class DefinitionRepository:
         lock_fd = os.open(str(lock_path), os.O_CREAT | os.O_RDWR)
         try:
             _flock_ex(lock_fd)
+            if self.is_deleted(def_id):
+                raise RepositoryError("This report was deleted.")
 
             # (3.5) optimistic concurrency: when the caller asserts an expected
             # revision, the current on-disk draft revision must match it exactly.

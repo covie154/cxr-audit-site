@@ -307,7 +307,7 @@ class EditorAdminSecurityTests(TestCase):
         # inheritance and the static assets actually resolve).
         page = self._as_admin().get("/report/layout/")
         self.assertEqual(page.status_code, 200)
-        self.assertIn("Report layout", page.content.decode())
+        self.assertIn("Report editor", page.content.decode())
 
     # -- 8. no pointer-reordering (drag-and-drop) editing was added ------
     def test_no_drag_and_drop(self):
@@ -340,8 +340,8 @@ class EditorAdminSecurityTests(TestCase):
         self.assertEqual(created.status_code, 200)
 
         body = self._as_admin().get("/report/layout/").content.decode("utf-8")
-        self.assertIn('value="listed"', body)
-        self.assertIn('value="drafted"', body)
+        self.assertIn('href="/report/layout/editor/listed/"', body)
+        self.assertIn('href="/report/layout/editor/drafted/"', body)
         self.assertIn('data-state="published"', body)
         self.assertIn('data-state="draft only"', body)
         self.assertIn("listed — published", body)
@@ -364,8 +364,8 @@ class EditorAdminSecurityTests(TestCase):
         self.assertIn("title: T", body)
         self.assertIn('data-source-state="published-only"', body)
         self.assertIn("Revision:", body)
-        self.assertIn("(no draft yet)", body)
-        self.assertIn('data-role="source-indicator"', body)
+        self.assertIn("(Published)", body)
+        self.assertIn('data-role="revision-indicator"', body)
         self.assertFalse((self.root / "drafts" / "listed").exists())
 
     # -- 14A.6 saving a draft from the published view creates the private draft -------- #
@@ -440,10 +440,11 @@ class EditorAdminSecurityTests(TestCase):
         self.assertIsNone(self._repo()._read_pointer("drafttest"))
 
     def test_editor_copy_and_site_styles(self):
-        body = self._as_admin().get("/report/layout/").content.decode()
+        self._as_admin().post(_MUTATION_PATHS["new"], {"def_id": "copytest"})
+        body = self._as_admin().get("/report/layout/editor/copytest/").content.decode()
         self.assertNotIn("Admin-only. Drafts are saved privately", body)
         self.assertNotIn("Preview renders from synthetic data only", body)
-        self.assertIn("Starter templates", body)
+        self.assertIn("Bundled PRIME template", body)
         self.assertIn("editor-columns", body)
 
     def test_preview_data_failure_does_not_expose_exception(self):
@@ -455,3 +456,72 @@ class EditorAdminSecurityTests(TestCase):
             })
         self.assertNotIn("private-data-sentinel", response.content.decode())
         self.assertIn("preview_error", response.json())
+
+    def test_named_template_creation_and_duplicate_protection(self):
+        created = self._as_admin().post(_MUTATION_PATHS["new"], {"name": "My Report", "template": "prime"})
+        self.assertEqual(created.status_code, 200)
+        self.assertEqual(created.json()["url"], "/report/layout/editor/my_report/")
+        from report_v2.definitions.loader import load_report_definition
+        layout = load_report_definition(self._repo().read_draft("my_report")[0])
+        self.assertEqual(layout["title"], "My Report")
+        self.assertTrue(layout["sections"])
+        original = self._repo().read_draft("my_report")
+        duplicate = self._as_admin().post(_MUTATION_PATHS["new"], {"name": "My Report"})
+        self.assertEqual(duplicate.status_code, 409)
+        self.assertEqual(self._repo().read_draft("my_report"), original)
+        self.assertEqual(self._as_admin().post(_MUTATION_PATHS["new"], {"name": "Bad", "template": "unknown"}).status_code, 400)
+
+    def test_select_card_and_list_cards_without_fetching_data(self):
+        draft = VALID_YAML.replace("  - id: w", "  - id: first")
+        draft += draft[draft.index("  - id: first"):].replace("id: first", "id: second").replace("title: W", "title: Second")
+        from unittest.mock import patch
+        with patch("report_v2.data.fetch_project_rows", return_value=[]) as fetch:
+            cards = self._as_admin().post(_MUTATION_PATHS["preview"], {"def_id": "cards", "yaml_text": draft, "list_only": "1"})
+            self.assertEqual([card["id"] for card in cards.json()["widgets"]], ["first", "second"])
+            fetch.assert_not_called()
+            result = self._as_admin().post(_MUTATION_PATHS["preview"], {"def_id": "cards", "yaml_text": draft, "widget_id": "second"})
+            self.assertEqual(result.json()["widget_id"], "second")
+            fetch.assert_called_once()
+        with patch("report_v2.data.fetch_project_rows") as fetch:
+            result = self._as_admin().post(_MUTATION_PATHS["preview"], {"def_id": "cards", "yaml_text": draft, "widget_id": "foreign"})
+            self.assertEqual(result.status_code, 400)
+            fetch.assert_not_called()
+
+    def test_delete_admin_csrf_conflict_and_retained_history(self):
+        delete_url = reverse("report_v2:editor_delete")
+        repo = self._repo()
+        revision = repo.save_draft("remove_me", VALID_YAML, expected_revision=None)
+        receipt = repo.publish("remove_me", VALID_YAML)
+        body = {"def_id": "remove_me", "expected_revision": revision, "expected_version": receipt.version}
+        normal = Client()
+        normal.force_login(self.normal)
+        self.assertEqual(normal.post(delete_url, body).status_code, 403)
+        self.assertEqual(self._as_admin(enforce_csrf=True).post(delete_url, body).status_code, 403)
+        self.assertEqual(self._as_admin().get(delete_url).status_code, 405)
+        self.assertEqual(self._as_admin().post(delete_url, {**body, "expected_revision": "stale"}).status_code, 409)
+        self.assertEqual(repo.get_current_version("remove_me"), receipt.version)
+        self.assertEqual(self._as_admin().post(delete_url, body).status_code, 200)
+        self.assertIsNone(repo.get_current_version("remove_me"))
+        self.assertTrue(receipt.blob_path.exists())
+        self.assertNotIn("remove_me", self._as_admin().get(reverse("report_v2:editor")).content.decode())
+        self.assertEqual(self._as_admin().get(reverse("report_v2:editor_detail", args=["remove_me"])).status_code, 404)
+        self.assertEqual(self._as_admin().post(_MUTATION_PATHS["save"], {"def_id": "remove_me", "yaml_text": VALID_YAML}).status_code, 400)
+        self.assertEqual(self._as_admin().post(_MUTATION_PATHS["publish"], {"def_id": "remove_me", "yaml_text": VALID_YAML}).status_code, 400)
+        self.assertEqual(self._as_admin().post(delete_url, {"def_id": "../escape"}).status_code, 400)
+        self.assertEqual(self._as_admin().post(_MUTATION_PATHS["new"], {"def_id": "remove_me"}).status_code, 400)
+
+    def test_catalog_hides_policy_drafts(self):
+        from report_v2.seed import policy_seed_text
+        self._repo().save_draft("private-policy", policy_seed_text(), expected_revision=None)
+        page = self._as_admin().get(reverse("report_v2:editor"))
+        self.assertNotIn("private-policy", page.content.decode())
+        self.assertIn('data-role="starter-template"', page.content.decode())
+
+    def test_basic_template_has_valid_working_boilerplate(self):
+        from report_v2.definitions.loader import load_report_definition
+        response = self._as_admin().post(_MUTATION_PATHS["new"], {"name": "Basic Example", "template": "blank"})
+        self.assertEqual(response.status_code, 200)
+        text, _ = self._repo().read_draft("basic_example")
+        self.assertEqual(self._repo().validate_preview("basic_example", text), [])
+        layout = load_report_definition(text)
+        self.assertEqual(layout["sections"][0]["widgets"][0]["query"]["measurement"], "record_count")

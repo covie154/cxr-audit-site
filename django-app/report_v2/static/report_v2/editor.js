@@ -23,7 +23,15 @@
   var errorsEmpty = root.querySelector('[data-role="errors-empty"]');
   var previewOut = root.querySelector('[data-role="preview-output"]');
   var selector = root.querySelector('[data-role="report-select"]');
-  var newIdInput = root.querySelector('[data-role="new-def-id"]');
+  var newNameInput = root.querySelector('[data-role="new-report-name"]');
+  var createDialog = root.querySelector('[data-role="create-dialog"]');
+  var createForm = root.querySelector('[data-role="create-form"]');
+  var templateSelect = root.querySelector('[data-role="starter-template"]');
+  var deleteDialog = root.querySelector('[data-role="delete-dialog"]');
+  var deleting = null;
+  var cardSelect = root.querySelector('[data-role="preview-card"]');
+  var cardTimer;
+  var cardRequest = 0;
 
   var savedText = textarea ? textarea.value : "";
   var savedRevision = revisionNode ? revisionNode.getAttribute("data-revision") || "" : "";
@@ -45,7 +53,7 @@
     dirty = Boolean(flag);
     if (dirtyNode) {
       dirtyNode.setAttribute("data-dirty", dirty ? "true" : "false");
-      dirtyNode.textContent = dirty ? "Saved state: unsaved changes" : "Saved state: clean";
+      dirtyNode.textContent = dirty ? "Unsaved changes. Save draft to keep them." : "No unsaved changes.";
     }
   }
 
@@ -76,7 +84,8 @@
     savedRevision = value || savedRevision;
     if (revisionNode) {
       revisionNode.setAttribute("data-revision", savedRevision);
-      revisionNode.textContent = "Revision: " + (savedRevision || "(no draft yet)");
+      revisionNode.textContent = "Revision: " + (savedRevision || "(no draft yet)") + " (Draft)";
+      revisionNode.setAttribute("data-source-state", "draft");
     }
   }
 
@@ -99,6 +108,7 @@
     add("def_id", selector ? selector.value : (root.getAttribute("data-def-id") || ""));
     add("yaml_text", textarea ? textarea.value : "");
     add("expected_revision", savedRevision);
+    if (cardSelect) { add("widget_id", cardSelect.value); }
     add("csrfmiddlewaretoken", token());
     if (extra) {
       for (var key in extra) {
@@ -133,6 +143,7 @@
 
   function save() {
     showConflict(false);
+    var submittedText = textarea ? textarea.value : "";
     return post(root.getAttribute("data-save-url")).then(function (result) {
       var data = result.data;
       if (result.status === 409) {
@@ -145,9 +156,9 @@
         showErrors([data.error || "the draft could not be saved"]);
         return;
       }
-      savedText = textarea ? textarea.value : savedText;
+      savedText = submittedText;
       setRevision(data.revision);
-      setDirty(false);
+      setDirty(textarea && textarea.value !== savedText);
       showErrors([]);
     });
   }
@@ -207,39 +218,72 @@
         showErrors(data.errors || [data.error || "publish rejected"]);
         return;
       }
-      savedText = textarea ? textarea.value : savedText;
-      setDirty(false);
+      setDirty(textarea && textarea.value !== savedText);
       showErrors([]);
       fill(previewOut, "Published " + (data.version || "") + ".");
     });
   }
 
   function createReport() {
-    if (!newIdInput || !newIdInput.value.trim()) {
-      showErrors(["give the new report an id first"]);
-      return Promise.resolve();
-    }
-    return post(root.getAttribute("data-new-url"), { def_id: newIdInput.value.trim() }).then(function (result) {
-      var data = result.data;
+    if (!newNameInput || !newNameInput.value.trim()) { return; }
+    var submit = createForm.querySelector('[type="submit"]');
+    submit.disabled = true;
+    return post(root.getAttribute("data-new-url"), {
+      name: newNameInput.value.trim(), template: templateSelect ? templateSelect.value : "blank"
+    }).then(function (result) {
       if (result.status >= 400) {
-        showErrors([data.error || "the report could not be created"]);
-        return;
+        createDialog.close();
+        showErrors([result.data.error || "The report could not be created."]);
+      } else {
+        window.location.assign(result.data.url);
       }
-      if (textarea) {
-        textarea.value = data.yaml_text || "";
-      }
-      savedText = textarea ? textarea.value : "";
-      setRevision(data.revision);
-      if (selector) {
+    }).catch(function () {
+      createDialog.close();
+      showErrors(["The report could not be created. Try again."]);
+    }).finally(function () { submit.disabled = false; });
+  }
+
+  function refreshCards() {
+    if (!cardSelect || !textarea) { return; }
+    var requestId = ++cardRequest;
+    return post(root.getAttribute("data-preview-url"), { list_only: "1" }).then(function (result) {
+      if (requestId !== cardRequest) { return; }
+      var previous = cardSelect.value;
+      cardSelect.innerHTML = "";
+      (result.data.widgets || []).forEach(function (widget) {
         var option = document.createElement("option");
-        option.value = data.def_id;
-        option.textContent = data.def_id;
-        option.selected = true;
-        selector.appendChild(option);
+        option.value = widget.id;
+        option.textContent = widget.title;
+        cardSelect.appendChild(option);
+      });
+      if (!cardSelect.options.length) {
+        var empty = document.createElement("option");
+        empty.value = "";
+        empty.textContent = result.data.valid ? "No cards yet" : "Fix YAML to select cards";
+        cardSelect.appendChild(empty);
+      } else if (Array.from(cardSelect.options).some(function (option) { return option.value === previous; })) {
+        cardSelect.value = previous;
       }
-      setDirty(false);
-      showErrors([]);
-    });
+    }).catch(function () { showErrors(["Card list could not load. Try Preview again."]); });
+  }
+
+  function deleteReport() {
+    if (!deleting) { return; }
+    var button = root.querySelector('[data-action="confirm-delete"]');
+    button.disabled = true;
+    return post(root.getAttribute("data-delete-url"), {
+      def_id: deleting.getAttribute("data-def-id"),
+      expected_revision: deleting.getAttribute("data-revision"),
+      expected_version: deleting.getAttribute("data-version")
+    }).then(function (result) {
+      if (result.status >= 400) {
+        deleteDialog.close();
+        showErrors([result.data.error || "The report could not be deleted."]);
+      } else { window.location.reload(); }
+    }).catch(function () {
+      deleteDialog.close();
+      showErrors(["The report could not be deleted. Try again."]);
+    }).finally(function () { button.disabled = false; });
   }
 
   function renderSeedResult(result) {
@@ -275,6 +319,9 @@
   if (textarea) {
     textarea.addEventListener("input", function () {
       setDirty(textarea.value !== savedText);
+      clearTimeout(cardTimer);
+      ++cardRequest;
+      cardTimer = setTimeout(refreshCards, 400);
     });
   }
 
@@ -292,7 +339,17 @@
     } else if (action === "publish") {
       publish();
     } else if (action === "create") {
-      createReport();
+      if (!dirty || window.confirm("Leave this report with unsaved changes?")) { createDialog.showModal(); }
+    } else if (action === "cancel-create") {
+      createDialog.close();
+    } else if (action === "delete") {
+      deleting = trigger;
+      root.querySelector('[data-role="delete-name"]').textContent = trigger.getAttribute("data-title");
+      deleteDialog.showModal();
+    } else if (action === "cancel-delete") {
+      deleteDialog.close();
+    } else if (action === "confirm-delete") {
+      deleteReport();
     } else if (action === "seed-check") {
       seedLoad(true);
     } else if (action === "seed-load") {
@@ -300,8 +357,15 @@
     }
   });
 
+  if (createForm) {
+    createForm.addEventListener("submit", function (event) { event.preventDefault(); createReport(); });
+  }
   if (selector) {
     selector.addEventListener("change", function () {
+      if (dirty && !window.confirm("Leave this report with unsaved changes?")) {
+        selector.value = root.getAttribute("data-def-id") || "";
+        return;
+      }
       window.location.assign(root.getAttribute("data-editor-url") + (selector.value ? "editor/" + encodeURIComponent(selector.value) + "/" : ""));
     });
   }

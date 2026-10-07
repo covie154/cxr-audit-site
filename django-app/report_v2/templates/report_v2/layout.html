@@ -8,7 +8,7 @@
 {% endblock %}
 {% block body %}
 {# The editor is a plain textarea + buttons. There is deliberately no pointer-reordering editing UI. #}
-<div class="report-v2-editor" data-editor
+<div class="report-v2-page report-v2-editor" data-editor data-def-id="{{ def_id }}"
      data-editor-url="{% url 'report_v2:editor' %}"
      data-save-url="{% url 'report_v2:editor_save_draft' %}"
      data-preview-url="{% url 'report_v2:editor_preview' %}"
@@ -16,7 +16,8 @@
      data-new-url="{% url 'report_v2:editor_new' %}"
      data-seed-check-url="{% url 'report_v2:editor_seed' %}"
      data-seed-load-url="{% url 'report_v2:editor_seed' %}">
-    <header class="editor-header"><div><h1 class="page-title">Report layout</h1><p class="page-subtitle">Edit report definitions and review results before publishing.</p></div><a class="btn btn-outline" href="{% url 'report_v2:index' %}?list=1">All reports</a></header>
+    <p><a href="{% url 'report_v2:editor' %}">← Report editor</a></p>
+    <header class="editor-header"><div><h1 class="page-title">Report layout</h1><p class="page-subtitle">Edit report definitions and review results before publishing.</p></div></header>
 
     <section class="card editor-report-bar" aria-labelledby="reportBarTitle">
         <h2 id="reportBarTitle" class="visually-hidden">Report selection</h2>
@@ -28,13 +29,11 @@
                 {% endfor %}
             </select>
         </label>
-        <label class="editor-report-label" for="id_new_def_id">New report
-            <input id="id_new_def_id" name="new_def_id" type="text" data-role="new-def-id" placeholder="new-report-id" autocomplete="off">
-        </label>
         <button type="button" class="btn btn-outline" data-action="create">Create report</button>
     </section>
 
     {% include "report_v2/_editor_form.html" %}
+    {% include "report_v2/_create_dialog.html" %}
 </div>
 {% endblock %}
 {% block extra_js %}

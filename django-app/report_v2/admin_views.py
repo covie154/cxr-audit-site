@@ -25,6 +25,7 @@ Security posture (the point of Task 12):
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 from typing import Any
 from urllib.parse import quote
@@ -33,6 +34,8 @@ from django.conf import settings as django_settings
 from django.contrib.auth.models import AnonymousUser
 from django.http import HttpResponseForbidden, HttpResponseRedirect, JsonResponse
 from django.shortcuts import render
+from django.urls import reverse
+from django.utils.text import slugify
 from django.views.decorators.csrf import csrf_protect
 from django.views.decorators.http import require_GET, require_POST
 
@@ -47,12 +50,13 @@ from .definitions.repository import (
     StaleRevisionError,
     default_root,
 )
-from .definitions.loader import load_report_definition
+from .definitions.loader import DefinitionError, load_report_definition, load_policy
 from .views import _evaluate
 
 __all__ = [
     "editor",
     "editor_new",
+    "editor_delete",
     "editor_preview",
     "editor_publish",
     "editor_save_draft",
@@ -62,7 +66,7 @@ __all__ = [
 #: The editor edits the definitions of the single production project (Task 04).
 PROJECT_ID = "prime"
 
-#: Starter scaffold handed to a brand-new report so the first draft is a valid, empty layout.
+#: Starter scaffold with one working card for a brand-new report.
 STARTER_YAML = """\
 schema_version: 1
 project: prime
@@ -71,7 +75,29 @@ title: New report
 grid:
   columns: 12
   row_height_px: 64
-sections: []
+sections:
+  - id: summary
+    title: Summary
+    widgets:
+      - id: total
+        title: Record count
+        type: value
+        layout:
+          width: 3
+          height: 2
+        query:
+          measurement: record_count
+          inputs: {{}}
+        window:
+          start: M
+          end: D
+        controls:
+          date_range: true
+          filters: [site]
+          compare_by: [site]
+        ci:
+          enabled: false
+        export: full
 """
 
 
@@ -173,7 +199,7 @@ def _draft_ids(repo: DefinitionRepository) -> list[str]:
     drafts = Path(repo._drafts_dir)
     if not drafts.exists():
         return []
-    return sorted(p.name for p in drafts.iterdir() if p.is_file())
+    return sorted(p.name for p in drafts.iterdir() if p.is_file() and not repo.is_deleted(p.name))
 
 
 def _report_entries(repo: DefinitionRepository) -> list[dict[str, str]]:
@@ -191,6 +217,8 @@ def _report_entries(repo: DefinitionRepository) -> list[dict[str, str]]:
     drafts = set(_draft_ids(repo))
     entries: list[dict[str, str]] = []
     for def_id in sorted(published | drafts):
+        if repo.is_deleted(def_id):
+            continue
         has_draft = def_id in drafts
         has_published = def_id in published
         if has_draft and has_published:
@@ -199,7 +227,23 @@ def _report_entries(repo: DefinitionRepository) -> list[dict[str, str]]:
             state_label = "draft only"
         else:
             state_label = "published"
-        entries.append({"def_id": def_id, "state_label": state_label})
+        text, revision = "", ""
+        version = repo.get_current_version(def_id) or ""
+        if has_draft:
+            text, revision = repo.read_draft(def_id)
+        elif version:
+            text = repo._blob_path(def_id, version).read_text(encoding="utf-8")
+        title = def_id
+        try:
+            title = load_report_definition(text).get("title", def_id)
+        except DefinitionError:
+            try:
+                load_policy(text)
+                continue  # Policies are not reports and have no report editor/list actions.
+            except DefinitionError:
+                pass  # Invalid report drafts must remain available for correction.
+        entries.append({"def_id": def_id, "title": title, "state_label": state_label,
+                        "revision": revision, "version": version})
     return entries
 
 
@@ -211,6 +255,12 @@ def _report_entries(repo: DefinitionRepository) -> list[dict[str, str]]:
 def editor(request, def_id: str | None = None):
     """Render the YAML layout editor (admins only; no draft is written on this path)."""
     repo = _repository()
+    reports = _report_entries(repo)
+    if def_id is None:
+        return render(request, "report_v2/catalog.html", {"reports": reports})
+    if not any(entry["def_id"] == def_id for entry in reports):
+        from django.http import Http404
+        raise Http404("Report not found")
     draft_text = ""
     revision = ""
     source_state = "none"
@@ -238,6 +288,13 @@ def editor(request, def_id: str | None = None):
         "published-only": "Editing published YAML in memory — not saved as a draft",
         "none": "New report (no draft yet)",
     }[source_state]
+    widgets = []
+    try:
+        layout = load_report_definition(draft_text)
+        widgets = [{"id": widget["id"], "title": widget.get("title", widget["id"])}
+                   for section in layout.get("sections", []) for widget in section.get("widgets", [])]
+    except DefinitionError:
+        pass
     return render(
         request,
         "report_v2/layout.html",
@@ -245,7 +302,8 @@ def editor(request, def_id: str | None = None):
             "def_id": def_id or "",
             "draft_text": draft_text,
             "revision": revision,
-            "reports": _report_entries(repo),
+            "reports": reports,
+            "widgets": widgets,
             "project_id": PROJECT_ID,
             "source_state": source_state,
             "published_version": published_version,
@@ -301,11 +359,15 @@ def editor_preview(request):
     if errors:
         return JsonResponse(payload, status=200)
     layout = load_report_definition(yaml_text)
-    widget = next((widget for section in layout.get("sections", [])
-                   for widget in section.get("widgets", [])), None)
+    widgets = [widget for section in layout.get("sections", []) for widget in section.get("widgets", [])]
+    payload["widgets"] = [{"id": widget["id"], "title": widget.get("title", widget["id"])} for widget in widgets]
+    if str(_param(request, "list_only", "")) == "1":
+        return JsonResponse(payload)
+    widget_id = str(_param(request, "widget_id", "")).strip()
+    widget = next((widget for widget in widgets if widget["id"] == widget_id), None) if widget_id else next(iter(widgets), None)
     if widget is None:
-        payload["preview_error"] = "Add a widget to preview this report."
-        return JsonResponse(payload, status=200)
+        payload["preview_error"] = "Select a card from this report to preview." if widget_id else "Add a card to preview this report."
+        return JsonResponse(payload, status=400 if widget_id else 200)
     try:
         payload["preview"] = _evaluate(layout, widget)
     except Exception:
@@ -361,19 +423,52 @@ def editor_publish(request):
 @require_admin
 def editor_new(request):
     """Create a second, independent report: a fresh ``def_id`` plus a starter scaffold draft."""
-    def_id = str(_param(request, "def_id", "")).strip()
-    if not def_id:
-        return JsonResponse({"error": "def_id is required"}, status=400)
+    name = str(_param(request, "name", "")).strip()
+    def_id = str(_param(request, "def_id", "")).strip() or slugify(name).replace("-", "_")
+    if not def_id or len(def_id) > 64 or def_id in {"layout", "preferences"}:
+        return JsonResponse({"error": "Choose a report name with letters or numbers (up to 64 characters)."}, status=400)
+    template = str(_param(request, "template", "blank"))
+    if template not in {"blank", "prime"}:
+        return JsonResponse({"error": "Choose a supported starter template."}, status=400)
+    if name and not def_id[0].isalpha():
+        def_id = "report_" + def_id
+    title = name or "New report"
+    if len(title) > 200:
+        return JsonResponse({"error": "Report names must be 200 characters or fewer."}, status=400)
     repo = _repository()
-    scaffold = STARTER_YAML.format(def_id=def_id)
+    scaffold = STARTER_YAML.format(def_id=def_id).replace("title: New report", "title: " + json.dumps(title))
+    if template == "prime":
+        try:
+            scaffold = seeding.seed_draft_texts(def_id=def_id)["report"]
+            scaffold = re.sub(r"^title:.*$", lambda match: "title: " + json.dumps(title), scaffold, count=1, flags=re.MULTILINE)
+        except (seeding.SeedError, RepositoryError) as exc:
+            return JsonResponse({"error": str(exc)}, status=400)
     try:
-        revision = repo.save_draft(def_id, scaffold, expected_revision=None)
-    except (RepositoryError,) as exc:
-        return JsonResponse({"error": str(exc), "def_id": def_id}, status=400)
-    return JsonResponse(
-        {"def_id": def_id, "revision": revision, "yaml_text": scaffold, "status": "created"},
-        status=200,
-    )
+        revision = repo.save_draft(def_id, scaffold, expected_revision=None, create_only=True)
+    except StaleRevisionError as exc:
+        return JsonResponse({"error": str(exc)}, status=409)
+    except RepositoryError as exc:
+        return JsonResponse({"error": str(exc)}, status=400)
+    return JsonResponse({"def_id": def_id, "revision": revision, "yaml_text": scaffold,
+                         "status": "created", "url": reverse("report_v2:editor_detail", args=[def_id])})
+
+
+@require_POST
+@csrf_protect
+@require_admin
+def editor_delete(request):
+    def_id = str(_param(request, "def_id", "")).strip()
+    repo = _repository()
+    try:
+        repo.delete(def_id, expected_revision=_expected_revision(request),
+                    expected_version=str(_param(request, "expected_version", "")).strip() or None)
+    except DraftNotFoundError:
+        return JsonResponse({"error": "Report not found."}, status=404)
+    except StaleRevisionError as exc:
+        return JsonResponse({"error": str(exc)}, status=409)
+    except RepositoryError as exc:
+        return JsonResponse({"error": str(exc)}, status=400)
+    return JsonResponse({"status": "deleted", "def_id": def_id})
 
 
 @require_POST

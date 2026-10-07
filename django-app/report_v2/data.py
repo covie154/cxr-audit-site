@@ -100,6 +100,8 @@ def list_published(project_id: str = "prime") -> list[dict[str, Any]]:
         if not pointer.is_file():
             continue
         def_id = pointer.name
+        if (root / ".deleted" / def_id).exists():
+            continue
         try:
             validate_definition_id(def_id)
         except InvalidDefinitionIdError:

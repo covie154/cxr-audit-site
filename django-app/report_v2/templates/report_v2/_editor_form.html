@@ -1,23 +1,22 @@
 {# Editor form partial. Plain controls only - no pointer-reordering editing anywhere. #}
 <div class="editor-columns">
 <section class="card editor-workspace" aria-labelledby="workspaceTitle">
-    <h2 id="workspaceTitle">Draft YAML</h2>
-    <p class="editor-revision" data-role="revision-indicator" data-revision="{{ revision }}">
-        Revision: <code>{{ revision|default:"(no draft yet)" }}</code>
+    <h2 id="workspaceTitle">YAML editor</h2>
+    <p class="editor-revision" data-role="revision-indicator" data-revision="{{ revision }}" data-source-state="{{ source_state }}" data-published-version="{{ published_version|default:'' }}">
+        Revision: <code>{% if revision %}{{ revision }}{% else %}{{ published_version|default:"(no draft yet)" }}{% endif %}</code> ({% if revision %}Draft{% else %}Published{% endif %})
     </p>
-    <p class="editor-source" role="status" data-role="source-indicator" data-source-state="{{ source_state }}">Source: {{ source_label }}{% if published_version %} <code>{{ published_version }}</code>{% endif %}</p>
     <textarea id="id_yaml_text" name="yaml_text" class="editor-yaml" rows="24" spellcheck="off"
               data-role="yaml-textarea" aria-label="Report YAML definition">{% if draft_text %}{{ draft_text }}{% endif %}</textarea>
-    <p class="editor-status" role="status" data-role="dirty-indicator" data-dirty="false">Saved state: clean</p>
+    <p class="editor-status" role="status" data-role="dirty-indicator" data-dirty="false">No unsaved changes.</p>
     <p class="editor-conflict" role="alert" data-role="conflict-indicator" hidden>
         Version conflict: someone else saved this report. Reload before saving again.
     </p>
     <div class="editor-actions" aria-label="Draft actions">
         <button type="button" class="btn btn-primary" data-action="save" title="Save YAML without changing the published report">Save draft</button>
-        <button type="button" class="btn btn-outline" data-action="preview" title="Validate YAML and evaluate the first widget using current study data">Preview</button>
+        <button type="button" class="btn btn-outline" data-action="preview" title="Validate YAML and evaluate the selected card using current study data">Preview</button>
         <button type="button" class="btn btn-success" data-action="publish" title="Validate YAML and make a new report version available">Publish</button>
     </div>
-    <p class="editor-help">Save keeps your work as a draft. Preview checks the YAML and shows the first widget with current study data. Publish makes this definition the current report version.</p>
+    <p class="editor-help">Save keeps your work as a draft. Preview checks the YAML and shows the selected card with current study data. Publish makes this definition the current report version.</p>
 </section>
 
 <div class="editor-review">
@@ -29,15 +28,20 @@
 
 <section class="card editor-preview" aria-labelledby="previewTitle">
     <h2 id="previewTitle">Preview</h2>
+    <label class="editor-report-label" for="id_preview_widget">Card
+        <select id="id_preview_widget" data-role="preview-card">
+            {% for widget in widgets %}<option value="{{ widget.id }}">{{ widget.title }}</option>{% empty %}<option value="">No cards yet</option>{% endfor %}
+        </select>
+    </label>
     <div class="editor-preview-output" data-role="preview-output" role="region" aria-label="Widget preview">
-        <p class="editor-empty">Select a report, edit its YAML, then preview the first widget.</p>
+        <p class="editor-empty">Choose a card and press Preview to review its current results.</p>
     </div>
 </section>
 
 </div>
 </div>
 <details class="card editor-seeds">
-    <summary>Starter templates</summary>
+    <summary>Bundled PRIME template</summary>
     <p class="editor-help">Check seed validates the bundled PRIME report and threshold policy. Load seed drafts replaces the selected report draft with the bundled template and loads its policy draft. Published reports stay as they are.</p>
     <div class="editor-actions">
         <button type="button" class="btn btn-outline" data-action="seed-check">Check seed</button>

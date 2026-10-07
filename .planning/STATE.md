@@ -135,6 +135,8 @@ None yet.
 
 | 261007-lit | Align report editor and preview live draft data | 2026-10-07 | See quick summary | [261007-lit](./quick/261007-lit-align-report-editor-layout-and-evaluate-/) |
 
+| 261007-lt3 | Admin report list, template creation, deletion and card preview | 2026-10-07 | See quick summary | [261007-lt3](./quick/261007-lt3-add-admin-report-catalog-create-delete-a/) |
+
 ## Deferred Items
 
 | Category | Item | Status | Deferred At |
