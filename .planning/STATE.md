@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-06-14)
 Phase: 6 of 6 (remaining hipaa controls plan)
 Plan: Not started
 Status: Ready to execute
-Last activity: 2026-10-07 - Completed quick task 261007-vou: flat canvas, fitted charts and live Save (7beb40f)
+Last activity: 2026-10-07 - Completed quick task 261007-w8k: confirm visual card deletion (7463772)
 
 Progress: [----------] 0%
 
@@ -155,6 +155,8 @@ None yet.
 | 261007-uzd | Report publication controls, card heights and row insertion | 2026-10-07 | 24d45f0 | [261007-uzd](./quick/261007-uzd-fix-report-publication-controls-and-card/) |
 
 | 261007-vou | Flat heading canvas, fitted cards and live Save | 2026-10-07 | 7beb40f | [261007-vou](./quick/261007-vou-fit-report-card-content-to-height-and-si/) |
+
+| 261007-w8k | Confirm visual card deletion | 2026-10-07 | 7463772 | [261007-w8k](./quick/261007-w8k-confirm-visual-editor-card-deletion/) |
 
 ### Report v2 workstream execution
 
