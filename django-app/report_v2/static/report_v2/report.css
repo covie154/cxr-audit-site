@@ -52,9 +52,8 @@
 .report-v2-exportbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .report-v2-exportbar [data-role="edit-layout"] { background: var(--c-surface-muted); border-color: var(--c-border); color: var(--c-text); }
 .report-v2-exportbar [data-role="edit-layout"]:hover { background: var(--c-border); }
-.email-modal { position: fixed; inset: 0; background: rgba(15, 23, 32, 0.45); display: flex; align-items: center; justify-content: center; z-index: 50; }
-.email-modal[hidden] { display: none; }
-.email-modal-card { background: var(--c-surface); color: var(--c-text, #111a2b); border-radius: 6px; padding: 20px; width: min(520px, calc(100vw - 32px)); box-shadow: 0 12px 32px rgba(15, 23, 32, 0.25); }
+.email-modal-card::backdrop { background: rgba(15, 23, 32, 0.45); }
+.email-modal-card { margin: auto; border: 1px solid var(--c-border); background: var(--c-surface); color: var(--c-text, #111a2b); border-radius: 6px; padding: 20px; width: min(520px, calc(100vw - 32px)); box-shadow: 0 12px 32px rgba(15, 23, 32, 0.25); }
 .email-modal-card h3 { margin: 0 0 12px; }
 .email-modal-card form { display: flex; flex-direction: column; gap: 8px; }
 .email-modal-card label { font-size: 0.85rem; color: var(--c-text-muted); }

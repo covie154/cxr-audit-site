@@ -7,13 +7,13 @@ const source = readFileSync(new URL("../../static/report_v2/editor.js", import.m
 test("saving uses the report ID from the editor route without a report selector", async () => {
   let click, posted;
   const summary = { textContent: "" };
-  const textarea = { value: "schema_version: 1", addEventListener() {} };
+  const textarea = { value: "title: A & B + café\ntext: 100%", addEventListener() {} };
   const root = {
     querySelector: query => query.includes("yaml-textarea") ? textarea : query.includes("validation-summary") ? summary : null,
     addEventListener: (name, handler) => { if (name === "click") click = handler; },
     getAttribute: name => ({ "data-def-id": "my_report", "data-save-url": "/layout/actions/save/" })[name],
   };
-  runInNewContext(source, {
+  runInNewContext(source, { URLSearchParams,
     document: { querySelector: () => root, cookie: "" }, window: {},
     fetch: async (url, options) => { posted = { url, body: options.body }; return { status: 200, json: async () => ({ revision: "saved", errors: ["layout.height: invalid", "ci.enabled: invalid"] }) }; },
   });
@@ -22,6 +22,7 @@ test("saving uses the report ID from the editor route without a report selector"
   assert.equal(summary.textContent, "2 validation issues");
   assert.equal(posted.url, "/layout/actions/save/");
   assert.equal(new URLSearchParams(posted.body).get("def_id"), "my_report");
+  assert.equal(new URLSearchParams(posted.body).get("yaml_text"), textarea.value);
 });
 
 test("selecting a card automatically requests its preview", async () => {
@@ -33,7 +34,7 @@ test("selecting a card automatically requests its preview", async () => {
     addEventListener() {},
     getAttribute: name => ({ "data-def-id": "my_report", "data-preview-url": "/layout/actions/preview/" })[name],
   };
-  runInNewContext(source, {
+  runInNewContext(source, { URLSearchParams,
     document: { querySelector: () => root, cookie: "" }, window: {},
     fetch: async (url, options) => { requested.push(new URLSearchParams(options.body).get("widget_id")); return { status: 200, json: async () => ({}) }; },
   });
@@ -53,7 +54,7 @@ test("an older preview response cannot replace the latest selection", async () =
     querySelector: query => query.includes("preview-card") ? card : query.includes("validation-summary") ? summary : null,
     addEventListener() {}, getAttribute: () => "/layout/actions/preview/",
   };
-  runInNewContext(source, {
+  runInNewContext(source, { URLSearchParams,
     document: { querySelector: () => root, cookie: "" }, window: {},
     fetch: () => new Promise(resolve => pending.push(resolve)),
   });
@@ -82,7 +83,7 @@ test("editor tabs switch panels with clicks and keyboard without changing YAML",
     querySelectorAll: () => tabs,
     addEventListener: (name, handler) => { handlers[name] = handler; }, getAttribute() {},
   };
-  runInNewContext(source, { document: { querySelector: () => root, cookie: "" }, window: {} });
+  runInNewContext(source, { URLSearchParams, document: { querySelector: () => root, cookie: "" }, window: {} });
   handlers.click({ target: tabs[1], preventDefault() {} });
   assert.equal(panels.visualEditorPanel.hidden, true);
   assert.equal(panels.yamlEditorPanel.hidden, false);
@@ -106,7 +107,7 @@ test("publish shows progress and navigates only after success", async () => {
   let click, finish, destination;
   const trigger = { disabled: false, textContent: "Publish", getAttribute: name => name === "data-action" ? "publish" : "", closest: () => null };
   const root = { querySelector: () => null, addEventListener: (name, handler) => { if (name === "click") click = handler; }, getAttribute: () => "/publish/" };
-  runInNewContext(source, {
+  runInNewContext(source, { URLSearchParams,
     document: { querySelector: () => root, cookie: "" }, window: { location: { assign: url => { destination = url; } } },
     fetch: () => new Promise(resolve => { finish = resolve; }),
   });
@@ -129,7 +130,7 @@ test("Save reports successful republishing and updates the Unpublish version", a
     querySelector: query => query.includes("yaml-textarea") ? textarea : query.includes("dirty-indicator") ? dirty : query.includes('data-action="publish"') ? publish : null,
     addEventListener: (name, handler) => { if (name === "click") click = handler; }, getAttribute: () => "/save/",
   };
-  runInNewContext(source, {
+  runInNewContext(source, { URLSearchParams,
     document: { querySelector: () => root, cookie: "" }, window: {},
     fetch: async () => ({status:200, json:async () => ({revision:"saved", published:true, published_version:"report@r2", errors:[]})}),
   });

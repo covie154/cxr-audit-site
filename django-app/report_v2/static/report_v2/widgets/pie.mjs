@@ -4,7 +4,7 @@
  * benchmarks entirely (a share chart has no meaningful benchmark line). No DOM beyond el/clearContainer.
  */
 import { formatValue, groupColor } from "./format.mjs";
-import { el, clearContainer, observeLifecycle, buildChart } from "./registry.mjs";
+import { el, clearContainer, chartLifecycle, buildChart } from "./registry.mjs";
 
 function finiteNumber(value) {
     return typeof value === "number" && Number.isFinite(value) ? value : null;
@@ -27,7 +27,6 @@ function collectCategories(payload) {
 
 export function render(container, payload, options) {
     clearContainer(container);
-    let disposed = false;
     const instance = { type: "pie", container, disposed: false, resize() {}, dispose() {} };
     if (payload && payload.error) {
         container.appendChild(el("p", "widget-error", String(payload.error)));
@@ -50,7 +49,7 @@ export function render(container, payload, options) {
     container.setAttribute("data-donut", opts.donut ? "true" : "false");
     const box = el("div", "widget-chart-box widget-chart");
     container.appendChild(box);
-    const built = buildChart(box, () => disposed);
+    const built = buildChart(box, () => instance.disposed);
     instance.chart = built.chart; // exposed for client-side PNG capture (email export)
     built.chart.setOption({
         animation: false,
@@ -84,15 +83,5 @@ export function render(container, payload, options) {
     container.appendChild(table);
     container.setAttribute("role", "img");
     container.setAttribute("aria-label", "Pie chart, " + categories.length + " categories: " + labels.join(", "));
-    instance.resize = () => { if (!disposed) { built.resize(); } };
-    const disconnect = observeLifecycle(instance, container, () => { if (!disposed) { instance.resize(); } });
-    instance.dispose = () => {
-        if (disposed) { return; }
-        disposed = true;
-        instance.disposed = true;
-        disconnect();
-        built.dispose();
-        clearContainer(container);
-    };
-    return instance;
+    return chartLifecycle(instance, built);
 }

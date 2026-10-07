@@ -53,3 +53,17 @@ export function groupColor(label) {
 export function formatDateText(value) {
     return String(value).replace(/\b(\d{4})-(\d{2})-(\d{2})\b/g, "$3/$2/$1");
 }
+
+function isTime(unit) {
+    const u = String(unit || "");
+    return u === "seconds" || u.includes("time") || u.includes("duration");
+}
+
+export function isCount(unit) {
+    return String(unit || "").includes("count");
+}
+
+export function matchUnit(a, b) {
+    return Boolean(a && b && (a === b || (isRatio(a) && isRatio(b))
+        || (isCount(a) && isCount(b)) || (isTime(a) && isTime(b))));
+}

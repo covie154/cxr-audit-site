@@ -3,32 +3,11 @@
  * the fences) plus a scatter outlier series keyed by group index. Optional benchmark markLine attaches
  * to the boxes series only when the candidate unit matches the plot unit. No DOM beyond el/clearContainer.
  */
-import { formatValue, groupColor } from "./format.mjs";
-import { el, clearContainer, observeLifecycle, buildChart } from "./registry.mjs";
+import { matchUnit, formatValue, groupColor } from "./format.mjs";
+import { el, clearContainer, chartLifecycle, buildChart } from "./registry.mjs";
 
 function finiteNumber(value) {
     return typeof value === "number" && Number.isFinite(value) ? value : null;
-}
-
-// ponytail: mirrors format.mjs's "count" branch verbatim; n is a count, not a duration, so it must
-// not route through formatValue(value, unit). Drop this if format.mjs ever exports a count helper.
-function formatCount(value) {
-    const num = finiteNumber(value);
-    if (num === null) { return "—"; }
-    return Math.round(num).toLocaleString("en-US");
-}
-
-function isRatio(u) { const s = String(u || ""); return s.includes("rate[0,1]") || s.includes("ratio") || s.includes("probability"); }
-function isTime(u) { const s = String(u || ""); return s === "seconds" || s.includes("time") || s.includes("duration"); }
-function isCount(u) { const s = String(u || ""); return s === "count" || s.includes("count"); }
-
-function matchUnit(a, b) {
-    if (!a || !b) { return false; }
-    if (a === b) { return true; }
-    if (isRatio(a) && isRatio(b)) { return true; }
-    if (isCount(a) && isCount(b)) { return true; }
-    if (isTime(a) && isTime(b)) { return true; }
-    return false;
 }
 
 function collectGroups(payload) {
@@ -55,7 +34,6 @@ const HEADERS = ["n", "group", "min", "lower whisker", "Q1", "median", "Q3", "up
 
 export function render(container, payload, options) {
     clearContainer(container);
-    let disposed = false;
     const instance = { type: "boxplot", container, disposed: false, resize() {}, dispose() {} };
     if (payload && payload.error) {
         container.appendChild(el("p", "widget-error", String(payload.error)));
@@ -73,7 +51,7 @@ export function render(container, payload, options) {
     container.className = "widget widget-boxplot widget-chart";
     const box = el("div", "widget-chart-box widget-chart");
     container.appendChild(box);
-    const built = buildChart(box, () => disposed);
+    const built = buildChart(box, () => instance.disposed);
     instance.chart = built.chart; // exposed for client-side PNG capture (email export)
     const outlierData = [];
     for (let gi = 0; gi < groups.length; gi += 1) {
@@ -144,7 +122,7 @@ export function render(container, payload, options) {
         const outliers = Array.isArray(s.outliers) ? s.outliers.map(finiteNumber).filter((value) => value !== null) : [];
         const outlierText = outliers.length ? outliers.map((value) => formatValue(value, unit)).join(", ") : "none";
         const cells = [
-            formatCount(s.n),
+            formatValue(s.n, "count"),
             group.name,
             formatValue(s.min, unit),
             formatValue(s.lower_whisker, unit),
@@ -163,15 +141,5 @@ export function render(container, payload, options) {
     container.appendChild(table);
     container.setAttribute("role", "img");
     container.setAttribute("aria-label", "Box plot, " + groups.length + " groups, whiskers are observed values within 1.5*IQR fences, outliers plotted");
-    instance.resize = () => { if (!disposed) { built.resize(); } };
-    const disconnect = observeLifecycle(instance, container, () => { if (!disposed) { instance.resize(); } });
-    instance.dispose = () => {
-        if (disposed) { return; }
-        disposed = true;
-        instance.disposed = true;
-        disconnect();
-        built.dispose();
-        clearContainer(container);
-    };
-    return instance;
+    return chartLifecycle(instance, built);
 }

@@ -1,20 +1,7 @@
-import { formatValue, groupColor } from "./format.mjs";
-import { el, clearContainer, observeLifecycle, buildChart } from "./registry.mjs";
+import { matchUnit, isCount, formatValue, groupColor } from "./format.mjs";
+import { el, clearContainer, chartLifecycle, buildChart } from "./registry.mjs";
 
 const PREFERRED = ["value", "mean", "median", "n", "count"];
-
-function isRatio(u) { const s = String(u || ""); return s.includes("rate[0,1]") || s.includes("ratio") || s.includes("probability"); }
-function isTime(u) { const s = String(u || ""); return s === "seconds" || s.includes("time") || s.includes("duration"); }
-function isCount(u) { const s = String(u || ""); return s === "count" || s.includes("count"); }
-
-function matchUnit(a, b) {
-    if (!a || !b) { return false; }
-    if (a === b) { return true; }
-    if (isRatio(a) && isRatio(b)) { return true; }
-    if (isCount(a) && isCount(b)) { return true; }
-    if (isTime(a) && isTime(b)) { return true; }
-    return false;
-}
 
 function groupCells(cells) {
     const groups = [];
@@ -80,7 +67,6 @@ function buildA11y(container, groupNames, labels, series, units) {
 
 export function render(container, payload, options) {
     clearContainer(container);
-    let disposed = false;
     const instance = { type: "bar", container, disposed: false, resize() {}, dispose() {} };
     if (payload && payload.error) {
         container.appendChild(el("p", "widget-error", String(payload.error)));
@@ -144,7 +130,7 @@ export function render(container, payload, options) {
     container.className = "widget widget-bar widget-chart";
     const box = el("div", "widget-chart-box widget-chart");
     container.appendChild(box);
-    const built = buildChart(box, () => disposed);
+    const built = buildChart(box, () => instance.disposed);
     instance.chart = built.chart; // exposed for client-side PNG capture (email export)
     const chart = built.chart;
     chart.setOption({
@@ -165,15 +151,5 @@ export function render(container, payload, options) {
     buildA11y(container, groupNames, labels, series, unitsUsed);
     container.setAttribute("role", "img");
     container.setAttribute("aria-label", "Bar chart, " + groupNames.length + " groups: " + groupNames.join(", ") + ". " + (chartUnit || ""));
-    instance.resize = () => { if (!disposed) { built.resize(); } };
-    const disconnect = observeLifecycle(instance, container, () => { if (!disposed) { instance.resize(); } });
-    instance.dispose = () => {
-        if (disposed) { return; }
-        disposed = true;
-        instance.disposed = true;
-        disconnect();
-        built.dispose();
-        clearContainer(container);
-    };
-    return instance;
+    return chartLifecycle(instance, built);
 }

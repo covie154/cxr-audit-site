@@ -328,6 +328,18 @@ class _Server:
 class BrowserLayoutTests(unittest.TestCase):
     """One shared browser + server across the width/registry/editor checks."""
 
+    def test_email_uses_native_modal_focus_and_escape(self):
+        self.page.goto(self.report_url, wait_until="networkidle")
+        self.page.locator('[data-action="email"]').click()
+        dialog = self.page.locator('dialog[data-role="email-modal"]')
+        self.assertTrue(dialog.evaluate("node => node.open && node.matches(':modal')"))
+        self.assertTrue(self.page.locator('[data-role="email-recipients"]').evaluate("node => node === document.activeElement"))
+        self.page.keyboard.press("Escape")
+        self.assertFalse(dialog.evaluate("node => node.open"))
+        self.page.locator('[data-action="email"]').click()
+        self.page.locator('[data-action="email-cancel"]').click()
+        self.assertFalse(dialog.evaluate("node => node.open"))
+
     @classmethod
     def setUpClass(cls):
         cls.tmp = Path(tempfile.mkdtemp(prefix="rv2-14a-browser-"))

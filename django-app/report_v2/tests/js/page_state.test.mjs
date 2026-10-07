@@ -1,3 +1,4 @@
+import * as pageState from '../../static/report_v2/page_state.mjs';
 /*
  * Runtime harness for the report_v2 page script + reducer (Task 13).
  *
@@ -196,9 +197,8 @@ async function runReportScript(withControls = true, withGroups = false) {
     }
     root.register('.widget-frame:not([data-decoration])', root.children);
     document.querySelector = (selector) => (selector === '[data-report-page]' ? root : null);
-    const chartBox = new FakeNode('div');
     document.querySelectorAll = (selector) => (selector === '.widget-frame:not([data-decoration])' ? root.children
-        : selector === '[data-report-chart]' ? [chartBox] : []);
+        : []);
 
     const requests = [];
     const pending = [];
@@ -213,6 +213,15 @@ async function runReportScript(withControls = true, withGroups = false) {
         setTimeout: (fn) => fn(),
         fetch: undefined,
     };
+    globalThis.window.__rv2widgets = { registry: {
+        render(type, container, payload) {
+            const node = new FakeNode('p');
+            node.textContent = payload.error || JSON.stringify(payload.rows || payload.aggregates || {});
+            container.append(node);
+            return { container, disposed: false };
+        },
+        disposeInstance(instance) { instance.disposed = true; },
+    } };
     globalThis.window.fetch = globalThis.fetch = (url, init) => new Promise((resolve) => {
         requests.push({ url, init });
         pending.push((payload, ok) => resolve({ ok: ok === undefined ? true : ok, status: ok === false ? 400 : 200, json: async () => payload }));
@@ -223,9 +232,9 @@ async function runReportScript(withControls = true, withGroups = false) {
     const source = await readfile[READ_TEXT](pathe.join(staticDir, 'report.js'), 'utf-8');
     // jshint guard: the file is an IIFE referencing document/window as globals
     new Function('document', 'window', 'AbortController', 'ResizeObserver', 'MutationObserver',
-        'fetch', '"use strict";' + source)(document, globalThis.window,
+        'fetch', 'pageState', '"use strict"; const { createPageState, beginRequest, applyWidgetResult, resetWidget: resetWidgetState } = pageState;' + source.replace(/^import .*;$/gm, ''))(document, globalThis.window,
         globalThis.AbortController, globalThis.ResizeObserver, globalThis.MutationObserver,
-        globalThis.window.fetch);
+        globalThis.window.fetch, pageState);
     return { frames, requests, pending, FakeNode, document };
 }
 

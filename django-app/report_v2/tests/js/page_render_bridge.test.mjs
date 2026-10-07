@@ -1,11 +1,12 @@
+import * as pageState from '../../static/report_v2/page_state.mjs';
 /*
  * Runtime harness for the report.js <-> widget-registry bridge (Task 14A).
  *
  * Drives the shipped report.js through the same new Function(...) shim style as page_state.test.mjs
- * and proves the three behaviours that matter: the legacy path is byte-for-byte intact when the
+ * and proves the three behaviours that matter: an actionable error appears when the
  * registry host is absent, an eligible frame is painted through the registry when the host exists,
  * the previous instance is disposed exactly once before a re-render, and a throwing renderer falls
- * back to the legacy markup without escaping an exception. Case 4 smoke-tests the real registry +
+ * back to an error message without escaping an exception. Case 4 smoke-tests the real registry +
  * boot contract; the last case is the boot.mjs source scan.
  *
  * Run:  node tests/js/page_render_bridge.test.mjs
@@ -151,9 +152,9 @@ async function runScript({ types, registry, loading = false, transport }) {
         });
     }
     const source = await readfile.readFile(pathe.join(staticDir, 'report.js'), 'utf-8');
-    new Function('document', 'window', 'AbortController', 'ResizeObserver', 'MutationObserver', 'fetch',
-        '"use strict";' + source)(document, globalThis.window, globalThis.AbortController,
-        globalThis.ResizeObserver, globalThis.MutationObserver, globalThis.fetch);
+    new Function('document', 'window', 'AbortController', 'ResizeObserver', 'MutationObserver', 'fetch', 'pageState',
+        '"use strict"; const { createPageState, beginRequest, applyWidgetResult, resetWidget: resetWidgetState } = pageState;' + source.replace(/^import .*;$/gm, ''))(document, globalThis.window, globalThis.AbortController,
+        globalThis.ResizeObserver, globalThis.MutationObserver, globalThis.fetch, pageState);
     if (transport) { window.__rv2initializeReport(root, transport); }
     return { frames, requests, pending };
 }
@@ -175,15 +176,15 @@ function makeFakeRegistry() {
 }
 
 // ---------------------------------------------------------------------------
-// case 1: no host -> legacy aggregate table is produced (fallback works)
+// case 1: no host -> actionable error
 // ---------------------------------------------------------------------------
-test('case 1: without __rv2widgets the legacy aggregates path renders', async () => {
+test('case 1: without a registry the card reports a rendering failure', async () => {
     const { frames, pending } = await runScript({ types: ['value'], registry: null });
     frames[0].form.fire('submit', { preventDefault() {} });
     pending.shift()(RESOLVED);
     await flush();
     const text = collectText(frames[0].body);
-    assert.match(text, /record_count/, 'legacy aggregates markup must surface record_count');
+    assert.match(text, /could not be displayed/, 'missing registry must show an actionable error');
 });
 
 // ---------------------------------------------------------------------------
@@ -217,9 +218,9 @@ test('case 2: with the registry an eligible frame renders through it and re-rend
 });
 
 // ---------------------------------------------------------------------------
-// case 3: a throwing renderer falls back to legacy markup, no exception escapes
+// case 3: a throwing renderer reports an error, no exception escapes
 // ---------------------------------------------------------------------------
-test('case 3: a throwing registry renderer falls back to the legacy path', async () => {
+test('case 3: a throwing registry renderer shows an isolated error', async () => {
     const calls = { render: 0 };
     const registry = {
         render() { calls.render += 1; throw new Error('renderer blew up'); },
@@ -231,7 +232,7 @@ test('case 3: a throwing registry renderer falls back to the legacy path', async
     await flush();
     assert.equal(calls.render, 1, 'the registry render was attempted');
     const text = collectText(frames[0].body);
-    assert.match(text, /record_count/, 'legacy markup still renders after a renderer throw');
+    assert.match(text, /could not be displayed/, 'renderer failure must show an actionable error');
 });
 
 // ---------------------------------------------------------------------------

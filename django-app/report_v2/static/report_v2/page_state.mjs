@@ -1,9 +1,7 @@
 /*
  * report_v2 page-state reducer (pure, DOM-free) — canonical state machine for Task-13 widgets.
  *
- * Contract (mirrored by a defensive fallback inside report.js because that file is a classic
- * script loaded without module machinery; keep both in lock-step and let the node harness
- * (tests/js/page_state.test.mjs) be the judge of truth):
+ * Shared by the report runtime and Node regression checks.
  *
  *   createPageState(frames)          -> pristine state; fresh navigation therefore resets defaults
  *   beginRequest(state, id, seq)     -> marks frame `id`'s newest in-flight request `seq`

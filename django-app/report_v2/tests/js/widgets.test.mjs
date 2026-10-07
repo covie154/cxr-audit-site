@@ -329,6 +329,7 @@ test("single value fits body width and height, resizes and disposes", () => {
     box.clientHeight = 160;
     number.style = {};
     Object.defineProperty(number, "scrollWidth", { get: () => parseFloat(number.style.fontSize) * number.textContent.length * 0.6 });
+    Object.defineProperty(number, "scrollHeight", { get: () => parseFloat(number.style.fontSize) });
     number.getBoundingClientRect = () => ({ height: parseFloat(number.style.fontSize) });
     instance.resize();
     const size = parseFloat(number.style.fontSize);

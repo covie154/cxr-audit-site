@@ -1,105 +1,15 @@
-/*
- * report_v2 page behaviour.
- *
- * Two responsibilities:
- *  1. the index page's empty chart placeholder (guarded so it no-ops elsewhere);
- *  2. the report page: per-widget controls, per-widget state and STALE-SAFE async updates.
- *
- * State lives only inside this closure, so a fresh navigation always starts from the
- * server-rendered defaults; no storage API is used anywhere (a test greps for it). The
- * canonical state machine is static/report_v2/page_state.mjs (node-tested); because this file
- * is a classic script loaded without module machinery, the reducer is mirrored verbatim below
- * behind a window.__rv2 hook and kept in lock-step by the node harness.
- */
+/* report_v2 controls, stale-safe updates, and snapshot exports. */
+import { createPageState, beginRequest, applyWidgetResult, resetWidget as resetWidgetState } from './page_state.mjs';
+import './widgets/boot.mjs';
+
 (() => {
     'use strict';
-
-    // -- index page chart placeholder --------------------------------------------------------
-    const chartContainers = document.querySelectorAll('[data-report-chart]');
-    if (chartContainers.length && window.echarts) {
-        const charts = Array.from(chartContainers, (container) => window.echarts.init(container));
-        const renderCharts = () => {
-            const styles = window.getComputedStyle(document.documentElement);
-            charts.forEach((chart) => chart.setOption({
-                animation: false,
-                graphic: [{
-                    type: 'text', left: 'center', top: 'middle',
-                    style: {
-                        text: 'Your report charts will appear here',
-                        fill: styles.getPropertyValue('--c-text-muted').trim(),
-                        font: '14px sans-serif'
-                    }
-                }]
-            }));
-        };
-        renderCharts();
-        const resizeHandler = new ResizeObserver(() => charts.forEach((chart) => chart.resize()));
-        chartContainers.forEach((container) => resizeHandler.observe(container));
-        const themeObserver = new MutationObserver (renderCharts);
-        themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
-    } else if (chartContainers.length) {
-        const status = document.getElementById('chartStatus');
-        if (status) {
-            status.textContent= 'Charts could not load. Reload the page to try again.';
-        }
-    }
 
     // -- report page -------------------------------------------------------------------------
     function initializeReport(root, transport) {
 
-    const canonical = window.__rv2 || null;
-
     const baseDefaults = (extra) => Object.assign(
         { date: null, filters: {}, comparison: null, page: 1 }, extra || {});
-
-    // Mirrors of page_state.mjs (used when the module is not loaded on this page).
-    function createPageState(frames) {
-        if (canonical && canonical.createPageState) { return canonical.createPageState(frames); }
-        const state = { widgets: {}, droppedStale: 0 };
-        frames.forEach((frame) => {
-            state.widgets[frame.id] = {
-                defaults: baseDefaults(frame.defaults),
-                overrides: baseDefaults(frame.defaults),
-                pendingSeq: -1,
-                lastAppliedSeq: -1,
-                lastResult: null
-            };
-        });
-        return state;
-    }
-    function beginRequest(state, widgetId, seq) {
-        if (canonical && canonical.beginRequest) { return canonical.beginRequest(state, widgetId, seq); }
-        const widget = state.widgets[widgetId];
-        if (widget) { widget.pendingSeq= seq; }
-        return state;
-    }
-    function applyWidgetResult(state, widgetId, result, seq) {
-        if (canonical && canonical.applyWidgetResult) {
-            return canonical.applyWidgetResult(state, widgetId, result, seq);
-        }
-        const widget = state.widgets[widgetId];
-        if (!widget) { return state; }
-        const stillNewest = seq === widget.pendingSeq;
-        const newerThanApplied = seq > widget.lastAppliedSeq;
-        if (!stillNewest || !newerThanApplied) {
-            state.droppedStale= (state.droppedStale || 0) + 1;
-            return state;
-        }
-        widget.lastAppliedSeq= seq;
-        widget.lastResult= result;
-        return state;
-    }
-    function resetWidgetState(state, widgetId) {
-        if (canonical && canonical.resetWidget) { return canonical.resetWidget(state, widgetId); }
-        const widget = state.widgets[widgetId];
-        if (widget) {
-            widget.overrides = baseDefaults(widget.defaults);
-            widget.pendingSeq= -1;
-            widget.lastAppliedSeq= -1;
-            widget.lastResult= null;
-        }
-        return state;
-    }
 
     const CSRFToken = () => {
         // House idiom: hidden input when non-empty, otherwise the csrftoken= cookie.
@@ -163,51 +73,6 @@
         return node;
     };
     const displayDates = (value) => String(value).replace(/\b(\d{4})-(\d{2})-(\d{2})\b/g, '$3/$2/$1');
-    const textRow = (parent, text) => {
-        const cell = el('td');
-        cell.textContent= text === null || text === undefined ? '—' : displayDates(text);
-        parent.append(cell);
-    };
-
-    function buildTable(rows) {
-        const table = el('table', 'widget-table');
-        const columnSet = new Set();
-        rows.forEach((row) => Object.keys(row).forEach((key) => columnSet.add(key)));
-        const columns = Array.from(columnSet);
-        const head = el('tr');
-        columns.forEach((key) => {
-            const th = el('th');
-            th.textContent= key;
-            head.append(th);
-        });
-        const thead = el('thead');
-        thead.append(head);
-        const tbody = el('tbody');
-        rows.forEach((row) => {
-            const tr = el('tr');
-            columns.forEach((key) => textRow(tr, row[key]));
-            tbody.append(tr);
-        });
-        table.append(thead, tbody);
-        return table;
-    }
-
-    function buildAggregates(aggregates) {
-        const table = el('table', 'widget-table widget-table-aggregates');
-        Object.entries(aggregates).forEach(([name, value]) => {
-            const tr = el('tr');
-            const th = el('th');
-            th.textContent= name;
-            const td = el('td');
-            td.textContent= value !== null && typeof value === 'object'
-                ? Object.entries(value).map(([k, v]) => k + '=' + v).join(', ')
-                : String(value);
-            tr.append(th, td);
-            table.append(tr);
-        });
-        return table;
-    }
-
     // Lock-step with views._summary_text: the same numbers, the same shape.
     function summaryText(payload) {
         if (payload && payload.error) { return String(payload.error); }
@@ -220,10 +85,7 @@
         return text;
     }
 
-    // The registry bridge: when boot.mjs has published window.__rv2widgets.registry (the shipped
-    // value/table/line/bar renderers), an eligible frame is painted through it. When the host is
-    // absent (node harnesses, or a failed module load) widgetRegistry() is null and the legacy
-    // table/aggregates/empty path below runs byte-for-byte unchanged.
+    // Widget modules are loaded before report initialization.
     const widgetRegistry = () => {
         const host = window.__rv2widgets;
         const reg = host && host.registry;
@@ -256,12 +118,11 @@
         frame.liveNode = null;
         const live = el('div', 'widget-live');
         live.setAttribute('data-live-region', '');
-        // Registry path (fallback-safe): dispose the previous instance once, render into the fresh
-        // live node, and on any throw fall through to the legacy builder below.
+        // Dispose the previous instance before mounting the new result.
         const reg = widgetRegistry();
         const kind = frame.type;
         let usedRegistry = false;
-        if (reg && (kind === 'heading' || kind === 'text' || kind === 'divider' || kind === 'value' || kind === 'table' || kind === 'line' || kind === 'bar' || kind === 'pie' || kind === 'confusion_matrix' || kind === 'boxplot')) {
+        if (reg) {
             try {
                 if (frame.regInstance && !frame.regDisposed) {
                     reg.disposeInstance(frame.regInstance);
@@ -281,20 +142,11 @@
             }
         }
         if (!usedRegistry) {
-        const empty = !payload || payload.error || payload.empty;
-        if (empty) {
-            const note = el('p', 'widget-empty');
-            note.textContent = payload && payload.error ? String(payload.error) : frame.emptyMessage;
+            while (live.firstChild) { live.removeChild(live.firstChild); }
+            const note = el('p', 'widget-error');
+            note.textContent = payload && payload.error ? String(payload.error)
+                : 'The card could not be displayed. Reload the page or use Apply to retry.';
             live.append(note);
-        } else if (frame.type === 'table' && Array.isArray(payload.rows) && payload.rows.length) {
-            live.append(buildTable(payload.rows));
-        } else if (payload.aggregates && Object.keys(payload.aggregates).length) {
-            live.append(buildAggregates(payload.aggregates));
-        } else {
-            const note = el('p', 'widget-empty');
-            note.textContent = frame.emptyMessage;
-            live.append(note);
-        }
         }
         body.append(live);
         frame.liveNode = live;
@@ -722,17 +574,15 @@
         emailButton.addEventListener('click', () => {
             setEmailStatus('');
             if (emailSend) { emailSend.disabled = false; }
-            emailModal.hidden = false;
+            emailModal.showModal();
             if (emailRecipients) { emailRecipients.focus(); }
         });
         const closeModal = () => {
-            emailModal.hidden = true;
+            emailModal.close();
             setEmailStatus('');
         };
         if (emailCancel) { emailCancel.addEventListener('click', closeModal); }
-        emailModal.addEventListener('click', (event) => {
-            if (event.target === emailModal) { closeModal(); }
-        });
+        emailModal.addEventListener('close', () => setEmailStatus(''));
         emailForm.addEventListener('submit', (event) => {
             event.preventDefault();
             const raw = (emailRecipients && emailRecipients.value) || '';
@@ -767,7 +617,7 @@
                     if (result.ok && result.body.status === 'sent') {
                         setEmailStatus('Sent to ' + (result.body.sent_to || []).join(', ') + '.');
                         window.setTimeout(() => {
-                            emailModal.hidden = true;
+                            emailModal.close();
                             setEmailStatus('');
                         }, 1200);
                         return;

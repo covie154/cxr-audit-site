@@ -28,21 +28,19 @@
     </p>
     {# Task 18: the email modal. Recipients/note live only in this form for the current #}
     {# submission -- nothing is persisted (no storage API, no saved user preferences). #}
-    <div class="email-modal" data-role="email-modal" hidden>
-        <div class="email-modal-card" role="dialog" aria-modal="true" aria-label="Email this report">
-            <h3>Email this report</h3>
-            <form data-role="email-form" novalidate>
-                <label for="emailRecipients">Recipients (comma, semicolon or newline separated)</label>
-                <textarea id="emailRecipients" data-role="email-recipients" rows="2"
-                          placeholder="name@example.org, other@example.org" autocomplete="off"></textarea>
-                <label for="emailNote">Note (optional, included in the email)</label>
-                <textarea id="emailNote" data-role="email-note" rows="3" maxlength="2000"></textarea>
-                <p class="email-status" data-role="email-status" role="status"></p>
-                <button type="submit" class="btn btn-primary" data-action="email-send">Send</button>
-                <button type="button" class="btn btn-secondary" data-action="email-cancel">Cancel</button>
-            </form>
-        </div>
-    </div>
+    <dialog class="email-modal-card" data-role="email-modal" aria-labelledby="emailTitle">
+        <h3 id="emailTitle">Email this report</h3>
+        <form data-role="email-form" novalidate>
+            <label for="emailRecipients">Recipients (comma, semicolon or newline separated)</label>
+            <textarea id="emailRecipients" data-role="email-recipients" rows="2"
+                      placeholder="name@example.org, other@example.org" autocomplete="off"></textarea>
+            <label for="emailNote">Note (optional, included in the email)</label>
+            <textarea id="emailNote" data-role="email-note" rows="3" maxlength="2000"></textarea>
+            <p class="email-status" data-role="email-status" role="status"></p>
+            <button type="submit" class="btn btn-primary" data-action="email-send">Send</button>
+            <button type="button" class="btn btn-secondary" data-action="email-cancel">Cancel</button>
+        </form>
+    </dialog>
     {% for section in sections_ctx %}
     <section class="report-section" data-section-id="{{ section.id }}">
         {% if section.title %}<h2>{{ section.title }}</h2>{% endif %}
@@ -58,6 +56,5 @@
 {% endblock %}
 {% block extra_js %}
 <script src="{% static 'report_v2/vendor/echarts.min.js' %}"></script>
-<script type="module" src="{% static 'report_v2/widgets/boot.mjs' %}"></script>
-<script src="{% static 'report_v2/report.js' %}"></script>
+<script type="module" src="{% static 'report_v2/report.js' %}"></script>
 {% endblock %}

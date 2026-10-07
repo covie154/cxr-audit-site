@@ -108,9 +108,9 @@
   }
 
   function body(extra) {
-    var fields = [];
+    var fields = new URLSearchParams();
     function add(key, value) {
-      fields.push(encodeURIComponent(key) + "=" + encodeURIComponent(value === null || value === undefined ? "" : value));
+      fields.set(key, value === null || value === undefined ? "" : value);
     }
     add("def_id", root.getAttribute("data-def-id") || "");
     add("yaml_text", textarea ? textarea.value : "");
@@ -124,7 +124,7 @@
         }
       }
     }
-    return fields.join("&");
+    return fields.toString();
   }
 
   function post(url, extra, signal) {

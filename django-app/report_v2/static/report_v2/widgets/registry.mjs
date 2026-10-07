@@ -61,11 +61,17 @@ export function buildChart(container, getDisposed) {
     };
 }
 
-function findLive(container) {
-    for (const [node, entry] of liveByContainer) {
-        if (node === container) { return entry; }
-    }
-    return null;
+export function chartLifecycle(instance, built) {
+    instance.resize = () => { if (!instance.disposed) { built.resize(); } };
+    const disconnect = observeLifecycle(instance, instance.container, instance.resize);
+    instance.dispose = () => {
+        if (instance.disposed) { return; }
+        instance.disposed = true;
+        disconnect();
+        built.dispose();
+        clearContainer(instance.container);
+    };
+    return instance;
 }
 
 function disposeEntry(entry) {
@@ -76,7 +82,7 @@ function disposeEntry(entry) {
 
 export function disposeInstance(instance) {
     if (!instance) { return; }
-    const entry = instance.container ? findLive(instance.container) : null;
+    const entry = instance.container ? liveByContainer.get(instance.container) : null;
     if (entry) { liveByContainer.delete(entry.node); }
     disposeEntry({ instance, node: instance.container });
 }
@@ -88,7 +94,7 @@ export function disposeAll() {
 
 export function render(type, container, payload, options) {
     const mod = get(type);
-    const previous = findLive(container);
+    const previous = liveByContainer.get(container);
     if (previous) {
         liveByContainer.delete(previous.node);
         disposeEntry(previous);

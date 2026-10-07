@@ -429,5 +429,5 @@ class EmailFlowTests(TestCase):
         client = self._login(self.normal)
         page = client.get("/report/t18report/").content.decode("utf-8")
         self.assertIn('data-action="email"', page)
-        self.assertIn('data-role="email-modal"', page)
+        self.assertIn('<dialog class="email-modal-card" data-role="email-modal"', page)
         self.assertIn('data-role="email-recipients"', page)
