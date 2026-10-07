@@ -141,6 +141,9 @@ None yet.
 
 | 261007-mjd | Use report name for main heading and editor URL | 2026-10-07 | See quick summary | [261007-mjd](./quick/261007-mjd-use-report-name-in-editor-heading-and-ca/) |
 
+
+| 261007-nyx | Grey admin-only Edit layout button beside Email report | 2026-10-07 | 1b9bba9 | [261007-nyx](./quick/261007-nyx-make-edit-layout-a-grey-admin-only-butto/) |
+
 ## Deferred Items
 
 | Category | Item | Status | Deferred At |
