@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-06-14)
 Phase: 6 of 6 (remaining hipaa controls plan)
 Plan: Not started
 Status: Ready to execute
-Last activity: 2026-10-07 - Completed quick task 261007-l32: Daily reflections
+Last activity: 2026-10-07 - Completed quick task 261007-l4m: Slash-formatted report dates and verified preview pickers
 
 Progress: [----------] 0%
 
@@ -126,6 +126,8 @@ None yet.
 | 261007-l32 | Evidence-based daily reflections for 7 October 2026 | 2026-10-07 | 729de1a | [261007-l32](./quick/261007-l32-write-evidence-based-reflections-for-202/) |
 
 | 261007-l6l | Restore admin-only report editor navigation | 2026-10-07 | See quick summary | [261007-l6l](./quick/261007-l6l-scaffold-admin-only-report-v2-editor-pag/) |
+
+| 261007-l4m | Display report dates as DD/MM/YYYY and verify native preview pickers | 2026-10-07 | 969424e | [261007-l4m](./quick/261007-l4m-display-report-dates-with-day-first-slas/) |
 
 ## Deferred Items
 
