@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-06-14)
 Phase: 6 of 6 (remaining hipaa controls plan)
 Plan: Not started
 Status: Ready to execute
-Last activity: 2026-10-07 - Completed quick task 261007-dji: Align Report V2 formatting and separate Report V1 sidebar
+Last activity: 2026-10-07 - Completed quick task 261007-eag: Simplify report card settings
 
 Progress: [----------] 0%
 
@@ -94,6 +94,7 @@ None yet.
 | 260922-1t6 | Report v2 Task 19: end-to-end acceptance and handoff (runbook complete) | 2026-09-22 | 8477d8e | [260922-1t6](./quick/260922-1t6-report-v2-task-18-legacy-style-html-emai/) |
 
 | 261007-dji | Align Report V2 formatting and separate Report V1 sidebar | 2026-10-07 | 9329869 | [261007-dji](./quick/261007-dji-align-report-v2-formatting-and-add-separ/) |
+| 261007-eag | Hide settings on value/narrow cards and compact remaining controls | 2026-10-07 | 918575c | [261007-eag](./quick/261007-eag-hide-controls-on-text-and-narrow-report-/) |
 
 ## Deferred Items
 
