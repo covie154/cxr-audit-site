@@ -142,8 +142,10 @@ class GroupingTests(SimpleTestCase):
         controls = views._allowed_controls(widget)
         frame = {"id": "total", "type": "value", "controls": controls}
         html = render_to_string("report_v2/page.html", {"sections_ctx": [{"widgets": [frame]}]})
-        self.assertIn('data-date="start" value="2025-12-12"', html)
+        self.assertIn('data-date="start" value="12-12-2025"', html)
         self.assertIn('data-date="end" value="W"', html)
+        self.assertIn('data-date-picker="start" value="2025-12-12"', html)
+        self.assertIn('data-date-picker="end" value=""', html)
         self.assertIn('value="" selected>Overall', html)
         with self.assertRaises(InvalidOffsetError):
             resolve_window(anchor=date(2026, 8, 11), timezone="Asia/Singapore", start="Y-999999999", end="D")

@@ -179,6 +179,8 @@ async function runReportScript(withControls = true, withGroups = false) {
             const end = new FakeNode('input'); end.value = end.defaultValue = 'D';
             frame.register('[data-date="start"]', start);
             frame.register('[data-date="end"]', end);
+            frame.register('[data-date-picker="start"]', new FakeNode('input'));
+            frame.register('[data-date-picker="end"]', new FakeNode('input'));
             frame.children.push(holder);
             const initial = new FakeNode('pre');
             initial.textContent = JSON.stringify({ aggregates: { n: 2 }, counts: { matching: 2, incoming: 2, eligible: 2 },
@@ -358,4 +360,23 @@ test('Overall is an explicit override of the YAML bucket', async () => {
     frames[0].frame.register('[data-time-grouping]', grouping);
     frames[0].form.fire('submit', { preventDefault() {} });
     assert.equal(JSON.parse(requests[0].init.body).time_grouping, '');
+});
+
+test('day-first dates and native pickers preserve relative expressions', async () => {
+    const { frames, requests } = await runReportScript(true, true);
+    const frame = frames[0].frame;
+    const start = frame.querySelector('[data-date="start"]');
+    const end = frame.querySelector('[data-date="end"]');
+    const picker = frame.querySelector('[data-date-picker="start"]');
+    start.value = '03/08/2026'; end.value = '11-08-2026';
+    start.fire('input');
+    assert.equal(picker.value, '2026-08-03');
+    frames[0].form.fire('submit', { preventDefault() {} });
+    assert.deepEqual(JSON.parse(requests[0].init.body).date, { start: '2026-08-03', end: '2026-08-11' });
+    picker.value = '2026-08-05'; picker.fire('change');
+    assert.equal(start.value, '05-08-2026');
+    start.value = 'W-2'; start.fire('input');
+    assert.equal(picker.value, '');
+    let opened = false; picker.showPicker = () => { opened = true; }; picker.fire('click');
+    assert.equal(opened, true);
 });

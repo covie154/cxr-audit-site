@@ -450,6 +450,26 @@ class BrowserLayoutTests(unittest.TestCase):
                 self._assert_keyboard_reaches_an_apply()
                 self._shot(f"page-{DEF_ID}-{width}.png", full_page=True)
 
+    def test_day_first_dates_and_native_picker_update_one_card(self):
+        self._goto(self.report_url, width=1440, height=900)
+        frame = self.page.locator('.widget-frame').nth(1)
+        anchor = frame.locator('[data-initial-payload]').evaluate("n => JSON.parse(n.textContent).dates.anchor_date")
+        picker = frame.locator('[data-date-picker="end"]')
+        picker.evaluate("n => { const native=n.showPicker.bind(n); n.showPicker=() => { n.dataset.opened='yes'; native(); }; }")
+        picker.click()
+        self.assertEqual(picker.get_attribute('data-opened'), 'yes')
+        self.page.keyboard.press('Escape')
+        picker.fill(anchor)
+        self.assertEqual(frame.locator('[data-date="end"]').input_value(), '-'.join(reversed(anchor.split('-'))))
+        frame.locator('[data-date="start"]').fill('01/01/2026')
+        with self.page.expect_response(lambda response: '/widget/' in response.url and response.url.endswith('/data/')) as result:
+            frame.locator('[data-action="apply"]').click()
+        payload = result.value.json()
+        self.assertEqual(payload['status'], 'ok')
+        self.assertEqual(payload['dates']['window_start'], '2026-01-01')
+        self.assertEqual(payload['dates']['window_end'], anchor)
+        self._shot('date-controls-picker-1440.png', full_page=True)
+
     def test_collapsed_cards_fit_content_and_charts_have_taller_plots(self):
         self._goto(self.report_url, width=1440, height=900)
         for toggle in self.page.locator(".widget-settings > summary").all():

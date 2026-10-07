@@ -60,8 +60,20 @@
                 {% if f.controls.enabled %}
                 <form class="widget-controls" data-role="controls" novalidate>
                     {% if f.controls.date_range %}
-                    <label>From <input type="text" name="date_start" data-date="start" value="{{ f.controls.window.start }}" placeholder="YYYY-MM-DD or W-2" aria-label="From date or D/W/M/Y with optional minus offset" autocomplete="off"></label>
-                    <label>To <input type="text" name="date_end" data-date="end" value="{{ f.controls.window.end }}" placeholder="YYYY-MM-DD or D" aria-label="To date or D/W/M/Y with optional minus offset" autocomplete="off"></label>
+                    <div class="widget-date-control">
+                        <label for="date-start-{{ f.id }}">From</label>
+                        <div class="widget-date-field">
+                            <input id="date-start-{{ f.id }}" type="text" name="date_start" data-date="start" value="{{ f.controls.date_inputs.start }}" placeholder="DD-MM-YYYY or W-2" title="DD-MM-YYYY, DD/MM/YYYY or D/W/M/Y with an optional minus offset" autocomplete="off">
+                            <span class="widget-date-picker"><span aria-hidden="true">📅</span><input type="date" data-date-picker="start" value="{{ f.controls.native_dates.start }}" aria-label="Choose From date"></span>
+                        </div>
+                    </div>
+                    <div class="widget-date-control">
+                        <label for="date-end-{{ f.id }}">To</label>
+                        <div class="widget-date-field">
+                            <input id="date-end-{{ f.id }}" type="text" name="date_end" data-date="end" value="{{ f.controls.date_inputs.end }}" placeholder="DD-MM-YYYY or D" title="DD-MM-YYYY, DD/MM/YYYY or D/W/M/Y with an optional minus offset" autocomplete="off">
+                            <span class="widget-date-picker"><span aria-hidden="true">📅</span><input type="date" data-date-picker="end" value="{{ f.controls.native_dates.end }}" aria-label="Choose To date"></span>
+                        </div>
+                    </div>
                     {% endif %}
                     <label>Grouping
                         <select name="time_grouping" data-time-grouping>

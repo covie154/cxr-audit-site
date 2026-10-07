@@ -353,6 +353,12 @@
         renderInitialFrames();
     }
 
+    function dateExpression(value) {
+        const text = value.trim().toUpperCase();
+        const date = text.match(/^(\d{2})([-/])(\d{2})\2(\d{4})$/);
+        return date ? date[4] + '-' + date[3] + '-' + date[1] : text;
+    }
+
     function collectOverrides(frame) {
         const overrides = baseDefaults();
         const timeGrouping = frame.el.querySelector('[data-time-grouping]');
@@ -361,8 +367,8 @@
         const end = frame.el.querySelector('[data-date="end"]');
         if (start && end) {
             overrides.date = {
-                start: (start.value.trim() || start.defaultValue).toUpperCase(),
-                end: (end.value.trim() || end.defaultValue).toUpperCase()
+                start: dateExpression(start.value.trim() || start.defaultValue),
+                end: dateExpression(end.value.trim() || end.defaultValue)
             };
         }
         frame.el.querySelectorAll('[data-filter]').forEach((input) => {
@@ -456,6 +462,23 @@
 
     frames.forEach((frame) => {
         const form = frame.form;
+        for (const bound of ['start', 'end']) {
+            const input = frame.el.querySelector('[data-date="' + bound + '"]');
+            const picker = frame.el.querySelector('[data-date-picker="' + bound + '"]');
+            if (!input || !picker) { continue; }
+            picker.addEventListener('click', () => {
+                if (typeof picker.showPicker === 'function') {
+                    try { picker.showPicker(); } catch (error) { /* Native control remains available. */ }
+                }
+            });
+            picker.addEventListener('change', () => {
+                if (picker.value) { input.value = picker.value.split('-').reverse().join('-'); }
+            });
+            input.addEventListener('input', () => {
+                const value = dateExpression(input.value);
+                picker.value = /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : '';
+            });
+        }
         if (form) {
             form.addEventListener('submit', (event) => {
                 event.preventDefault();

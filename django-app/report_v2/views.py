@@ -182,6 +182,10 @@ def _allowed_controls(widget: dict) -> dict:
     """The client-visible control surface for a widget (a copy of its controls + a few read-only hints)."""
     controls = widget.get("controls") or {}
     query = widget.get("query") or {}
+    window = {"start": "D-30", "end": "D", **(widget.get("window") or {})}
+    native_dates = {key: value if _ISO_RE.fullmatch(value) else "" for key, value in window.items()}
+    date_inputs = {key: parse_date_literal(value).strftime("%d-%m-%Y") if native_dates[key] else value
+                   for key, value in window.items()}
     return {
         "enabled": True,
         "date_range": bool(controls.get("date_range")),
@@ -192,7 +196,9 @@ def _allowed_controls(widget: dict) -> dict:
         ],
         "measurement": query.get("measurement"),
         "inputs": dict(query.get("inputs") or {}),
-        "window": {"start": "D-30", "end": "D", **(widget.get("window") or {})},
+        "window": window,
+        "date_inputs": date_inputs,
+        "native_dates": native_dates,
         "default_compare_by": widget.get("default_compare_by"),
         "time_grouping": widget.get("bucket") or ("week" if widget.get("type") == "line" else None),
         "type": widget.get("type"),
