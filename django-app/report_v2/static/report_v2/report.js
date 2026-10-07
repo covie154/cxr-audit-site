@@ -355,8 +355,8 @@
 
     function dateExpression(value) {
         const text = value.trim().toUpperCase();
-        const date = text.match(/^(\d{1,2})([-/])(\d{1,2})\2(\d{4})$/);
-        return date ? date[4] + '-' + date[3].padStart(2, '0') + '-' + date[1].padStart(2, '0') : text;
+        const date = text.match(/^(\d{1,2})([-/])(\d{1,2})\2(\d{2}|\d{4})$/);
+        return date ? (date[4].length === 2 ? '20' + date[4] : date[4]) + '-' + date[3].padStart(2, '0') + '-' + date[1].padStart(2, '0') : text;
     }
 
     function collectOverrides(frame) {

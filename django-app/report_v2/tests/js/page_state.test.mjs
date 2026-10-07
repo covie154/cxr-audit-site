@@ -384,7 +384,7 @@ test('day-first dates and native pickers preserve relative expressions', async (
 test('single-digit day-first dates normalize for both boundaries and pickers', async () => {
     const { frames, requests } = await runReportScript(true, true);
     const frame = frames[0].frame;
-    for (const [startValue, endValue] of [['5/4/2026', '7/4/2026'], ['5-4-2026', '07-04-2026'], ['05/4/2026', '7/04/2026']]) {
+    for (const [startValue, endValue] of [['5/4/2026', '7/4/2026'], ['5-4-2026', '07-04-2026'], ['05/4/2026', '7/04/2026'], ['5/4/26', '7/4/26'], ['05-04-26', '07-04-26']]) {
         const start = frame.querySelector('[data-date="start"]');
         const end = frame.querySelector('[data-date="end"]');
         start.value = startValue; end.value = endValue;
@@ -393,5 +393,16 @@ test('single-digit day-first dates normalize for both boundaries and pickers', a
         assert.equal(frame.querySelector('[data-date-picker="end"]').value, '2026-04-07');
         frames[0].form.fire('submit', { preventDefault() {} });
         assert.deepEqual(JSON.parse(requests.at(-1).init.body).date, { start: '2026-04-05', end: '2026-04-07' });
+    }
+});
+
+test('two-digit years use the 2000s and four-digit years stay literal', async () => {
+    const { frames, requests } = await runReportScript(true, true);
+    const frame = frames[0].frame;
+    for (const [year, expected] of [['00', '2000'], ['99', '2099'], ['1999', '1999']]) {
+        frame.querySelector('[data-date="start"]').value = '5/4/' + year;
+        frame.querySelector('[data-date="end"]').value = '7/4/' + year;
+        frames[0].form.fire('submit', { preventDefault() {} });
+        assert.deepEqual(JSON.parse(requests.at(-1).init.body).date, { start: expected + '-04-05', end: expected + '-04-07' });
     }
 });
