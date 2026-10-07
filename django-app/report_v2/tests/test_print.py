@@ -208,6 +208,18 @@ class PrintFlowTests(TestCase):
         for title in ("Value One", "Table One", "Never Matching"):
             self.assertIn(title, page)
 
+    def test_time_grouping_survives_snapshot_freeze(self):
+        self._patch_seam()
+        layout = LAYOUT.replace("type: value", "type: line\n    bucket: week", 1)
+        self.flow.publish("t13report", layout)
+        client = self._login(self.normal)
+        response = self._create_snapshot(client, "t13report", state_by_widget={"v1": {"time_grouping": "month"}})
+        self.assertEqual(response.status_code, 201, response.content[:400])
+        document = snapshots.load_snapshot(response.json()["token"], user_id=self.normal.pk, project_id="prime", slug="t13report")
+        widget = next(w for w in document["widgets"] if w["widget_id"] == "v1")
+        self.assertEqual(widget["applied"]["time_grouping"], "month")
+        self.assertTrue(all(b["size"] == "month" for b in widget["payload"]["buckets"]))
+
     # -- 5. later data changes or publication do not alter the captured export ------------
     def test_print_is_frozen_against_data_and_publication_changes(self):
         self._patch_seam()

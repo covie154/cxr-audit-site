@@ -29,6 +29,7 @@ export function render(container, payload, options) {
     const captionText = (payload && (payload.caption || payload.title)) || columns.join(", ");
     const table = el("table", "widget-table widget-alt-table");
     const caption = el("caption", "widget-caption", captionText);
+    if (options && options.hideCaption) { caption.className += " widget-a11y"; }
     table.appendChild(caption);
     const head = el("thead", "widget-thead");
     const headRow = el("tr", "widget-head-row");

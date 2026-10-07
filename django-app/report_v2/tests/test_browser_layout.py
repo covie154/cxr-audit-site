@@ -376,6 +376,8 @@ class BrowserLayoutTests(unittest.TestCase):
         self.page.set_viewport_size({"width": width, "height": height})
         self.page.goto(url, wait_until="networkidle")
         self.page.wait_for_timeout(250)
+        for toggle in self.page.locator(".widget-settings > summary").all():
+            toggle.click()  # Verify the controls after opening their native disclosures.
 
     def _rects(self, selector: str) -> list[dict]:
         return self.page.evaluate(
@@ -397,13 +399,22 @@ class BrowserLayoutTests(unittest.TestCase):
         frames = self.page.locator(".report-grid > .widget-frame")
         frame = frames.nth(frame_index)
         fr = frame.bounding_box()
+        form = frame.locator(".widget-controls").first
+        if not form.count():
+            return
+        region = form.bounding_box()
+        self.assertGreaterEqual(region["x"], fr["x"] - 1, "control row left outside frame")
+        self.assertLessEqual(region["x"] + region["width"], fr["x"] + fr["width"] + 1,
+                             "scrollable control row right outside frame")
+        scroll = form.evaluate("n => ({width: n.scrollWidth, left: n.scrollLeft, overflow: getComputedStyle(n).overflowX})")
+        self.assertEqual(scroll["overflow"], "auto")
         for sel in ("input", "select", "button"):
             for control in frame.locator(f".widget-controls {sel}").element_handles():
                 if not control.is_visible():
-                    continue  # Group choices are intentionally inside a collapsed details element.
+                    continue
                 box = control.bounding_box()
-                self.assertGreaterEqual(box["x"], fr["x"] - 1, "control left outside frame")
-                self.assertLessEqual(box["x"] + box["width"], fr["x"] + fr["width"] + 1, "control right outside frame")
+                self.assertGreaterEqual(box["x"], region["x"] - scroll["left"] - 1)
+                self.assertLessEqual(box["x"] + box["width"], region["x"] - scroll["left"] + scroll["width"] + 1)
 
     def _assert_inner_regions_no_overlap(self) -> None:
         for index in range(self.page.locator(".report-grid > .widget-frame").count()):

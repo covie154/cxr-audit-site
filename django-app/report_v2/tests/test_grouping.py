@@ -89,3 +89,19 @@ class GroupingTests(SimpleTestCase):
             views._validate_overrides(self.widgets["total"], {"comparison": "patient_name"})
         with self.assertRaises(views.OverrideRejectedError):
             views._validate_overrides(self.widgets["total"], {"filters": {"age": [{"gt": 18}]}})
+
+    def test_time_grouping_uses_calendar_buckets_and_rejects_other_cards(self):
+        widget = next(w for w in self.widgets.values() if w.get("bucket"))
+        for size in ("day", "week", "month", "year"):
+            views._validate_overrides(widget, {"time_grouping": size})
+            payload = self.payload(widget["id"], time_grouping=size)
+            self.assertFalse(payload.get("error"))
+            self.assertTrue(payload["buckets"])
+            self.assertTrue(all(b["size"] == size for b in payload["buckets"]))
+        for widget_id, size in (("total", "day"), (widget["id"], "hour")):
+            with self.assertRaises(views.OverrideRejectedError):
+                views._validate_overrides(self.widgets[widget_id], {"time_grouping": size})
+
+    def test_relative_calendar_range_presets_are_valid(self):
+        for token in ("D", "W", "M", "Y", "W-2", "M-3", "Y-1"):
+            self.assertEqual(views._validate_date({"relative": token}), {"relative": token})

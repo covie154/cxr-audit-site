@@ -33,3 +33,11 @@ Grouping and group selection are included in frozen print/email snapshots.
 
 The packaged seed enables Site and Age on all 17 cards. Existing published definitions
 retain their own allow-lists; re-publish the updated seed to enable these fields there.
+
+Card titles toggle native settings disclosures. Include groups uses a checkbox dropdown next
+to Group by; the control row scrolls horizontally on narrow cards. Normal number-card subtext
+stays hidden, and table reference text lives inside settings with an accessible table caption.
+Range controls select explicit From/To dates or D/W/M/Y presets anchored to the latest complete
+eligible study date (D). W starts Monday, M starts on the first and Y on January 1. Window selects
+day/week/month/year calendar buckets on time-series cards; it does not alter the date range.
+The validated `time_grouping` override is retained in print/email snapshots.

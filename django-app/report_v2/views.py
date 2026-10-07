@@ -71,7 +71,7 @@ _WINDOW_START_RE = re.compile(r"^(?:D|W|M|Y)(?:-\d+)?$")
 #: The only top-level keys a widget-data body may carry. Anything else (version / anchor /
 #: measurement(_override) / policy_version_override / ci_override / layout_override / include_rows /
 #: rows / widget_id / bucket / ...) is a disallowed override attempt and is rejected up-front.
-_ALLOWED_TOP_KEYS = frozenset({"context", "date", "filters", "comparison", "page", "request_seq"})
+_ALLOWED_TOP_KEYS = frozenset({"context", "date", "filters", "comparison", "page", "request_seq", "time_grouping"})
 
 #: The scalar types an override filter value may be (or a list/tuple of these, bounded in length).
 _SCALAR_TYPES = (str, int, float, bool)
@@ -192,6 +192,7 @@ def _allowed_controls(widget: dict) -> dict:
         "inputs": dict(query.get("inputs") or {}),
         "window": dict(widget.get("window") or {}),
         "default_compare_by": widget.get("default_compare_by"),
+        "time_grouping": widget.get("bucket") if widget.get("type") in ("line", "bar") else None,
         "type": widget.get("type"),
     }
 
@@ -271,6 +272,16 @@ def _validate_comparison(widget: dict, raw: object) -> str | None:
     return raw
 
 
+def _validate_time_grouping(widget: dict, raw: object) -> str | None:
+    if raw is None:
+        return None
+    if widget.get("type") not in ("line", "bar") or not widget.get("bucket"):
+        raise OverrideRejectedError("time grouping is not supported on this widget")
+    if not isinstance(raw, str) or raw not in {"day", "week", "month", "year"}:
+        raise OverrideRejectedError("time grouping must be day, week, month or year")
+    return raw
+
+
 def _validate_page(raw: object) -> int:
     """Validate a ``page`` selector: absent -> 1, else a positive int within the bound."""
     if raw is None:
@@ -289,6 +300,7 @@ def _validate_overrides(widget: dict, body: dict) -> tuple[dict | None, dict, st
     from the single validated ``comparison`` selector so the caller cannot smuggle a second axis.
     """
     _check_top_keys(body)
+    _validate_time_grouping(widget, body.get("time_grouping"))
     date_override = _validate_date(body.get("date"))
     filters = _validate_filters(widget, body.get("filters"))
     comparison = _validate_comparison(widget, body.get("comparison"))
@@ -311,6 +323,7 @@ def _evaluate(
     page: int = 1,
     rows: list | None = None,
     selected_rows: list | None = None,
+    time_grouping: str | None = None,
 ) -> dict:
     """Evaluate one widget into a JSON-safe payload dict. NEVER raises for a domain failure."""
     if rows is None:
@@ -344,7 +357,7 @@ def _evaluate(
         comparison = comparison or widget.get("default_compare_by")
         grouping = [comparison] if comparison else None
     display = widget.get("type")
-    buckets = widget.get("bucket") if display in ("line", "bar") else None
+    buckets = (time_grouping or widget.get("bucket")) if display in ("line", "bar") else None
     ci_registry = {"positive_predictive_value"} if (widget.get("ci") or {}).get("enabled") else None
     policy = (widget.get("query") or {}).get("threshold_policy")
     is_table = display == "table"
@@ -625,6 +638,7 @@ def widget_data(request, slug: str, widget_id: str):
             comparison=comparison,
             grouping=grouping,
             page=page,
+            time_grouping=body.get("time_grouping"),
             rows=rows,
         )
     except (EvaluationError, data.AdapterError) as exc:

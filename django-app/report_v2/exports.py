@@ -70,7 +70,7 @@ _SNAPSHOT_BODY_KEYS = frozenset({"settled", "widgets"})
 
 #: The only keys one per-widget entry may carry (mirrors the widget-data allow-list:
 #: date / filters / comparison / page are the sole user-controllable state).
-_ENTRY_KEYS = frozenset({"context", "date", "filters", "comparison", "page"})
+_ENTRY_KEYS = frozenset({"context", "date", "filters", "comparison", "page", "time_grouping"})
 
 #: Document discriminator + view contract version frozen into every snapshot.
 _SNAPSHOT_KIND = "report_v2_print_v1"
@@ -215,6 +215,7 @@ def create_snapshot(request, slug: str):
                 layout, widget,
                 date_override=date_override, filters=filters,
                 comparison=comparison, grouping=grouping, page=page, rows=rows,
+                time_grouping=entry.get("time_grouping"),
             )
         except (EvaluationError, data.AdapterError) as exc:
             payload = {"widget_id": widget.get("id"), "error": str(exc)}
@@ -231,6 +232,7 @@ def create_snapshot(request, slug: str):
                     "date": entry.get("date"),
                     "filters": dict(filters or {}),
                     "comparison": comparison,
+                    "time_grouping": entry.get("time_grouping"),
                     "page": page,
                 },
                 "payload": payload,
@@ -320,6 +322,8 @@ def _applied_line(applied: Mapping[str, Any]) -> str:
             parts.append(f"window {date['relative']}")
         else:
             parts.append(f"dates {date.get('start')}..{date.get('end')}")
+    if applied.get("time_grouping"):
+        parts.append(f"window {applied['time_grouping']}")
     filters = applied.get("filters") or {}
     for key in sorted(filters):
         parts.append(f"{key}={_fmt(filters[key])}")

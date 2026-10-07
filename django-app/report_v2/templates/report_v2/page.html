@@ -53,19 +53,35 @@
             <article class="card widget-frame" data-widget-id="{{ f.id }}" data-type="{{ f.type }}" data-measurement="{{ f.measurement }}" data-default-comparison="{{ f.controls.default_compare_by|default_if_none:'' }}"
                      data-data-url="{{ f.data_url }}" data-context-token="{{ f.context_token }}"
                      style="grid-column: span {{ f.width }}; grid-row: span {{ f.height }};">
-                <header class="widget-header"><h3>{{ f.title }}</h3></header>
+                <details class="widget-settings">
+                <summary class="widget-header"><h3>{{ f.title }}</h3></summary>
+                <div class="widget-settings-content">
                 {% if f.controls.enabled %}
                 <form class="widget-controls" data-role="controls" novalidate>
                     {% if f.controls.date_range %}
                     <label>From <input type="date" name="date_start" data-date="start"></label>
                     <label>To <input type="date" name="date_end" data-date="end"></label>
-                    <label>Window
+                    <label>Range
                         <select name="date_relative" data-date="relative">
                             <option value="">Default</option>
                             <option value="D-7">Last 7 days</option>
                             <option value="D-30">Last 30 days</option>
                             <option value="D-90">Last 90 days</option>
                             <option value="D-365">Last 365 days</option>
+                            <option value="D">Latest day (D)</option>
+                            <option value="W">Week to date (W)</option>
+                            <option value="M">Month to date (M)</option>
+                            <option value="Y">Year to date (Y)</option>
+                        </select>
+                    </label>
+                    {% endif %}
+                    {% if f.controls.time_grouping %}
+                    <label>Window
+                        <select name="time_grouping" data-time-grouping>
+                            <option value="day"{% if f.controls.time_grouping == "day" %} selected{% endif %}>Day</option>
+                            <option value="week"{% if f.controls.time_grouping == "week" %} selected{% endif %}>Week</option>
+                            <option value="month"{% if f.controls.time_grouping == "month" %} selected{% endif %}>Month</option>
+                            <option value="year"{% if f.controls.time_grouping == "year" %} selected{% endif %}>Year</option>
                         </select>
                     </label>
                     {% endif %}
@@ -90,6 +106,9 @@
                 </form>
                 {% endif %}
                 <p class="widget-summary" role="status"{% if f.type == "value" %} hidden{% endif %}>{% if f.type != "value" %}{{ f.summary }}{% endif %}</p>
+                <p class="widget-reference" data-reference>{% if f.type != "value" %}{{ f.payload.caption }}{% endif %}</p>
+                </div>
+                </details>
                 <div class="widget-body" data-widget-body>
                     {# Server-side empty message, always present so report.js can read it per frame #}
                     {# (report.js: node.querySelector('[data-role="empty-message"]')); hidden from view. #}

@@ -258,7 +258,7 @@
                 // wrapper itself keeps its widget-live class + data-live-region marker intact.
                 const mount = el('div', 'widget-mount');
                 live.append(mount);
-                const regInstance = reg.render(kind, mount, payload, { primaryOnly: kind === 'value', measurement: frame.el.dataset.measurement });
+                const regInstance = reg.render(kind, mount, payload, { primaryOnly: kind === 'value', measurement: frame.el.dataset.measurement, hideCaption: true });
                 frame.regInstance = regInstance || null;
                 frame.regDisposed = false;
                 usedRegistry = true;
@@ -289,6 +289,8 @@
             frame.more.hidden = !(payload && payload.pagination && payload.pagination.truncated);
             body.append(frame.more);
         }
+        const reference = frame.el.querySelector('[data-reference]');
+        if (reference) { reference.textContent = frame.type === 'value' ? '' : (payload.caption || ''); }
         const summary = frame.summary;
         if (summary) { summary.textContent = summaryText(payload); summary.hidden = frame.type === 'value'; }
     }
@@ -350,6 +352,8 @@
 
     function collectOverrides(frame) {
         const overrides = baseDefaults();
+        const timeGrouping = frame.el.querySelector('[data-time-grouping]');
+        if (timeGrouping) { overrides.time_grouping = timeGrouping.value; }
         const relative = frame.el.querySelector('[data-date="relative"]');
         const start = frame.el.querySelector('[data-date="start"]');
         const end = frame.el.querySelector('[data-date="end"]');
@@ -378,6 +382,8 @@
     function showStale(frame, errorText) {
         if (frame.summary) {
             frame.summary.hidden = false;
+            const settings = frame.el.querySelector(".widget-settings");
+            if (settings) { settings.open = true; }
             frame.summary.textContent = String(errorText || 'The report version has changed.')
                 + ' Reload the page for the newest published version.';
         }
@@ -397,6 +403,8 @@
             if (status === 'stale') { showStale(frame, payload.error); return; }
             if (frame.summary) {
                 frame.summary.hidden = false;
+                const settings = frame.el.querySelector(".widget-settings");
+                if (settings) { settings.open = true; }
                 frame.summary.textContent = String(payload.error || 'The update failed.');
             }
             return;
@@ -415,6 +423,7 @@
         inflightByWidget.set(widgetId, controller);
         const body = { context: frame.el.dataset.contextToken, request_seq: seq };
         if (overrides.date) { body.date = overrides.date; }
+        if (overrides.time_grouping) { body.time_grouping = overrides.time_grouping; }
         if (Object.keys(overrides.filters).length) { body.filters = overrides.filters; }
         if (overrides.comparison !== null) { body.comparison = overrides.comparison; }
         if (frame.type === 'table' && overrides.page > 1) { body.page = overrides.page; }
@@ -433,6 +442,8 @@
                 const widget = state.widgets[widgetId];
                 if (widget && widget.pendingSeq=== seq && frame.summary) {
                     frame.summary.hidden = false;
+                    const settings = frame.el.querySelector(".widget-settings");
+                    if (settings) { settings.open = true; }
                     frame.summary.textContent = 'The update failed: '
                         + (error && error.message ? error.message : String(error));
                 }
@@ -505,6 +516,7 @@
         const overrides = widget.overrides || baseDefaults();
         const entry = { context: frame.el.dataset.contextToken };
         if (overrides.date) { entry.date = overrides.date; }
+        if (overrides.time_grouping) { entry.time_grouping = overrides.time_grouping; }
         if (overrides.filters && Object.keys(overrides.filters).length) { entry.filters = overrides.filters; }
         if (overrides.comparison !== null) { entry.comparison = overrides.comparison; }
         if (frame.type === 'table' && overrides.page > 1) { entry.page = overrides.page; }

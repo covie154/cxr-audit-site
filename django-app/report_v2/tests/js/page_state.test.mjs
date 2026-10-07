@@ -325,3 +325,15 @@ test('group selections survive date changes, reset on field changes, and remain 
     assert.equal(none.filters, undefined);
     assert.equal(frame.querySelector('[data-group-picker]').hidden, true);
 });
+
+test('time grouping is submitted independently of the selected date range', async () => {
+    const { frames, requests } = await runReportScript(true, true);
+    const windowSelect = new FakeNode('select'); windowSelect.value = 'month';
+    frames[0].frame.register('[data-time-grouping]', windowSelect);
+    frames[0].frame.querySelector('[data-date="relative"]').value = 'Y';
+    frames[0].form.fire('submit', { preventDefault() {} });
+    const body = JSON.parse(requests[0].init.body);
+    assert.equal(body.time_grouping, 'month');
+    assert.deepEqual(body.date, { relative: 'Y' });
+    assert.equal(JSON.parse(requests[0].init.body).comparison, 'site');
+});

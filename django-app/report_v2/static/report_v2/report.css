@@ -82,3 +82,20 @@
 .widget-group-value { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px; border-bottom: 1px solid var(--c-border); }
 
 .widget-summary[hidden] { display: none; }
+
+/* Native disclosures keep card headings compact and all controls on one row. */
+.widget-settings > summary { cursor: pointer; display: flex; align-items: center; gap: 8px; list-style: none; }
+.widget-settings > summary::-webkit-details-marker { display: none; }
+.widget-settings > summary::after { content: "▾"; color: var(--c-text-muted); }
+.widget-settings[open] > summary::after { content: "▴"; }
+.widget-settings h3 { margin: 0; }
+.widget-settings-content { margin-top: 12px; }
+.widget-settings .widget-controls { flex-wrap: nowrap; align-items: flex-start; overflow-x: auto; padding-bottom: 6px; }
+.widget-settings .widget-controls > label, .widget-settings .widget-controls > details { flex: 0 0 auto; }
+.widget-settings .widget-controls > .btn { margin-top: 17px; }
+.widget-settings .widget-controls > .widget-group-picker { width: auto; margin-top: 17px; }
+.widget-group-picker summary { border: 1px solid var(--c-border); border-radius: 8px; padding: 6px; min-height: 32px; box-sizing: border-box; background: var(--c-surface); white-space: nowrap; }
+.widget-group-picker[open] { width: 220px !important; }
+.widget-group-picker .widget-group-actions { margin-top: 8px; }
+.widget-reference { font-size: .8125rem; color: var(--c-text-muted); margin: 6px 0; }
+.widget-reference:empty { display: none; }
