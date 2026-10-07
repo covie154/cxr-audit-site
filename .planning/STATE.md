@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-06-14)
 Phase: 6 of 6 (remaining hipaa controls plan)
 Plan: Not started
 Status: Ready to execute
-Last activity: 2026-10-07 - Completed report v2 visual editor execution (84b722e)
+Last activity: 2026-10-07 - Completed quick task 261007-uzd: report publication controls, card heights and row insertion (24d45f0)
 
 Progress: [----------] 0%
 
@@ -151,6 +151,8 @@ None yet.
 | 261007-nyx | Grey admin-only Edit layout button beside Email report | 2026-10-07 | 1b9bba9 | [261007-nyx](./quick/261007-nyx-make-edit-layout-a-grey-admin-only-butto/) |
 
 | 261007-o1l | Full final-report card preview with temporary controls | 2026-10-07 | See quick summary | [261007-o1l](./quick/261007-o1l-render-editor-preview-with-the-full-fina/) |
+
+| 261007-uzd | Report publication controls, card heights and row insertion | 2026-10-07 | 24d45f0 | [261007-uzd](./quick/261007-uzd-fix-report-publication-controls-and-card/) |
 
 ### Report v2 workstream execution
 
