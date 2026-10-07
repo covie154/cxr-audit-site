@@ -211,7 +211,7 @@ def create_snapshot(request, slug: str):
     frozen_widgets: list[dict[str, Any]] = []
     for widget, entry, date_override, filters, comparison, grouping, page in plan:
         try:
-            rows = [] if widget.get("type") in {"text", "divider"} else data.fetch_project_rows(_PROJECT_ID, layout_widget=widget)
+            rows = [] if widget.get("type") in {"text", "divider", "heading"} else data.fetch_project_rows(_PROJECT_ID, layout_widget=widget)
             payload = _evaluate(
                 layout, widget,
                 date_override=date_override, filters=filters,
@@ -618,8 +618,8 @@ def _email_text(vm: Mapping[str, Any], note: str, sender: str) -> str:
         lines.extend(["Note from the sender:", note, ""])
     for widget in vm["widgets"]:
         lines.append(f"{widget['title']} ({widget['type']})")
-        if widget["type"] in {"text", "divider"}:
-            lines.append(widget.get("text", "") if widget["type"] == "text" else "--------------------")
+        if widget["type"] in {"text", "divider", "heading"}:
+            lines.append(widget.get("text", "") if widget["type"] == "text" else widget["title"] if widget["type"] == "heading" else "--------------------")
             continue
         if widget["error"]:
             lines.append(f"  Could not be evaluated when captured: {widget['error']}")

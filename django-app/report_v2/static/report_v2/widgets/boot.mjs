@@ -15,6 +15,7 @@ import * as confusionRenderer from "./confusion.mjs";
 import * as staticRenderer from "./static.mjs";
 import * as boxplotRenderer from "./boxplot.mjs";
 
+register("heading", staticRenderer);
 register("text", staticRenderer);
 register("divider", staticRenderer);
 register("value", valueRenderer);

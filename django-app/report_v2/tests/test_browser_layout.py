@@ -472,26 +472,42 @@ class BrowserLayoutTests(unittest.TestCase):
         self.assertEqual(payload['dates']['window_end'], anchor)
         self._shot('date-controls-picker-1440.png', full_page=True)
 
-    def test_cards_honor_minimum_height_and_charts_have_taller_plots(self):
+    def test_charts_fit_available_height(self):
         self._goto(self.report_url, width=1440, height=900)
-        for toggle in self.page.locator(".widget-settings > summary").all():
-            toggle.click()
-        for frame in self.page.locator(".report-grid > .widget-frame").all():
-            gap = frame.evaluate("n => { const b = n.querySelector('.widget-body'); return n.getBoundingClientRect().bottom - b.getBoundingClientRect().bottom; }")
-            minimum = frame.evaluate("n => parseFloat(getComputedStyle(n).minHeight)")
-            height = frame.bounding_box()["height"]
-            self.assertGreaterEqual(height, minimum)
-            if height > minimum + 1:
-                self.assertLessEqual(gap, 26, "card reserves space beyond its declared minimum height")
-        for chart in self.page.locator(".widget-chart-box").all():
+        for frame in self.page.locator('.widget-frame:has(.widget-chart-box)').all():
+            chart = frame.locator('.widget-chart-box').first
+            self.page.wait_for_function("Array.from(document.querySelectorAll('.widget-chart-box')).every(n => n.clientHeight > 0)")
+            body = frame.locator('.widget-body').bounding_box()
             box = chart.bounding_box()
-            self.assertGreaterEqual(box["height"], 360)
-            plot = chart.evaluate("n => window.echarts.getInstanceByDom(n).getModel().getComponent('grid').coordinateSystem.getRect().height")
-            self.assertGreaterEqual(plot, 250, "plotting area is too shallow")
+            self.assertGreater(box['height'], 0)
+            self.assertLessEqual(box['height'], body['height'] + 1)
+            self.assertLessEqual(box['y'] + box['height'], body['y'] + body['height'] + 1)
+            before = box['height']
+            frame.locator('.widget-settings > summary').click()
+            self.page.wait_for_timeout(100)
+            self.assertGreater(chart.bounding_box()['height'], before)
+
+    def test_confusion_matrix_scales_to_body_height(self):
+        self._goto(self.report_url, width=1440, height=900)
+        self.page.evaluate("""() => {
+          const frame = document.createElement('article'); frame.className = 'card widget-frame';
+          frame.dataset.type = 'confusion_matrix'; frame.style.cssText = 'grid-column:span 6;grid-row:span 4;--widget-rows:4';
+          frame.innerHTML = '<h3>Synthetic matrix</h3><div class="widget-body"><div class="widget-live"><div class="widget-mount"></div></div></div>';
+          document.querySelector('.report-grid').append(frame);
+          window.__rv2widgets.registry.render('confusion_matrix', frame.querySelector('.widget-mount'), {classes:[0,1], cells:[[20,2],[3,25]], row_totals:[22,28], accuracy:{value:.9}});
+        }""")
+        frame = self.page.locator('.widget-frame[data-type=confusion_matrix]')
+        for height in (4, 7):
+            frame.evaluate('(node, rows) => { node.style.setProperty("--widget-rows", rows); node.style.gridRow = "span " + rows; }', height)
+            self.page.wait_for_timeout(100)
+            body = frame.locator('.widget-body').bounding_box()
+            matrix = frame.locator('.widget-confusion').bounding_box()
+            self.assertLessEqual(matrix['y'] + matrix['height'], body['y'] + body['height'] + 1)
+            self.assertGreater(matrix['height'], 0)
 
     def test_metadata_fonts_match_and_group_dropdown_does_not_grow_card(self):
         self._goto(self.report_url, width=1024, height=768)
-        frame = self.page.locator('.widget-frame').first
+        frame = self.page.locator('.widget-frame:not([data-decoration])').first
         frame.locator('[data-comparison]').select_option('site')
         frame.locator('[data-action="apply"]').click()
         self.page.wait_for_timeout(300)

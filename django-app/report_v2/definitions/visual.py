@@ -6,15 +6,15 @@ from copy import deepcopy
 import re
 import yaml
 
-from .loader import load_report_definition
+from .loader import load_report_definition, flat_report_definition
 from .validation import validate_display, DisplayValidationError
 from ..projects.prime import get_project_definition
 from ..seeding import COLUMN_ALLOW_LIST
 
-STATIC_TYPES = {'text', 'divider'}
-PRESETS = {'value': [3, 3], 'table': [12, 5], 'line': [6, 4], 'bar': [6, 4],
-           'pie': [6, 4], 'confusion_matrix': [6, 4], 'boxplot': [6, 4],
-           'text': [12, 2], 'divider': [12, 1]}
+STATIC_TYPES = {'text', 'divider', 'heading'}
+PRESETS = {'value': [3, 3], 'table': [12, 5], 'line': [6, 6], 'bar': [6, 6],
+           'pie': [6, 6], 'confusion_matrix': [6, 7], 'boxplot': [6, 6],
+           'text': [12, 2], 'divider': [12, 1], 'heading': [12, 1]}
 
 
 def catalog():
@@ -104,6 +104,8 @@ def project_document(text):
     ids = [w['id'] for s in document['sections'] for w in s['widgets']]
     if len(set(ids)) != len(ids) or len(set(section_ids)) != len(section_ids):
         raise ValueError('Section and card identifiers must be unique.')
+    flat = flat_report_definition(document)
+    document["sections"] = [{"id": "canvas", "title": "", "widgets": flat["widgets"]}]
     return document
 
 
@@ -112,8 +114,10 @@ def transform(text, operation):
     if not isinstance(operation, dict) or operation.get('action') not in {'add','edit','delete','move','resize'}:
         raise ValueError('Choose a supported card action.')
     section = next((s for s in document['sections'] if s['id'] == operation.get('section_id')), None)
+    if section is None and operation.get('section_id') in {s['id'] for s in load_report_definition(text)['sections']} and len(document['sections']) == 1:
+        section = document['sections'][0]
     if section is None:
-        raise ValueError('Choose an existing section.')
+        raise ValueError('Choose an existing canvas.')
     cards = section['widgets']
     action = operation['action']
     card = next((w for w in cards if w['id'] == operation.get('widget_id')), None)
@@ -151,7 +155,7 @@ def transform(text, operation):
         cards.insert(index, card)
     else:
         card['layout'] = operation.get('layout')
-    serialized = yaml.safe_dump(document, sort_keys=False, allow_unicode=True)
+    serialized = yaml.safe_dump(flat_report_definition(document), sort_keys=False, allow_unicode=True)
     checked = project_document(serialized)
     if action in {'add','edit'}:
         validate_card(next(w for s in checked['sections'] for w in s['widgets'] if w['id'] == candidate['id']))

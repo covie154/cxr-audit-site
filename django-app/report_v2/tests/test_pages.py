@@ -267,7 +267,7 @@ class PublishedReportPageTests(TestCase):
 
         # Sections and widgets appear in declared (YAML) order.
         self.assertLess(
-            html_text.index("data-section-id=\"s1\""), html_text.index("data-section-id=\"s2\"")
+            html_text.index("data-widget-id=\"heading_s1\""), html_text.index("data-widget-id=\"heading_s2\"")
         )
         positions = [html_text.index(f'data-widget-id="{wid}"') for wid in ("v1", "t1", "v2")]
         self.assertEqual(positions, sorted(positions))
@@ -482,6 +482,7 @@ class PublishedReportPageTests(TestCase):
 
         # Every frame body carries the hidden server empty-message element report.js reads.
         frames = re.findall(r'data-widget-id="[^"]+".*?</article>', html_text, re.S)
+        frames = [frame for frame in frames if "data-decoration" not in frame]
         self.assertEqual(len(frames), 3)
         for frame in frames:
             self.assertIn('data-role="empty-message"', frame)

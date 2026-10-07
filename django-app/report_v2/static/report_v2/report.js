@@ -118,7 +118,7 @@
     const DEFAULT_EMPTY = 'No matching records in this window -- the dates or filters may exclude every record. Adjust the controls or reset them.';
 
     // Scope frames to this report or preview so their controls stay independent.
-    const frames = Array.from(root.querySelectorAll('.widget-frame'), (node) => {
+    const frames = Array.from(root.querySelectorAll('.widget-frame:not([data-decoration])'), (node) => {
         const placeholder = node.querySelector('[data-role="empty-message"]');
         return {
             id: node.dataset.widgetId,
@@ -244,7 +244,7 @@
         const reg = widgetRegistry();
         const kind = frame.type;
         let usedRegistry = false;
-        if (reg && (kind === 'text' || kind === 'divider' || kind === 'value' || kind === 'table' || kind === 'line' || kind === 'bar' || kind === 'pie' || kind === 'confusion_matrix' || kind === 'boxplot')) {
+        if (reg && (kind === 'heading' || kind === 'text' || kind === 'divider' || kind === 'value' || kind === 'table' || kind === 'line' || kind === 'bar' || kind === 'pie' || kind === 'confusion_matrix' || kind === 'boxplot')) {
             try {
                 if (frame.regInstance && !frame.regDisposed) {
                     reg.disposeInstance(frame.regInstance);

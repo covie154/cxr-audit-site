@@ -941,7 +941,7 @@ class SeedDatabaseIntegrationTests(TestCase):
             page = client.get("/report/overview/")
             self.assertEqual(page.status_code, 200)
             self.assertNotContains(page, "data-csv-download")
-            link = page.context["sections_ctx"][0]["widgets"][0]["csv_links"][0]["url"]
+            link = next(card for section in page.context["sections_ctx"] for card in section["widgets"] if card["csv_links"])["csv_links"][0]["url"]
             params = parse_qs(urlparse(link).query)
             self.assertEqual(params["date_from"], ["2025-12-12"])
             exported = client.get(link)

@@ -45,7 +45,7 @@
     </div>
     {% for section in sections_ctx %}
     <section class="report-section" data-section-id="{{ section.id }}">
-        <h2>{{ section.title }}</h2>
+        {% if section.title %}<h2>{{ section.title }}</h2>{% endif %}
         <div class="report-grid">
             {% for f in section.widgets %}
             {% include "report_v2/_widget_card.html" %}

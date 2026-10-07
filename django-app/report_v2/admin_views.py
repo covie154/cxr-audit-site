@@ -17,16 +17,16 @@ Security posture (the point of Task 12):
   a mutation URL too: the gate is the first statement inside the view, not a template nicety.
 * Every mutating view additionally carries ``@require_POST`` plus ``csrf_protect``, so a
   cross-site form post (no token) is rejected by ``CsrfViewMiddleware`` before the view body runs.
-* ``editor_publish`` is the **only** code path that may move a publication pointer, and only on an
-  explicit user action. ``editor_preview`` never publishes and never sends mail; a rejected publish
+* Publication changes require an explicit Publish, Unpublish, or Save on an already-published report. ``editor_preview`` never publishes and never sends mail; a rejected publish
   leaves the old pointer exactly where it was (Task 11's guarantee, relied upon, never bypassed).
-* Visual transformations update submitted YAML in memory; only Save and Publish persist changes.
+* Visual transformations update submitted YAML in memory; Save and publication actions persist changes.
 """
 from __future__ import annotations
 
 from collections import Counter
 import json
 import re
+import yaml
 from pathlib import Path
 from typing import Any
 from urllib.parse import quote
@@ -54,7 +54,7 @@ from .definitions.repository import (
     StaleRevisionError,
     default_root,
 )
-from .definitions.loader import DefinitionError, load_report_definition, load_policy
+from .definitions.loader import DefinitionError, load_report_definition, load_policy, flat_report_definition
 from .views import _evaluate, _widget_frame, _validate_overrides, OverrideRejectedError
 
 __all__ = [
@@ -315,6 +315,7 @@ def editor(request, def_id: str | None = None):
     }[source_state]
     widgets = []
     try:
+        draft_text = yaml.safe_dump(flat_report_definition(load_report_definition(draft_text)), sort_keys=False, allow_unicode=True)
         layout = load_report_definition(draft_text)
         widgets = [{"id": widget["id"], "title": widget.get("title", widget["id"])}
                    for section in layout.get("sections", []) for widget in section.get("widgets", [])]
@@ -345,12 +346,16 @@ def editor(request, def_id: str | None = None):
 @csrf_protect
 @require_admin
 def editor_save_draft(request):
-    """Persist a draft only. Never validates, never publishes, never mails."""
+    """Save private edits; valid edits to an already-published report update its live version."""
     def_id = str(_param(request, "def_id", "")).strip()
     yaml_text = str(_param(request, "yaml_text", ""))
     if not def_id:
         return JsonResponse({"error": "def_id is required"}, status=400)
     repo = _repository()
+    try:
+        yaml_text = yaml.safe_dump(flat_report_definition(load_report_definition(yaml_text)), sort_keys=False, allow_unicode=True)
+    except DefinitionError:
+        pass
     try:
         revision = repo.save_draft(def_id, yaml_text, expected_revision=_expected_revision(request))
     except (StaleRevisionError,):
@@ -363,8 +368,18 @@ def editor_save_draft(request):
     except (RepositoryError,) as exc:
         return JsonResponse({"error": str(exc), "def_id": def_id}, status=400)
     errors = repo.validate_preview(def_id, yaml_text)
-    return JsonResponse({"def_id": def_id, "revision": revision, "status": "saved",
-                         "valid": not errors, "errors": errors}, status=200)
+    published_version = repo.get_current_version(def_id)
+    if published_version and not errors:
+        try:
+            receipt = repo.publish(def_id, yaml_text, expected_revision=revision, expected_version=published_version)
+            published_version = receipt.version
+        except StaleRevisionError:
+            return JsonResponse({"error": "version conflict: reload", "status": "conflict"}, status=409)
+        except RepositoryError as exc:
+            return JsonResponse({"error": str(exc)}, status=400)
+    return JsonResponse({"def_id": def_id, "revision": revision, "yaml_text": yaml_text, "status": "saved",
+                         "valid": not errors, "errors": errors, "published_version": published_version,
+                         "published": bool(published_version and not errors)}, status=200)
 
 
 @require_POST
@@ -386,13 +401,13 @@ def editor_preview(request):
     payload: dict[str, Any] = {"def_id": def_id, "errors": errors, "valid": not errors, "preview": None}
     if errors:
         return JsonResponse(payload, status=200)
-    layout = load_report_definition(yaml_text)
+    layout = visual.project_document(yaml_text)
     widgets = [widget for section in layout.get("sections", []) for widget in section.get("widgets", [])]
     payload["widgets"] = [{"id": widget["id"], "title": widget.get("title", widget["id"])} for widget in widgets]
     if str(_param(request, "list_only", "")) == "1":
         return JsonResponse(payload)
     widget_id = str(_param(request, "widget_id", "")).strip()
-    widget = next((widget for widget in widgets if widget["id"] == widget_id), None) if widget_id else next(iter(widgets), None)
+    widget = next((widget for widget in widgets if widget["id"] == widget_id), None) if widget_id else next((card for card in widgets if card["type"] != "heading"), next(iter(widgets), None))
     if widget is None:
         payload["preview_error"] = "Select a card from this report to preview." if widget_id else "Add a card to preview this report."
         return JsonResponse(payload, status=400 if widget_id else 200)
@@ -502,6 +517,7 @@ def editor_new(request):
             scaffold = re.sub(r"^title:.*$", lambda match: "title: " + json.dumps(title), scaffold, count=1, flags=re.MULTILINE)
         except (seeding.SeedError, RepositoryError) as exc:
             return JsonResponse({"error": str(exc)}, status=400)
+    scaffold = yaml.safe_dump(flat_report_definition(load_report_definition(scaffold)), sort_keys=False, allow_unicode=True)
     try:
         revision = repo.save_draft(def_id, scaffold, expected_revision=None, create_only=True)
     except StaleRevisionError as exc:

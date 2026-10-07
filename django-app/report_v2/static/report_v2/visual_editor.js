@@ -2,7 +2,7 @@
 /* Visual layout editor: the canvas is a projection of the current YAML textarea. */
 (function () {
   "use strict";
-  var TYPES = { value: ["Value", "#"], text: ["Static text", "T"], divider: ["Divider", "—"],
+  var TYPES = { heading: ["Heading", "H"], value: ["Value", "#"], text: ["Static text", "T"], divider: ["Divider", "—"],
     table: ["Table", "▦"], line: ["Line chart", "⌁"], bar: ["Bar chart", "▥"], pie: ["Pie chart", "◔"],
     confusion_matrix: ["Confusion matrix", "⊞"], boxplot: ["Box plot", "⊟"] };
   function clone(value) { return JSON.parse(JSON.stringify(value)); }
@@ -97,16 +97,10 @@
       canvas.replaceChildren();
       layout.sections.forEach(function (section) {
         var container = el("section", undefined, "visual-section"); container.dataset.sectionId = section.id;
-        var header = el("header", undefined, "visual-section-header"); header.appendChild(el("h3", section.title));
-        var select = el("select"); select.setAttribute("aria-label", "Add card to " + section.title);
-        select.appendChild(new Option("+ Add card", ""));
-        Object.keys(TYPES).forEach(function (type) { select.appendChild(new Option(TYPES[type][1] + " " + TYPES[type][0], type)); });
-        select.addEventListener("change", function () { if (select.value) { openOptions(section, null, select.value); select.value = ""; } });
-        header.appendChild(select); container.appendChild(header);
         var grid = el("div", undefined, "visual-grid");
         grid.style.setProperty("--visual-row-height", layout.grid.row_height_px + "px");
         section.widgets.forEach(function (card) {
-          var node = el("article", undefined, "visual-card"); node.tabIndex = 0; node.dataset.widgetId = card.id;
+          var node = el("article", undefined, "visual-card"); node.tabIndex = 0; node.dataset.widgetId = card.id; node.dataset.type = card.type;
           node.style.gridColumn = "span " + card.layout.width;
           node.style.gridRow = "span " + card.layout.height;
           var heading = el("header", undefined, "visual-card-header");
@@ -114,7 +108,7 @@
           heading.append(handle, el("h4", card.title)); node.appendChild(heading);
           if (card.type === "text") { node.appendChild(el("p", card.text, "visual-text")); }
           else if (card.type === "divider") { node.appendChild(el("hr")); }
-          else { node.appendChild(el("span", TYPES[card.type][1], "visual-icon")); node.appendChild(el("p", TYPES[card.type][0], "editor-help")); }
+          else if (card.type !== "heading") { node.appendChild(el("span", TYPES[card.type][1], "visual-icon")); node.appendChild(el("p", TYPES[card.type][0], "editor-help")); }
           var actions = el("div", undefined, "visual-card-actions");
           actions.append(button("Edit", "edit"), button("Preview", "preview")); node.appendChild(actions);
           var resize = button("◢", "resize", "visual-resize"); resize.setAttribute("aria-label", "Resize " + card.title); node.appendChild(resize);
@@ -155,7 +149,7 @@
     function displayFields(selector, shown) { form.querySelectorAll(selector).forEach(function (node) { node.hidden = !shown; }); }
     function refreshGuide(reset) {
       var type = field("type").value, original = selected.card || {}, query = original.query || {}, m;
-      var dynamic = type !== "text" && type !== "divider";
+      var dynamic = type !== "text" && type !== "divider" && type !== "heading";
       displayFields("[data-dynamic]", dynamic); displayFields("[data-text]", type === "text");
       displayFields("[data-line]", type === "line"); displayFields("[data-pie]", type === "pie");
       displayFields("[data-box]", type === "boxplot"); displayFields("[data-matrix]", type === "confusion_matrix");
@@ -222,7 +216,7 @@
       var card = clone(selected.card || {}), type = field("type").value;
       card.title = field("title").value.trim(); card.type = type;
       card.layout = { width: Number(field("width").value), height: Number(field("height").value) };
-      if (type === "text" || type === "divider") {
+      if (type === "text" || type === "divider" || type === "heading") {
         Object.keys(card).forEach(function (key) { if (["id", "title", "type", "layout"].indexOf(key) < 0) { delete card[key]; } });
         if (type === "text") { card.text = field("text").value; }
         return card;
@@ -332,7 +326,14 @@
 
     });
     form.addEventListener("submit", function (event) { event.preventDefault(); submit(false); });
-    field("type").addEventListener("change", function () { refreshGuide(true); });
+    field("type").addEventListener("change", function () {
+      refreshGuide(true);
+      if (!selected.card) {
+        if (Object.values(TYPES).some(function (type) { return type[0] === field("title").value; })) { field("title").value = TYPES[field("type").value][0]; }
+        var preset = catalog.presets[field("type").value];
+        field("width").value = preset[0]; field("height").value = preset[1];
+      }
+    });
     field("measurement").addEventListener("change", function () { refreshGuide(false); });
     form.querySelector('[data-role="comparison-options"]').addEventListener("change", function () {
       choices(field("default_group"), catalog.dimensions.filter(function (d) { return checked("comparison").indexOf(d.id) >= 0; }), field("default_group").value, "None");

@@ -30,7 +30,7 @@
     <main class="print-main">
         {% for w in print.widgets %}
         <section class="print-widget" data-print-widget="{{ w.id }}">
-            {% if w.type == "text" %}<h2>{{ w.title }}</h2><p style="white-space:pre-wrap;">{{ w.text }}</p>
+            {% if w.type == "heading" %}<h2>{{ w.title }}</h2>{% elif w.type == "text" %}<h2>{{ w.title }}</h2><p style="white-space:pre-wrap;">{{ w.text }}</p>
             {% elif w.type == "divider" %}<hr>
             {% else %}
             <h2>{{ w.title }} <small>{{ w.type }}</small></h2>

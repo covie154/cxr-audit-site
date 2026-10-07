@@ -4,6 +4,7 @@ import { el, clearContainer } from "./registry.mjs";
 export function render(container, payload) {
     clearContainer(container);
     if (payload.static_type === "divider") { container.appendChild(el("hr")); }
+    else if (payload.static_type === "heading") { return { container, resize() {}, dispose() {} }; }
     else { container.appendChild(el("p", "widget-static-text", payload.text || "")); }
     return { container, resize() {}, dispose() {} };
 }

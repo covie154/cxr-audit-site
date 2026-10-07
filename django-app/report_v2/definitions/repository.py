@@ -447,6 +447,7 @@ class DefinitionRepository:
         yaml_text: str,
         *,
         expected_revision: str | None = None,
+        expected_version: str | None = None,
     ) -> PublishReceipt:
         """Publish a definition immutably. Returns PublishReceipt.
 
@@ -494,6 +495,8 @@ class DefinitionRepository:
 
             # (4) version computation + duplicate check
             current_pointer = self._read_pointer(def_id)
+            if expected_version is not None and current_pointer != expected_version:
+                raise StaleRevisionError("The publication changed. Reload before saving.")
             version = self._next_version(def_id, current_pointer)
             blob_path = self._blob_path(def_id, version)
             if blob_path.exists():

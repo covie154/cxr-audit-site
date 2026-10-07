@@ -4,6 +4,7 @@
 """Real Chromium checks with the existing synthetic-only throwaway server."""
 import unittest
 import yaml
+from report_v2.definitions.loader import load_report_definition
 from report_v2.tests import test_browser_layout as harness
 
 
@@ -16,24 +17,24 @@ class VisualEditorBrowserTests(unittest.TestCase):
         self.page.wait_for_function("document.querySelector('[data-role=visual-status]').textContent === ''")
 
     def draft(self):
-        return yaml.safe_load(self.page.locator('#id_yaml_text').input_value())
+        return load_report_definition(self.page.locator('#id_yaml_text').input_value())
 
     def test_complete_visual_workflow(self):
         errors = []
         self.page.on('pageerror', lambda error: errors.append(str(error)))
         self.page.goto(self.server.base + '/layout/editor/browser_layout_14a/')
         self.ready()
-        self.assertEqual(self.page.locator('.visual-card').count(), 4)
+        self.assertEqual(self.page.locator('.visual-card').count(), 5)
         original = self.page.locator('#id_yaml_text').input_value()
-        select = self.page.locator('.visual-section-header select')
-        select.select_option('text')
+        self.page.locator('[data-visual-action=add-card]').click()
         form = self.page.locator('[data-role=card-options-form]')
+        form.locator('[name=type]').select_option('text')
         form.locator('[name=title]').fill('Synthetic note')
         form.locator('[name=text]').fill('Safe <script>text</script>\nSecond line')
         form.locator('[type=submit]').click()
         self.page.locator('[data-role=card-options]').wait_for(state='hidden')
         self.ready()
-        self.assertEqual(self.page.locator('.visual-card').count(), 5)
+        self.assertEqual(self.page.locator('.visual-card').count(), 6)
         self.assertEqual(self.draft()['sections'][0]['widgets'][-1]['type'], 'text')
         note = self.page.locator('.visual-card').last
         note.hover(); note.locator('[data-visual-action=preview]').click()
@@ -46,7 +47,7 @@ class VisualEditorBrowserTests(unittest.TestCase):
         self.assertEqual(self.page.locator('#id_yaml_text').input_value(), original)
 
         # Guided edits and options Preview do not commit until Apply.
-        first = self.page.locator('.visual-card').first
+        first = self.page.locator('[data-widget-id=bv]')
         first.hover(); first.locator('[data-visual-action=edit]').click()
         form.locator('[name=title]').fill('Unsaved preview title')
         form.locator('[name=width]').fill('6')
@@ -60,26 +61,26 @@ class VisualEditorBrowserTests(unittest.TestCase):
         self.page.wait_for_function("!document.querySelector('[data-role=card-options]').open || document.querySelector('[data-role=card-form-error]').textContent")
         self.assertEqual(form.locator('[data-role=card-form-error]').inner_text(), '')
         self.page.locator('[data-role=card-options]').wait_for(state='hidden'); self.ready()
-        self.assertEqual(self.draft()['sections'][0]['widgets'][0]['layout']['width'], 6)
+        self.assertEqual(next(w for w in self.draft()['sections'][0]['widgets'] if w['id'] == 'bv')['layout']['width'], 6)
         self.page.locator('[data-visual-action=undo]').click(); self.ready()
 
         # Snapped resize commits one change, then undo restores it.
-        node = self.page.locator('.visual-card').first
+        node = self.page.locator('[data-widget-id=bv]')
         handle = node.locator('.visual-resize').bounding_box()
         grid = self.page.locator('.visual-grid').bounding_box()
         self.page.mouse.move(handle['x'] + 5, handle['y'] + 5)
         self.page.mouse.down(); self.page.mouse.move(handle['x'] + 5 + grid['width'] / 12, handle['y'] + 5, steps=5); self.page.mouse.up()
         self.ready()
-        self.assertEqual(self.draft()['sections'][0]['widgets'][0]['layout']['width'], 4)
+        self.assertEqual(next(w for w in self.draft()['sections'][0]['widgets'] if w['id'] == 'bv')['layout']['width'], 4)
         self.page.locator('[data-visual-action=undo]').click(); self.ready()
 
         # Moving via a handle reorders within the section without changing identity.
-        source = self.page.locator('.visual-card').first.locator('.visual-move').bounding_box()
-        target = self.page.locator('.visual-card').nth(1).bounding_box()
+        source = self.page.locator('[data-widget-id=bv]').locator('.visual-move').bounding_box()
+        target = self.page.locator('[data-widget-id=bt]').bounding_box()
         self.page.mouse.move(source['x'] + 5, source['y'] + 5); self.page.mouse.down()
         self.page.mouse.move(target['x'] + target['width'] - 20, target['y'] + 40, steps=8); self.page.mouse.up()
         self.ready()
-        self.assertEqual(self.draft()['sections'][0]['widgets'][1]['id'], 'bv')
+        self.assertEqual(self.draft()['sections'][0]['widgets'][2]['id'], 'bv')
         self.page.locator('[data-visual-action=undo]').click(); self.ready()
 
         # Invalid manual YAML pauses the canvas; undo retains the original draft.
@@ -100,8 +101,8 @@ class VisualEditorBrowserTests(unittest.TestCase):
         self.ready()
         before = self.page.locator('#id_yaml_text').input_value()
         self.assertLessEqual(self.page.evaluate('document.documentElement.scrollWidth'), 391)
-        self.page.locator('.visual-card').first.click()
-        self.page.locator('.visual-card').first.locator('[data-visual-action=edit]').click()
+        self.page.locator('[data-widget-id=bv]').click()
+        self.page.locator('[data-widget-id=bv]').locator('[data-visual-action=edit]').click()
         self.assertEqual(self.page.locator('[name=width]').input_value(), '3')
         self.page.locator('[data-visual-action=cancel]').click()
         self.assertEqual(self.page.locator('#id_yaml_text').input_value(), before)
@@ -114,7 +115,7 @@ class VisualEditorBrowserTests(unittest.TestCase):
         yaml_input = self.page.locator('#id_yaml_text')
         yaml_input.fill(yaml_input.input_value().replace('row_height_px: 64', 'row_height_px: 80'))
         self.page.locator('#visualEditorTab').click(); self.ready()
-        first = self.page.locator('.visual-card').first
+        first = self.page.locator('[data-widget-id=bv]')
         first.click()
         self.page.locator('[data-visual-action=add-card]').click()
         form = self.page.locator('[data-role=card-options-form]')
@@ -126,8 +127,8 @@ class VisualEditorBrowserTests(unittest.TestCase):
         self.page.locator('[data-role=card-options]').wait_for(state='hidden')
         self.ready()
         cards = self.draft()['sections'][0]['widgets']
-        self.assertEqual(cards[1]['title'], 'Row-end synthetic card')
-        node = self.page.locator('.visual-card').nth(1)
+        self.assertEqual(cards[2]['title'], 'Row-end synthetic card')
+        node = self.page.locator('.visual-card').nth(2)
         node.locator('[data-visual-action=preview]').click()
         frame = self.page.locator('[data-role=preview-output] .widget-frame')
         frame.wait_for(state='visible')
@@ -148,3 +149,27 @@ class VisualEditorBrowserTests(unittest.TestCase):
         self.page.locator('[data-action=publish]').click()
         self.page.wait_for_function("document.querySelector('[data-action=publish]').textContent === 'Publish'")
         self.assertEqual(self.page.locator('[data-action=publish]').inner_text(), 'Publish')
+
+    def test_heading_divider_defaults_and_toolbar(self):
+        self.page.goto(self.server.base + '/layout/editor/browser_layout_14a/')
+        self.ready()
+        undo = self.page.locator('[data-visual-action=undo]').bounding_box()
+        add = self.page.locator('[data-visual-action=add-card]').bounding_box()
+        self.assertAlmostEqual(add['x'] - undo['x'] - undo['width'], 8, delta=1)
+        self.assertAlmostEqual(add['y'], undo['y'], delta=1)
+        self.assertNotIn('Visual edits update YAML', self.page.locator('[data-editor]').inner_text())
+        self.assertEqual(self.page.locator('.visual-grid').count(), 1)
+        form = self.page.locator('[data-role=card-options-form]')
+        for kind in ('heading', 'divider'):
+            self.page.locator('[data-visual-action=add-card]').click()
+            form.locator('[name=type]').select_option(kind)
+            self.assertEqual(form.locator('[name=width]').input_value(), '12')
+            self.assertEqual(form.locator('[name=height]').input_value(), '1')
+            form.locator('[name=title]').fill('Synthetic ' + kind)
+            form.locator('[type=submit]').click()
+            self.page.locator('[data-role=card-options]').wait_for(state='hidden'); self.ready()
+        divider = self.page.locator('.visual-card[data-type=divider]').last
+        self.assertEqual(divider.locator('hr').count(), 1)
+        self.assertEqual(divider.evaluate('(node) => getComputedStyle(node).backgroundColor'), 'rgba(0, 0, 0, 0)')
+        self.assertEqual(divider.evaluate('(node) => getComputedStyle(node).borderTopColor'), 'rgba(0, 0, 0, 0)')
+        self.assertNotIn('sections:', self.page.locator('#id_yaml_text').input_value())

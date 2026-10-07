@@ -12,9 +12,8 @@
         <div class="visual-toolbar">
             <button type="button" class="btn btn-outline" data-visual-action="undo" disabled>Undo</button>
             <button type="button" class="btn btn-outline" data-visual-action="add-card" disabled>Add card</button>
-            <p class="editor-help">Drag the move handle to arrange cards. Drag the corner to resize.</p>
         </div>
-        <p class="editor-help">Visual edits update YAML and normalize its formatting, including removing comments.</p>
+        <p class="editor-help">Drag the move handle to arrange cards. Drag the corner to resize.</p>
         <p class="visual-status" data-role="visual-status" role="status">Loading layout…</p>
         <div class="visual-canvas" data-role="visual-canvas"></div>
     </div>
@@ -33,7 +32,7 @@
         Version conflict: someone else saved this report. Reload before saving again.
     </p>
     <div class="editor-actions" aria-label="Draft actions">
-        <button type="button" class="btn btn-primary" data-action="save" title="Save YAML without changing the published report">Save draft</button>
+        <button type="button" class="btn btn-primary" data-action="save" title="Save edits; published reports update immediately">Save</button>
         <button type="button" class="btn btn-outline" data-action="preview" title="Validate YAML and evaluate the selected card using current study data">Preview</button>
         <button type="button" class="btn btn-success" data-action="publish" data-version="{{ published_version|default:'' }}">{% if published_version %}Unpublish{% else %}Publish{% endif %}</button>
         {% if published_version %}<a class="btn btn-outline" data-role="view-report" href="{% url 'report_v2:page' def_id %}">View report</a>{% else %}<button type="button" class="btn btn-outline" data-role="view-report" disabled>View report</button>{% endif %}

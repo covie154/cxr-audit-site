@@ -139,3 +139,26 @@
 .report-grid { grid-auto-rows: var(--report-row-height, 64px); }
 .report-grid > .widget-frame { height: calc(var(--widget-rows, 1) * var(--report-row-height, 64px) + (var(--widget-rows, 1) - 1) * 16px); box-sizing: border-box; overflow: auto; }
 @media (max-width: 700px) { .report-grid { grid-auto-rows: auto; } .report-grid > .widget-frame { grid-row: auto !important; } }
+
+/* Card content uses the height left after its heading and optional controls. */
+.report-grid > .widget-frame { padding: 16px; }
+.widget-frame > .widget-settings, .widget-frame > h2, .widget-frame > h3 { flex: 0 0 auto; margin: 0; }
+.widget-frame .widget-body { flex: 1; min-height: 0; max-height: none; display: flex; flex-direction: column; container-type: size; }
+.widget-live, .widget-live > .widget-mount, .widget-live > .widget, .widget-chart, .widget-chart-box { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.widget-live { height: 100%; }
+.widget-chart, .widget-chart-box { height: 100%; }
+.widget-period { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.widget-period + .widget-period { margin-top: 8px; }
+.widget-period > .widget { flex: 1; min-height: 0; }
+.widget-frame[data-type="confusion_matrix"] .widget-body { overflow: auto; }
+.widget-confusion_matrix { height: 100%; }
+.widget-confusion-plot { width: min(100%, calc(100cqh - 70px + 122px)); margin: auto; flex: 0 0 auto; }
+.widget-confusion td { font-size: clamp(.75rem, 7cqh, 1.5rem); min-height: 0; }
+.widget-confusion th, .widget-confusion th:first-child { font-size: clamp(.65rem, 4cqh, 1rem); padding: 4px 2px; }
+.widget-confusion-prediction, .widget-confusion-axis, .widget-confusion_matrix .widget-summary-line { font-size: clamp(.65rem, 4cqh, 1rem); }
+.widget-confusion_matrix .widget-summary-line { margin: 4px 0 0; flex: 0 0 auto; }
+.widget-primary-value { font-size: clamp(1rem, min(20cqh, 14cqw), 3rem); margin: 4px 0; }
+.widget-frame[data-type="heading"], .widget-frame[data-type="divider"] { background: transparent; border-color: transparent; box-shadow: none; justify-content: center; }
+.widget-frame[data-type="heading"] .widget-body { display: none; }
+
+.widget-frame[data-type="divider"] hr { margin: auto 0; flex: 0 0 auto; }

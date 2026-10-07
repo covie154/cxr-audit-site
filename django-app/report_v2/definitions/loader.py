@@ -651,7 +651,28 @@ def load_report_definition(text, *, source="<report-definition>", **limits):
     date_problems = validate_calendar_dates(data, source=source)
     if date_problems:
         raise date_problems[0]
+    if "widgets" in data:
+        data["sections"] = [{"id": "canvas", "title": "", "widgets": data.pop("widgets")}]
     return data
+
+
+def flat_report_definition(document):
+    """Convert legacy heading groups to ordered cards without changing existing card IDs."""
+    from copy import deepcopy
+    result = deepcopy(document)
+    sections = result.pop("sections", [])
+    cards = result.get("widgets", [])
+    used = {card["id"] for section in sections for card in section["widgets"]} | {card["id"] for card in cards}
+    for section in sections:
+        if section.get("title"):
+            identifier = "heading_" + section["id"]
+            while identifier in used:
+                identifier += "_heading"
+            used.add(identifier)
+            cards.append({"id": identifier, "title": section["title"], "type": "heading", "layout": {"width": 12, "height": 1}})
+        cards.extend(section["widgets"])
+    result["widgets"] = cards
+    return result
 
 
 def load_policy(text, *, source="<policy>", **limits):

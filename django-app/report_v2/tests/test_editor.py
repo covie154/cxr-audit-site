@@ -22,7 +22,7 @@ from django.urls import Resolver404, resolve, reverse
 
 from report_v2 import admin_views as av
 from report_v2 import views
-from report_v2.definitions.repository import DefinitionRepository, DraftNotFoundError, default_root
+from report_v2.definitions.repository import DefinitionRepository, DraftNotFoundError, StaleRevisionError, default_root
 
 # Synthetic, non-clinical fixtures reused verbatim in spirit from Task 11: a minimal valid report and a
 # YAML that the strict loader (anchors) rejects. Neither carries any clinical identifier.
@@ -238,7 +238,7 @@ class EditorAdminSecurityTests(TestCase):
         )
         self.assertEqual(saved.status_code, 200)
         rev1 = saved.json()["revision"]
-        self.assertEqual(self._repo().read_draft("concurrent")[0], VALID_YAML)
+        self.assertEqual(self._repo().read_draft("concurrent")[0], saved.json()["yaml_text"])
 
         # A concurrent writer advances the draft behind the client's back.
         advanced = VALID_YAML.replace("title: T", "title: T-advanced")
@@ -375,7 +375,7 @@ class EditorAdminSecurityTests(TestCase):
         self.assertEqual(saved.status_code, 200)
         self.assertTrue(saved.json()["revision"])
         self.assertTrue((self.root / "drafts" / "listed").exists())
-        self.assertEqual(self._repo().read_draft("listed")[0], published_text)
+        self.assertEqual(self._repo().read_draft("listed")[0], saved.json()["yaml_text"])
 
         again = self._as_admin().get("/layout/editor/listed/", follow=True).content.decode("utf-8")
         self.assertIn('data-source-state="draft"', again)
@@ -469,7 +469,7 @@ class EditorAdminSecurityTests(TestCase):
         from unittest.mock import patch
         with patch("report_v2.data.fetch_project_rows", return_value=[]) as fetch:
             cards = self._as_admin().post(_MUTATION_PATHS["preview"], {"def_id": "cards", "yaml_text": draft, "list_only": "1"})
-            self.assertEqual([card["id"] for card in cards.json()["widgets"]], ["first", "second"])
+            self.assertEqual([card["id"] for card in cards.json()["widgets"]], ["heading_s", "first", "second"])
             fetch.assert_not_called()
             result = self._as_admin().post(_MUTATION_PATHS["preview"], {"def_id": "cards", "yaml_text": draft, "widget_id": "second"})
             self.assertEqual(result.json()["widget_id"], "second")
@@ -519,7 +519,7 @@ class EditorAdminSecurityTests(TestCase):
         text, _ = self._repo().read_draft("basic_example")
         self.assertEqual(self._repo().validate_preview("basic_example", text), [])
         layout = load_report_definition(text)
-        self.assertEqual(layout["sections"][0]["widgets"][0]["query"]["measurement"], "record_count")
+        self.assertEqual(next(w for w in layout["sections"][0]["widgets"] if w["type"] == "value")["query"]["measurement"], "record_count")
 
     def test_catalog_create_follows_reports(self):
         self._as_admin().post(_MUTATION_PATHS["new"], {"name": "Placement check"})
@@ -623,3 +623,20 @@ class EditorAdminSecurityTests(TestCase):
         repo._draft_path("cycle").unlink()
         repo.unpublish("cycle", expected_version="cycle@r2")
         self.assertIn("height: 5", repo.read_draft("cycle")[0])
+
+    def test_save_updates_live_report_only_when_valid(self):
+        client = self._as_admin()
+        repo = self._repo()
+        first = client.post(_MUTATION_PATHS["publish"], {"def_id": "save_live", "yaml_text": VALID_YAML})
+        saved = client.post(_MUTATION_PATHS["save"], {"def_id": "save_live", "yaml_text": VALID_YAML.replace("height: 3", "height: 5")})
+        self.assertTrue(saved.json()["published"])
+        self.assertEqual(repo.get_current_version("save_live"), "save_live@r2")
+        self.assertIn("height: 5", repo._blob_path("save_live", "save_live@r2").read_text())
+        invalid = client.post(_MUTATION_PATHS["save"], {"def_id": "save_live", "yaml_text": INVALID_YAML, "expected_revision": saved.json()["revision"]})
+        self.assertFalse(invalid.json()["published"])
+        self.assertEqual(repo.get_current_version("save_live"), "save_live@r2")
+        self.assertEqual(repo.read_draft("save_live")[0], INVALID_YAML)
+        repo.unpublish("save_live", expected_version="save_live@r2")
+        with self.assertRaises(StaleRevisionError):
+            repo.publish("save_live", VALID_YAML, expected_version="save_live@r2")
+        self.assertIsNone(repo.get_current_version("save_live"))

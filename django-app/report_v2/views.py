@@ -180,7 +180,7 @@ def _build_specs(layout: dict) -> dict[str, WidgetSpec]:
 
 def _allowed_controls(widget: dict) -> dict:
     """The client-visible control surface for a widget (a copy of its controls + a few read-only hints)."""
-    if widget.get("type") in {"text", "divider"}:
+    if widget.get("type") in {"text", "divider", "heading"}:
         return {"enabled": False}
     controls = widget.get("controls") or {}
     query = widget.get("query") or {}
@@ -340,8 +340,8 @@ def _evaluate(
     time_grouping: str | None = None,
 ) -> dict:
     """Evaluate one widget into a JSON-safe payload dict. NEVER raises for a domain failure."""
-    if widget.get("type") in {"text", "divider"}:
-        return {"widget_id": widget["id"], "static_type": widget["type"], "text": widget.get("text", "")}
+    if widget.get("type") in {"text", "divider", "heading"}:
+        return {"widget_id": widget["id"], "static_type": widget["type"], "text": widget.get("text", ""), "title": widget.get("title", "")}
     if rows is None:
         rows = data.fetch_project_rows(_PROJECT_ID, layout_widget=widget)
     project = get_project_definition()
@@ -586,8 +586,12 @@ def report_page(request, slug: str):
     except data.PublishedNotFoundError as exc:
         raise Resolver404(f"unknown report {slug!r}") from exc
 
+    from .definitions.loader import flat_report_definition
+    canvas = flat_report_definition(layout)
     sections_ctx = []
-    for section in layout.get("sections") or []:
+    # Generated legacy headings are decorative until the definition is saved in flat form.
+    legacy_cards = _layout_widgets(layout)
+    for section in [{"id": "canvas", "title": "", "widgets": canvas["widgets"]}]:
         frames = []
         for widget in section.get("widgets") or []:
             widget_id = widget.get("id")
@@ -595,7 +599,11 @@ def report_page(request, slug: str):
                 payload = _evaluate(layout, widget)
             except Exception as exc:  # a single bad frame must not 500 the page or its siblings
                 payload = {"widget_id": widget_id, "error": str(exc)}
-            frames.append(_widget_frame(slug, version, widget, payload))
+            frame = _widget_frame(slug, version, widget, payload)
+            if widget_id not in legacy_cards:
+                frame["context_token"] = ""
+                frame["decoration"] = True
+            frames.append(frame)
         sections_ctx.append(
             {
                 "id": section.get("id"),

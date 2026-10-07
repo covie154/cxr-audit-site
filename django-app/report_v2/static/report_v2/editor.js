@@ -58,7 +58,7 @@
     dirty = Boolean(flag);
     if (dirtyNode) {
       dirtyNode.setAttribute("data-dirty", dirty ? "true" : "false");
-      dirtyNode.textContent = dirty ? "Unsaved changes. Save draft to keep them." : "No unsaved changes.";
+      dirtyNode.textContent = dirty ? "Unsaved changes. Save to keep them." : "No unsaved changes.";
     }
   }
 
@@ -164,10 +164,18 @@
         showErrors([data.error || "the draft could not be saved"]);
         return;
       }
+      if (textarea && textarea.value === submittedText && data.yaml_text) {
+        textarea.value = data.yaml_text;
+        submittedText = data.yaml_text;
+        textarea.dispatchEvent(new Event("input", { bubbles: true }));
+      }
       savedText = submittedText;
+      var publication = root.querySelector('[data-action="publish"]');
+      if (publication && data.published_version) { publication.setAttribute("data-version", data.published_version); }
       setRevision(data.revision);
       setDirty(textarea && textarea.value !== savedText);
       if (!textarea || textarea.value === submittedText) { showErrors(data.errors || []); }
+      if (dirtyNode && !dirty && data.published) { dirtyNode.textContent = "Saved and published."; }
     });
   }
 

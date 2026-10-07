@@ -27,13 +27,13 @@ class VisualEditorTests(SimpleTestCase):
         card = deepcopy(original['sections'][0]['widgets'][0])
         card['title'] = 'Edited'; card['layout']['width'] = 6
         text, doc = self.operation('edit', card=card)
-        self.assertEqual(doc['sections'][0]['widgets'][0]['query'], original['sections'][0]['widgets'][0]['query'])
+        self.assertEqual(doc['sections'][0]['widgets'][1]['query'], original['sections'][0]['widgets'][0]['query'])
         self.assertEqual(doc['id'], original['id'])
         self.assertEqual(load_report_definition(text), doc)
         with self.assertRaises((DefinitionError, ValueError)):
             self.operation('resize', layout={'width': 13, 'height': 2})
-        with self.assertRaises(ValueError):
-            self.operation('delete')
+        _, remaining = self.operation('delete')
+        self.assertEqual(remaining['sections'][0]['widgets'][0]['type'], 'heading')
         with self.assertRaises(ValueError):
             self.operation('edit', card={**card, 'id': 'other'})
         with self.assertRaises(ValueError):
@@ -44,11 +44,11 @@ class VisualEditorTests(SimpleTestCase):
     def test_add_move_delete_and_static_schema(self):
         text, doc = self.operation('add', card={'title': 'Note', 'type': 'text', 'text': '<script>alert(1)</script>\nNext line', 'layout': {'width': 12, 'height': 2}})
         card_id = doc['sections'][0]['widgets'][-1]['id']
-        moved, doc = visual.transform(text, {'action': 'move', 'section_id': 's', 'widget_id': card_id, 'index': 0})
+        moved, doc = visual.transform(text, {'action': 'move', 'section_id': 'canvas', 'widget_id': card_id, 'index': 0})
         self.assertEqual(doc['sections'][0]['widgets'][0]['id'], card_id)
-        removed, doc = visual.transform(moved, {'action': 'delete', 'section_id': 's', 'widget_id': card_id})
-        self.assertEqual(doc, load_report_definition(VALID_YAML))
-        bad = yaml.safe_load(text); bad['sections'][0]['widgets'][-1]['query'] = {'measurement': 'record_count', 'inputs': {}}
+        removed, doc = visual.transform(moved, {'action': 'delete', 'section_id': 'canvas', 'widget_id': card_id})
+        self.assertEqual(doc, visual.project_document(VALID_YAML))
+        bad = yaml.safe_load(text); bad['widgets'][-1]['query'] = {'measurement': 'record_count', 'inputs': {}}
         with self.assertRaises(DefinitionError):
             load_report_definition(yaml.safe_dump(bad))
 
@@ -92,7 +92,7 @@ class VisualEditorTests(SimpleTestCase):
         text, document = self.operation('add', card={
             'title': 'Divider', 'type': 'divider', 'layout': {'width': 12, 'height': 1},
         })
-        dynamic, divider = document['sections'][0]['widgets']
+        heading, dynamic, divider = document['sections'][0]['widgets']
         with patch.object(views.data, 'fetch_project_rows', side_effect=AssertionError('no clinical read')):
             result = views._evaluate(document, dynamic, rows=[])
             static_result = views._evaluate(document, divider)
@@ -106,7 +106,27 @@ class VisualEditorTests(SimpleTestCase):
     def test_add_card_inserts_at_row_end_and_rejects_invalid_position(self):
         card = {'title': 'Note', 'type': 'text', 'text': 'Synthetic', 'layout': {'width': 2, 'height': 3}}
         text, document = self.operation('add', card=card, index=0)
-        self.assertEqual([w['id'] for w in document['sections'][0]['widgets']], ['card_1', 'w'])
-        for index in (-1, 2, True):
+        self.assertEqual([w['id'] for w in document['sections'][0]['widgets']], ['card_1', 'heading_s', 'w'])
+        for index in (-1, 3, True):
             with self.assertRaises(ValueError):
                 self.operation('add', card=card, index=index)
+
+    def test_legacy_sections_become_flat_heading_cards_without_collisions(self):
+        legacy = yaml.safe_load(VALID_YAML)
+        second = deepcopy(legacy['sections'][0])
+        second['id'] = 'second'; second['title'] = 'Second'; second['widgets'][0]['id'] = 'heading_s'
+        legacy['sections'].append(second)
+        projected = visual.project_document(yaml.safe_dump(legacy))
+        self.assertEqual(len(projected['sections']), 1)
+        cards = projected['sections'][0]['widgets']
+        self.assertEqual([w['id'] for w in cards], ['heading_s_heading', 'w', 'heading_second', 'heading_s'])
+        self.assertEqual(cards[0]['layout'], {'width': 12, 'height': 1})
+        serialized, _ = visual.transform(yaml.safe_dump(legacy), {'action': 'move', 'section_id': 'canvas', 'widget_id': 'w', 'index': 3})
+        raw = yaml.safe_load(serialized)
+        self.assertNotIn('sections', raw)
+        self.assertEqual(raw['widgets'][-1]['id'], 'w')
+        self.assertEqual(visual.PRESETS['heading'], [12, 1])
+        self.assertEqual(visual.PRESETS['divider'], [12, 1])
+        heading = cards[0]
+        with patch.object(views.data, 'fetch_project_rows', side_effect=AssertionError('static headings never read clinical rows')):
+            self.assertEqual(views._evaluate({}, heading)['static_type'], 'heading')

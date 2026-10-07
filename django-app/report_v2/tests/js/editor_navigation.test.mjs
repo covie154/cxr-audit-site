@@ -119,3 +119,22 @@ test("publish shows progress and navigates only after success", async () => {
   assert.equal(destination, "/report/synthetic/");
   assert.equal(trigger.disabled, false);
 });
+
+test("Save reports successful republishing and updates the Unpublish version", async () => {
+  let click, version;
+  const dirty = { setAttribute() {}, textContent: "" };
+  const textarea = { value: "current YAML", addEventListener() {} };
+  const publish = { setAttribute: (_, value) => { version = value; } };
+  const root = {
+    querySelector: query => query.includes("yaml-textarea") ? textarea : query.includes("dirty-indicator") ? dirty : query.includes('data-action="publish"') ? publish : null,
+    addEventListener: (name, handler) => { if (name === "click") click = handler; }, getAttribute: () => "/save/",
+  };
+  runInNewContext(source, {
+    document: { querySelector: () => root, cookie: "" }, window: {},
+    fetch: async () => ({status:200, json:async () => ({revision:"saved", published:true, published_version:"report@r2", errors:[]})}),
+  });
+  click({ target:{closest: () => ({getAttribute: () => "save"})}, preventDefault() {} });
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(dirty.textContent, "Saved and published.");
+  assert.equal(version, "report@r2");
+});
