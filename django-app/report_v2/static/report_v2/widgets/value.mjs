@@ -52,7 +52,7 @@ export function render(container, payload, options) {
             while (high - low > 0.5) {
                 const size = (low + high) / 2;
                 number.style.fontSize = size + "px";
-                if (number.scrollWidth <= container.clientWidth * 0.9 && number.getBoundingClientRect().height <= container.clientHeight * 0.8) {
+                if (number.scrollWidth <= container.clientWidth * 0.9 && number.scrollHeight <= container.clientHeight * 0.8) {
                     low = size;
                 } else {
                     high = size;

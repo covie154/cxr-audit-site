@@ -102,7 +102,8 @@
 .visual-card h4 { margin: 0; line-height: 1.2; }
 .visual-icon { position: absolute; top: 50%; transform: translateY(-50%); margin: 0; line-height: 1; }
 .visual-card > .editor-help { position: absolute; top: calc(50% + 28px); margin: 0; line-height: 1.2; }
-.visual-card-actions { position: absolute; bottom: 12px; right: 16px; margin: 0; }
-.visual-card[data-type="heading"] .visual-card-actions, .visual-card[data-type="divider"] .visual-card-actions { bottom: auto; }
+.visual-card-actions { position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%); margin: 0; }
+.visual-card[data-type="heading"] .visual-card-actions, .visual-card[data-type="divider"] .visual-card-actions { bottom: auto; left: auto; transform: none; }
 .visual-text { flex: 1; min-height: 0; overflow: auto; margin: 0; }
 @container (height < 180px) { .visual-icon, .visual-card > .editor-help { display: none; } }
+@container (height >= 180px) { .visual-card:not([data-type="heading"]):not([data-type="divider"]) > .visual-card-actions { top: calc(50% + 52px); bottom: auto; } }
