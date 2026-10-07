@@ -109,6 +109,8 @@ None yet.
 
 | 261007-jhf | Report list, back navigation and persistent per-user defaults | 2026-10-07 | e154276 | [261007-jhf](./quick/261007-jhf-add-report-list-navigation-and-per-user-/) |
 
+| 261007-jqn | Publish Showcase with all seven card types using current project data | 2026-10-07 | 7de0f26 | [261007-jqn](./quick/261007-jqn-create-showcase-report-using-existing-de/) |
+
 ## Deferred Items
 
 | Category | Item | Status | Deferred At |
