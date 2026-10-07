@@ -93,14 +93,16 @@
                             {% endfor %}
                         </select>
                     </label>
-                    <details class="widget-group-picker" data-group-picker hidden>
-                        <summary>Include groups <span data-group-count></span></summary>
+                    <div class="widget-group-picker" data-group-picker hidden>
+                        <button type="button" class="btn btn-secondary" data-group-trigger popovertarget="groups-{{ f.id }}">Include groups <span data-group-count></span> ▾</button>
+                        <div id="groups-{{ f.id }}" class="widget-group-menu" data-group-menu popover="auto" aria-label="Include groups">
                         <div class="widget-group-actions">
                             <button type="button" class="btn btn-secondary" data-action="select-groups">Select all</button>
                             <button type="button" class="btn btn-secondary" data-action="clear-groups">Clear</button>
                         </div>
                         <fieldset data-group-options><legend class="widget-a11y">Included groups</legend></fieldset>
-                    </details>
+                        </div>
+                    </div>
                     <button type="submit" class="btn btn-primary" data-action="apply">Apply</button>
                     <button type="reset" class="btn btn-secondary" data-action="reset">Reset</button>
                 </form>

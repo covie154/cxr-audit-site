@@ -463,6 +463,23 @@ class BrowserLayoutTests(unittest.TestCase):
             plot = chart.evaluate("n => window.echarts.getInstanceByDom(n).getModel().getComponent('grid').coordinateSystem.getRect().height")
             self.assertGreaterEqual(plot, 250, "plotting area is too shallow")
 
+    def test_metadata_fonts_match_and_group_dropdown_does_not_grow_card(self):
+        self._goto(self.report_url, width=1024, height=768)
+        frame = self.page.locator('.widget-frame').first
+        frame.locator('[data-comparison]').select_option('site')
+        frame.locator('[data-action="apply"]').click()
+        self.page.wait_for_timeout(300)
+        before = frame.bounding_box()["height"]
+        frame.locator('[data-group-trigger]').click()
+        menu = frame.locator('[data-group-menu]')
+        self.assertTrue(menu.is_visible())
+        self.assertLessEqual(menu.bounding_box()["height"], 224)
+        self.assertAlmostEqual(frame.bounding_box()["height"], before, delta=1)
+        styles = frame.evaluate("n => ['.widget-summary', '.widget-reference'].map(s => { const c=getComputedStyle(n.querySelector(s)); return [c.fontFamily,c.fontSize,c.fontWeight,c.lineHeight]; })")
+        self.assertEqual(styles[0], styles[1])
+        self.page.keyboard.press('Escape')
+        self.assertFalse(menu.is_visible())
+
     def _assert_keyboard_reaches_an_apply(self) -> None:
         self.page.evaluate("() => { document.body.focus(); }")
         for _ in range(60):

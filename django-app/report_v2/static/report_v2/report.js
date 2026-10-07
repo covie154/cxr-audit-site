@@ -310,6 +310,8 @@
         if (payload && payload.group_options) { frame.groupOptions = payload.group_options; }
         const field = select.value;
         picker.hidden = !field;
+        const menu = frame.el.querySelector('[data-group-menu]');
+        if (!field && menu && menu.matches(':popover-open')) { menu.hidePopover(); }
         if (!field) { frame.groupField = ''; return; }
         const existing = Array.from(frame.el.querySelectorAll('[data-group-value]'));
         const chosen = !reset && frame.groupField === field
@@ -467,6 +469,15 @@
                 resetWidgetState(state, frame.id);
                     fetchFrame(frame, state.widgets[frame.id].overrides);
                 }, 0);
+            });
+        }
+        const groupMenu = frame.el.querySelector('[data-group-menu]');
+        if (groupMenu) {
+            groupMenu.addEventListener('beforetoggle', (event) => {
+                if (event.newState !== 'open') { return; }
+                const trigger = frame.el.querySelector('[data-group-trigger]').getBoundingClientRect();
+                groupMenu.style.left = Math.max(12, Math.min(trigger.left, window.innerWidth - 252)) + 'px';
+                groupMenu.style.top = Math.max(12, Math.min(trigger.bottom + 4, window.innerHeight - 236)) + 'px';
             });
         }
         const groupSelect = frame.el.querySelector('[data-comparison]');

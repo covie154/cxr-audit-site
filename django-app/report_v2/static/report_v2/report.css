@@ -73,7 +73,6 @@
 .widget-table .overall-row td { font-weight: 700; background: var(--c-primary-soft); border-top: 2px solid var(--c-primary); }
 .widget-group-picker[hidden] { display: none; }
 .widget-group-picker { width: 100%; font-size: .8125rem; }
-.widget-group-picker summary { cursor: pointer; padding: 6px 0; }
 .widget-group-actions { display: flex; gap: 6px; margin-bottom: 6px; }
 .widget-group-picker fieldset { display: flex; flex-wrap: wrap; gap: 8px 12px; border: 0; padding: 0; max-height: 160px; overflow: auto; }
 .widget-group-picker label { flex-direction: row; align-items: center; }
@@ -90,11 +89,14 @@
 .widget-settings h3 { margin: 0; }
 .widget-settings-content { margin-top: 12px; }
 .widget-settings .widget-controls { flex-wrap: nowrap; align-items: flex-start; overflow-x: auto; padding-bottom: 6px; }
-.widget-settings .widget-controls > label, .widget-settings .widget-controls > details { flex: 0 0 auto; }
+.widget-settings .widget-controls > label, .widget-settings .widget-controls > .widget-group-picker { flex: 0 0 auto; }
 .widget-settings .widget-controls > .btn { margin-top: 17px; }
 .widget-settings .widget-controls > .widget-group-picker { width: auto; margin-top: 17px; }
-.widget-group-picker summary { border: 1px solid var(--c-border); border-radius: 8px; padding: 6px; min-height: 32px; box-sizing: border-box; background: var(--c-surface); white-space: nowrap; }
-.widget-group-picker[open] { width: 220px !important; }
 .widget-group-picker .widget-group-actions { margin-top: 8px; }
-.widget-reference { font-size: .8125rem; color: var(--c-text-muted); margin: 6px 0; }
+.widget-summary, .widget-reference { font-family: inherit; font-size: .8125rem; font-weight: 400; line-height: 1.45; color: var(--c-text-muted); margin: 6px 0; }
 .widget-reference:empty { display: none; }
+
+.widget-group-menu { position: fixed; inset: auto; margin: 0; width: 240px; max-width: calc(100vw - 24px); max-height: 224px; padding: 10px; box-sizing: border-box; border: 1px solid var(--c-border); border-radius: 8px; background: var(--c-surface); color: var(--c-text); box-shadow: 0 6px 20px rgba(15, 23, 32, .16); overflow: auto; font-size: .8125rem; }
+.widget-group-menu .widget-group-actions { margin-top: 0; }
+.widget-group-menu fieldset { flex-direction: column; gap: 8px; }
+.widget-group-menu [data-action] { padding: 4px 8px; font-size: inherit; }
