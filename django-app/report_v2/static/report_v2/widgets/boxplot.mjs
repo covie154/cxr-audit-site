@@ -81,7 +81,7 @@ export function render(container, payload, options) {
         if (Array.isArray(outliers)) {
             for (const raw of outliers) {
                 const num = finiteNumber(raw);
-                if (num !== null) { outlierData.push([gi, num]); }
+                if (num !== null) { outlierData.push([num, gi]); }
             }
         }
     }
@@ -89,6 +89,7 @@ export function render(container, payload, options) {
         {
             name: "boxes",
             type: "boxplot",
+            layout: "horizontal",
             itemStyle: { color: groupColor("boxes") },
             data: groups.map((group) => {
                 const s = group.summary;
@@ -117,18 +118,19 @@ export function render(container, payload, options) {
             symbol: "none",
             lineStyle: { type: "dashed", color: "#7a7a7a" },
             label: { formatter: String(benchmark.label === null || benchmark.label === undefined ? "" : benchmark.label) + " " + formatValue(value, plotUnit) },
-            data: [{ yAxis: value }],
+            data: [{ xAxis: value }],
         };
         break;
     }
     const option = {
         animation: false,
         legend: { data: names },
-        xAxis: { type: "category", data: names, boundaryGap: true },
-        yAxis: { type: "value", scale: true },
+        grid: { containLabel: true },
+        xAxis: { type: "value", scale: true },
+        yAxis: { type: "category", data: names, boundaryGap: true },
         series: series,
     };
-    if (plotUnit === "seconds") { option.yAxis.axisLabel = { formatter: (v) => formatValue(v, "seconds") }; }
+    if (plotUnit === "seconds") { option.xAxis.axisLabel = { formatter: (v) => formatValue(v, "seconds") }; }
     built.chart.setOption(option, true);
     const table = el("table", "widget-a11y widget-alt-table");
     table.appendChild(el("caption", "widget-caption", "Box plot summaries (whiskers are the most extreme observations within 1.5*IQR of the quartiles)"));

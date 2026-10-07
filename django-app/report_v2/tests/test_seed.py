@@ -505,6 +505,16 @@ class SeedSynthEvaluationTests(TestCase):
     def _report_doc(self):
         return load_report_definition(report_seed_text(), source=REPORT_SEED_NAME)
 
+    def test_site_summary_shows_all_groups_without_pagination(self):
+        doc = self._report_doc()
+        widget = next(w for section in doc["sections"] for w in section["widgets"] if w["id"] == "site_metrics")
+        prototype = self._fake_fetch(layout_widget=widget)[0]
+        rows = [dict(prototype, site=f"SYNTH-SITE-{i}", accession=900001000 + i) for i in range(60)]
+        payload = views._evaluate(doc, widget, rows=rows)
+        self.assertEqual(len(payload["rows"]), 60)
+        self.assertIsNone(payload["pagination"])
+        self.assertFalse(payload["empty"])
+
     # 9. every one of the 17 seed widgets evaluates against synthetic PRIME data via the real page path.
     def test_all_seventeen_widgets_evaluate_against_synthetic_prime_data(self):
         """Done-when: the 17 seed widgets validate AND render (evaluate) against synthetic PRIME data."""

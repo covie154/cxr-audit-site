@@ -62,3 +62,5 @@
 .widget-frame[data-widget-id="site_metrics"] .widget-table td { padding: 10px 6px; text-align: center; overflow-wrap: normal; }
 .widget-frame[data-widget-id="site_metrics"] .widget-table th { white-space: normal; }
 .widget-frame[data-widget-id="site_metrics"] .widget-table caption { text-align: left; margin-bottom: 12px; }
+
+.widget-more[hidden] { display: none; }

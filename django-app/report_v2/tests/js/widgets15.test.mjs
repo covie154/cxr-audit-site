@@ -252,8 +252,10 @@ test("t12 box builds a boxplot series plus a scatter outlier series from observe
     const flat = JSON.stringify(option.series[0].data);
     assert.equal(flat.includes("-4.5"), false);
     assert.equal(flat.includes("15.5"), false);
-    assert.deepEqual(option.series[1].data, [[0, 100]]);
-    assert.deepEqual(option.xAxis.data, ["report"]);
+    assert.deepEqual(option.series[1].data, [[100, 0]]);
+    assert.equal(option.series[0].layout, "horizontal");
+    assert.equal(option.xAxis.type, "value");
+    assert.deepEqual(option.yAxis.data, ["report"]);
 });
 
 test("t13 box benchmark markLine formats the duration label", () => {
@@ -261,12 +263,12 @@ test("t13 box benchmark markLine formats the duration label", () => {
     const container = makeContainer();
     registry.render("boxplot", container, fixture.payload, { benchmarks: [{ label: "target", value: 300, unit: "seconds" }] });
     const markLine = lastRecord().series[0].markLine;
-    assert.equal(markLine.data[0].yAxis, 300);
+    assert.equal(markLine.data[0].xAxis, 300);
     assert.equal(markLine.lineStyle.type, "dashed");
     assert.equal(typeof markLine.label.formatter, "string");
     assert.ok(markLine.label.formatter.includes("5 minutes"));
     assert.equal(markLine.label.formatter.includes("300 s"), false);
-    assert.equal(lastRecord().yAxis.axisLabel.formatter(300), "5 minutes");
+    assert.equal(lastRecord().xAxis.axisLabel.formatter(300), "5 minutes");
 });
 
 test("t14 box drops a benchmark whose unit cannot match the plot unit", () => {

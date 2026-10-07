@@ -329,6 +329,7 @@ def _evaluate(
     ci_registry = {"positive_predictive_value"} if (widget.get("ci") or {}).get("enabled") else None
     policy = (widget.get("query") or {}).get("threshold_policy")
     is_table = display == "table"
+    is_summary_table = is_table and (widget.get("query") or {}).get("measurement") == "classification_summary"
     result = evaluate(
         request=request,
         project=get_project_definition(),
@@ -339,7 +340,7 @@ def _evaluate(
         selected_rows=selected_rows,
         grouping=grouping,
         buckets=buckets,
-        page_size=_SERVER_PAGE_SIZE if is_table else None,
+        page_size=_SERVER_PAGE_SIZE if is_table and not is_summary_table else None,
         max_groups=100,
         published_widget_ids=frozenset(specs),
         widgets=specs,
@@ -347,7 +348,11 @@ def _evaluate(
         widget_inputs=dict((widget.get("query") or {}).get("inputs") or {}),
     )
     payload = result.to_dict()
-    if is_table:
+    if is_summary_table:
+        # Group cardinality is already bounded to 100; show every site together.
+        payload["pagination"] = None
+        visible_rows = bool(result.rows)
+    elif is_table:
         all_rows = list(result.rows)
         page_rows = all_rows[(page - 1) * _SERVER_PAGE_SIZE : page * _SERVER_PAGE_SIZE]
         payload["rows"] = page_rows
