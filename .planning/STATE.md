@@ -125,6 +125,8 @@ None yet.
 
 | 261007-l32 | Evidence-based daily reflections for 7 October 2026 | 2026-10-07 | 729de1a | [261007-l32](./quick/261007-l32-write-evidence-based-reflections-for-202/) |
 
+| 261007-l6l | Restore admin-only report editor navigation | 2026-10-07 | See quick summary | [261007-l6l](./quick/261007-l6l-scaffold-admin-only-report-v2-editor-pag/) |
+
 ## Deferred Items
 
 | Category | Item | Status | Deferred At |

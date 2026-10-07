@@ -65,9 +65,14 @@
                 <svg class="nav-icon" aria-hidden="true"><use href="#icon-database"/></svg><span>Database</span>
             </a>
             {% endif %}
-            <a href="{% url 'report_v2:index' %}" class="nav-item {% block nav_report %}{% endblock %}"{% if request.resolver_match.namespace == 'report_v2' %} aria-current="page"{% endif %}>
+            <a href="{% url 'report_v2:index' %}" class="nav-item {% block nav_report %}{% endblock %}"{% if request.resolver_match.namespace == 'report_v2' and request.resolver_match.url_name != 'editor' and request.resolver_match.url_name != 'editor_detail' %} aria-current="page"{% endif %}>
                 <svg class="nav-icon" aria-hidden="true"><use href="#icon-report"/></svg><span>Report</span>
             </a>
+            {% if user.is_superuser or is_admin %}
+            <a href="{% url 'report_v2:editor' %}" class="nav-item {% block nav_report_editor %}{% endblock %}"{% if request.resolver_match.namespace == 'report_v2' and request.resolver_match.url_name == 'editor' or request.resolver_match.namespace == 'report_v2' and request.resolver_match.url_name == 'editor_detail' %} aria-current="page"{% endif %}>
+                <svg class="nav-icon" aria-hidden="true"><use href="#icon-edit"/></svg><span>Report editor</span>
+            </a>
+            {% endif %}
             <a href="{% url 'report:index' %}" class="nav-item {% block nav_report_v1 %}{% endblock %}"{% if request.resolver_match.namespace == 'report' %} aria-current="page"{% endif %}>
                 <svg class="nav-icon" aria-hidden="true"><use href="#icon-report"/></svg><span>Report V1</span>
             </a>

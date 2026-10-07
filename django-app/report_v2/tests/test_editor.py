@@ -15,7 +15,7 @@ import shutil
 import tempfile
 from pathlib import Path
 
-from django.contrib.auth.models import AnonymousUser, User
+from django.contrib.auth.models import AnonymousUser, Group, User
 from django.core import mail
 from django.test import Client, RequestFactory, TestCase, override_settings
 from django.urls import Resolver404, resolve, reverse
@@ -404,3 +404,21 @@ class EditorAdminSecurityTests(TestCase):
         self.assertFalse((self.root / "drafts" / "listed").exists())
         self.assertEqual(self._repo()._read_pointer("listed"), pointer_before)
         self.assertEqual(pointer_before, published.json()["version"])
+
+    def test_editor_navigation_is_admin_only(self):
+        from django.template.loader import render_to_string
+
+        group_admin = User.objects.create_user(username="editor-group-admin")
+        group_admin.groups.add(Group.objects.get_or_create(name="admins")[0])
+        for user, visible in ((self.admin, True), (group_admin, True), (self.normal, False), (AnonymousUser(), False)):
+            with self.subTest(user=str(user)):
+                request = RequestFactory().get(reverse("report_v2:editor"))
+                request.user = user
+                request.resolver_match = resolve(request.path)
+                body = render_to_string("base.html", request=request)
+                self.assertEqual('href="/report/layout/"' in body, visible)
+                if visible:
+                    self.assertIn('aria-current="page"', body)
+        client = Client()
+        client.force_login(group_admin)
+        self.assertEqual(client.get(reverse("report_v2:editor")).status_code, 200)
