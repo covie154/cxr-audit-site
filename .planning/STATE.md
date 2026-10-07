@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-06-14)
 Phase: 6 of 6 (remaining hipaa controls plan)
 Plan: Not started
 Status: Ready to execute
-Last activity: 2026-09-22 - Completed quick task: Report v2 Task 19 acceptance + handoff (committed 8477d8e); all 19 runbook tasks complete
+Last activity: 2026-10-07 - Completed quick task 261007-dji: Align Report V2 formatting and separate Report V1 sidebar
 
 Progress: [----------] 0%
 
@@ -93,6 +93,7 @@ None yet.
 | 260922-1t6 | Report v2 Task 18: snapshot-based legacy-style HTML email | 2026-09-22 | 874e7c3 | [260922-1t6](./quick/260922-1t6-report-v2-task-18-legacy-style-html-emai/) |
 | 260922-1t6 | Report v2 Task 19: end-to-end acceptance and handoff (runbook complete) | 2026-09-22 | 8477d8e | [260922-1t6](./quick/260922-1t6-report-v2-task-18-legacy-style-html-emai/) |
 
+| 261007-dji | Align Report V2 formatting and separate Report V1 sidebar | 2026-10-07 | 9329869 | [261007-dji](./quick/261007-dji-align-report-v2-formatting-and-add-separ/) |
 
 ## Deferred Items
 
