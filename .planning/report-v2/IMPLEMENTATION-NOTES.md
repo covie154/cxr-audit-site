@@ -2198,3 +2198,27 @@ published YAML survives. Each task commit is a self-contained revert unit.
   intentional behaviour.
 - `viewer`/`report`/`gt` legacy apps still have no automated suites (pre-existing);
   `/report-old/` is pinned by the new acceptance test at the route level.
+
+
+## Visual editor execution — 7 October 2026
+
+Implemented VISUAL-EDITOR-PLAN.md sequentially through GSD. The visual canvas projects the current
+YAML draft through an admin-only, POST/CSRF-protected in-memory endpoint. Add/Edit uses project catalogs
+for compatible measurements and data sources. Cards retain stable identities and declared sizes;
+within-section pointer reorder and resize snap to the 12-column grid with automatic reflow. Undo
+holds up to 50 prior YAML snapshots in browser memory. Invalid YAML is preserved and pauses visual
+mutations; stale responses cannot overwrite new draft edits. Save/Preview/Publish remain explicit.
+
+Static text and dividers now have conditional schema rules and safe interactive, preview, print,
+and email rendering without clinical data queries. Temporary options preview uses candidate YAML
+without applying it and retains its selected card/snapshot while the dialog is open. Existing shared
+full-card preview changes were preserved. Visual serialization removes comments and normalizes YAML;
+the canvas explains this before editing. Narrow screens stack cards and retain stored sizes.
+
+Focused synthetic checks cover endpoint authorization/CSRF, bounds, stable identity, valid transforms,
+static escaping/no row reads, and real Chromium add/edit/preview/resize/reorder/undo/invalid YAML
+recovery and narrow-screen options. The old no-drag source guard was replaced by mutation-isolation
+and CSRF checks; the synthetic browser gallery allowlist includes the new static renderer.
+
+Validation details and closeout status are recorded in visual-editor-execution/SUMMARY.md.
+No new dependencies, database schema changes, production publication, deployment, or real mail.

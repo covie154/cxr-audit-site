@@ -1,7 +1,7 @@
 # Visual report layout editor — implementation plan
 
 Date: 7 October 2026
-Status: Ready for implementation review; planning only
+Status: Implemented; synthetic regression and browser verification recorded in visual-editor-execution/SUMMARY.md
 
 ## Purpose
 

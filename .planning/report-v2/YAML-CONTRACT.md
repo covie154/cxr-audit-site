@@ -60,3 +60,12 @@ formats minutes. Fixed targets are converted once through the measurement's unit
 
 Synthetic gallery must cover types not used by the legacy seed, including bar/pie/confusion matrix.
 These fixtures belong in automated tests/demo-only development tooling, never the production project data.
+
+
+## Visual editor static cards (7 October 2026)
+
+The application schema now also supports `text` and `divider` widgets. Both require id, title,
+type, and layout; text additionally requires a plain-text `text` field (up to 10,000 characters).
+Static cards cannot declare query, window, controls, CI, export, or dynamic display options.
+Their render payload contains static_type and text only; preview/export bypass clinical row access.
+Existing dynamic widgets retain their required properties and schema_version: 1 compatibility.
