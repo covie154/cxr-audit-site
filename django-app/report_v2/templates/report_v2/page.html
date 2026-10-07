@@ -48,11 +48,11 @@
     {% for section in sections_ctx %}
     <section class="report-section" data-section-id="{{ section.id }}">
         <h2>{{ section.title }}</h2>
-        <div class="report-grid" style="grid-auto-rows: minmax({{ grid.row_height_px|default:64 }}px, auto);">
+        <div class="report-grid">
             {% for f in section.widgets %}
             <article class="card widget-frame" data-widget-id="{{ f.id }}" data-type="{{ f.type }}" data-measurement="{{ f.measurement }}" data-default-comparison="{{ f.controls.default_compare_by|default_if_none:'' }}"
                      data-data-url="{{ f.data_url }}" data-context-token="{{ f.context_token }}"
-                     style="grid-column: span {{ f.width }}; grid-row: span {{ f.height }};">
+                     style="grid-column: span {{ f.width }};">
                 <details class="widget-settings">
                 <summary class="widget-header"><h3>{{ f.title }}</h3></summary>
                 <div class="widget-settings-content">

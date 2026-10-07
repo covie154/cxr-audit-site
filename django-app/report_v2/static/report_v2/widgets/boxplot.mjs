@@ -124,8 +124,8 @@ export function render(container, payload, options) {
     }
     const option = {
         animation: false,
-        legend: { data: names },
-        grid: { containLabel: true },
+        legend: { type: "scroll", bottom: 0, data: names },
+        grid: { top: 20, bottom: 48, left: 16, right: 16, containLabel: true },
         xAxis: { type: "value", scale: true },
         yAxis: { type: "category", data: names, boundaryGap: true },
         series: series,

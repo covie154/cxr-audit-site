@@ -150,7 +150,8 @@ export function render(container, payload, options) {
     chart.setOption({
         animation: false,
         color: groupNames.map((name) => groupColor(name)),
-        legend: { data: groupNames },
+        legend: { type: "scroll", bottom: 0, data: groupNames },
+        grid: { top: 20, bottom: 48, left: 16, right: 16, containLabel: true },
         xAxis: { type: "category", data: labels, boundaryGap: true },
         yAxis: { type: "value", scale: true },
         series: series.map((entry) => {

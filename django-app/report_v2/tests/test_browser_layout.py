@@ -450,6 +450,19 @@ class BrowserLayoutTests(unittest.TestCase):
                 self._assert_keyboard_reaches_an_apply()
                 self._shot(f"page-{DEF_ID}-{width}.png", full_page=True)
 
+    def test_collapsed_cards_fit_content_and_charts_have_taller_plots(self):
+        self._goto(self.report_url, width=1440, height=900)
+        for toggle in self.page.locator(".widget-settings > summary").all():
+            toggle.click()
+        for frame in self.page.locator(".report-grid > .widget-frame").all():
+            gap = frame.evaluate("n => { const b = n.querySelector('.widget-body'); return n.getBoundingClientRect().bottom - b.getBoundingClientRect().bottom; }")
+            self.assertLessEqual(gap, 26, "card reserves blank grid rows below its content")
+        for chart in self.page.locator(".widget-chart-box").all():
+            box = chart.bounding_box()
+            self.assertGreaterEqual(box["height"], 360)
+            plot = chart.evaluate("n => window.echarts.getInstanceByDom(n).getModel().getComponent('grid').coordinateSystem.getRect().height")
+            self.assertGreaterEqual(plot, 250, "plotting area is too shallow")
+
     def _assert_keyboard_reaches_an_apply(self) -> None:
         self.page.evaluate("() => { document.body.focus(); }")
         for _ in range(60):

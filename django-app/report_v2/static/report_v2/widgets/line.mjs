@@ -138,8 +138,9 @@ export function render(container, payload, options) {
     chart.setOption({
         animation: false,
         color: series.map((entry) => groupColor(entry.name)),
-        legend: { data: series.map((entry) => entry.name) },
-        xAxis: { type: "category", data: labels, boundaryGap: false },
+        legend: { type: "scroll", bottom: 0, data: series.map((entry) => entry.name) },
+        grid: { top: 20, bottom: 48, left: 24, right: 40, containLabel: true },
+        xAxis: { type: "category", data: labels, boundaryGap: false, axisLabel: { hideOverlap: true, formatter: label => String(label).split("/")[0] } },
         yAxis: { type: "value", scale: true },
         series: series.map((entry) => {
             const config = { name: entry.name, type: "line", data: entry.data, color: groupColor(entry.name), connectNulls: false, symbol: "circle", showSymbol: true };

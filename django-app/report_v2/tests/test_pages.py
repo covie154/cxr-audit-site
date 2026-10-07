@@ -610,8 +610,9 @@ class PublishedReportPageTests(TestCase):
         template = (
             Path(views.__file__).resolve().parent / "templates" / "report_v2" / "page.html"
         ).read_text(encoding="utf-8")
-        self.assertIn("grid-auto-rows: minmax(", template)
-        self.assertIn("px, auto)", template)
+        self.assertNotIn("grid-auto-rows: minmax(", template)
+        self.assertNotIn("grid-row: span", template)
+        self.assertNotIn("px, auto)", template)
         css = (
             Path(views.__file__).resolve().parent / "static" / "report_v2" / "report.css"
         ).read_text(encoding="utf-8")

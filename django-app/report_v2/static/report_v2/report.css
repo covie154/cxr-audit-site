@@ -22,7 +22,7 @@
 .widget-body .widget-table { border-collapse: collapse; width: 100%; }
 .widget-body table td, .widget-body table th { overflow-wrap: anywhere; }
 
-.report-grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 16px; margin-bottom: 24px; }
+.report-grid { display: grid; align-items: start; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 16px; margin-bottom: 24px; }
 .report-grid > .widget-frame { min-width: 0; max-width: 100%; display: flex; flex-direction: column; gap: 8px; }
 .widget-frame .widget-header, .widget-frame .widget-summary, .widget-frame .widget-controls, .widget-frame .widget-body { min-width: 0; max-width: 100%; overflow-wrap: anywhere; }
 
@@ -32,7 +32,7 @@
 .widget-controls input, .widget-controls select { max-width: 100%; min-width: 0; box-sizing: border-box; min-height: 32px; font-size: .8125rem; padding: 4px 6px; border: 1px solid var(--c-border); border-radius: 8px; background: var(--c-surface); color: var(--c-text); }
 .widget-controls .btn { flex: 0 0 auto; min-height: 32px; padding: 5px 10px; font-size: .8125rem; }
 .widget-live { min-width: 0; }
-.widget-chart, .widget-chart-box { width: 100%; min-height: 240px; max-width: 100%; }
+.widget-chart, .widget-chart-box { width: 100%; min-height: 360px; max-width: 100%; }
 .widget-values { display: grid; gap: 4px 16px; min-width: 0; }
 .widget-value { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
 
@@ -55,7 +55,6 @@
 
 /* Compact value cards and screen-reader alternatives for charts. */
 .widget-primary-value { margin: 12px 0; font-size: clamp(1.75rem, 2.3vw, 3rem); white-space: nowrap; font-weight: 700; line-height: 1.1; font-variant-numeric: tabular-nums; }
-.widget-frame[data-type="value"] { grid-row: span 2 !important; }
 .widget-frame:not([data-type="confusion_matrix"]) .widget-a11y { display: block; position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .widget-frame[data-widget-id="site_metrics"] .widget-table { table-layout: fixed; min-width: 1080px; }
 .widget-frame[data-widget-id="site_metrics"] .widget-table th,
