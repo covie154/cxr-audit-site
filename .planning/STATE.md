@@ -99,6 +99,8 @@ None yet.
 
 | 261007-gb8 | Complete site summary tables, horizontal time distributions and synthetic preview routing fixes | 2026-10-07 | 78a219a | [261007-gb8](./quick/261007-gb8-show-complete-per-site-tables-and-horizo/) |
 
+| 261007-glk | Project-defined grouping, group selection and pooled Overall rows on report cards | 2026-10-07 | 500e20a | [261007-glk](./quick/261007-glk-project-defined-grouping-and-group-selec/) |
+
 ## Deferred Items
 
 | Category | Item | Status | Deferred At |
