@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-06-14)
 Phase: 6 of 6 (remaining hipaa controls plan)
 Plan: Not started
 Status: Ready to execute
-Last activity: 2026-10-07 - Completed quick task 261007-eag: Simplify report card settings
+Last activity: 2026-10-07 - Completed quick task 261007-etg: Simplify report values and tables
 
 Progress: [----------] 0%
 
@@ -95,6 +95,7 @@ None yet.
 
 | 261007-dji | Align Report V2 formatting and separate Report V1 sidebar | 2026-10-07 | 9329869 | [261007-dji](./quick/261007-dji-align-report-v2-formatting-and-add-separ/) |
 | 261007-eag | Hide settings on value/narrow cards and compact remaining controls | 2026-10-07 | 918575c | [261007-eag](./quick/261007-eag-hide-controls-on-text-and-narrow-report-/) |
+| 261007-etg | Single-number summary cards, no CSV links, even table columns and initial rendering | 2026-10-07 | db1e1ec | [261007-etg](./quick/261007-etg-simplify-summary-cards-remove-csv-links-/) |
 
 ## Deferred Items
 
