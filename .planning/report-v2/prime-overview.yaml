@@ -179,7 +179,7 @@ sections:
     - predicted_negative_fraction
     default_compare_by: site
   - id: balanced_accuracy_trend
-    title: Balanced accuracy (weekly)
+    title: Balanced accuracy
     type: line
     layout:
       width: 12
@@ -206,7 +206,7 @@ sections:
     export: full
     bucket: week
   - id: sensitivity_trend
-    title: Sensitivity by site (weekly)
+    title: Sensitivity by site
     type: line
     layout:
       width: 12
@@ -234,7 +234,7 @@ sections:
     bucket: week
     default_compare_by: site
   - id: specificity_trend
-    title: Specificity by site (weekly)
+    title: Specificity by site
     type: line
     layout:
       width: 12
