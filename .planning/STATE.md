@@ -115,6 +115,8 @@ None yet.
 
 | 261007-k71 | Square green confusion heatmap with clear axes | 2026-10-07 | 2d31fe3 | [261007-k71](./quick/261007-k71-square-green-confusion-matrix-with-clear/) |
 
+| 261007-khw | Centre Prediction above matrix columns | 2026-10-07 | 037a802 | [261007-khw](./quick/261007-khw-centre-prediction-above-confusion-matrix/) |
+
 ## Deferred Items
 
 | Category | Item | Status | Deferred At |
