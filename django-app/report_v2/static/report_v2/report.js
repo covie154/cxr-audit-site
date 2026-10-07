@@ -257,7 +257,7 @@
                 // wrapper itself keeps its widget-live class + data-live-region marker intact.
                 const mount = el('div', 'widget-mount');
                 live.append(mount);
-                const regInstance = reg.render(kind, mount, payload, {});
+                const regInstance = reg.render(kind, mount, payload, { primaryOnly: kind === 'value', measurement: frame.el.dataset.measurement });
                 frame.regInstance = regInstance || null;
                 frame.regDisposed = false;
                 usedRegistry = true;
@@ -289,6 +289,23 @@
         }
         const summary = frame.summary;
         if (summary) { summary.textContent = summaryText(payload); }
+    }
+
+    function renderInitialFrames() {
+        frames.forEach((frame) => {
+            const initial = frame.el.querySelector('[data-initial-payload]');
+            if (!initial) { return; }
+            try {
+                const payload = JSON.parse(initial.textContent);
+                state.widgets[frame.id].lastResult = payload;
+                renderFrame(frame, payload);
+            } catch (error) { /* Keep the server-rendered content if hydration fails. */ }
+        });
+    }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', renderInitialFrames, { once: true });
+    } else {
+        renderInitialFrames();
     }
 
     function collectOverrides(frame) {

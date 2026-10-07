@@ -52,3 +52,13 @@
 .email-modal-card textarea { box-sizing: border-box; width: 100%; padding: 0.45rem 0.55rem; border: 1px solid var(--c-border); border-radius: 8px; background: var(--c-surface); color: var(--c-text); font: inherit; resize: vertical; }
 .email-modal-card .email-status { min-height: 1.2em; font-size: 0.85rem; color: var(--c-text-muted); overflow-wrap: anywhere; }
 .email-modal-card button { align-self: flex-start; }
+
+/* Compact value cards and screen-reader alternatives for charts. */
+.widget-primary-value { margin: 12px 0; font-size: clamp(1.75rem, 2.3vw, 3rem); white-space: nowrap; font-weight: 700; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.widget-frame[data-type="value"] { grid-row: span 2 !important; }
+.widget-frame:not([data-type="confusion_matrix"]) .widget-a11y { display: block; position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.widget-frame[data-widget-id="site_metrics"] .widget-table { table-layout: fixed; min-width: 1080px; }
+.widget-frame[data-widget-id="site_metrics"] .widget-table th,
+.widget-frame[data-widget-id="site_metrics"] .widget-table td { padding: 10px 6px; text-align: center; overflow-wrap: normal; }
+.widget-frame[data-widget-id="site_metrics"] .widget-table th { white-space: normal; }
+.widget-frame[data-widget-id="site_metrics"] .widget-table caption { text-align: left; margin-bottom: 12px; }

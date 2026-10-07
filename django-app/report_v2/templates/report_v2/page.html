@@ -50,7 +50,7 @@
         <h2>{{ section.title }}</h2>
         <div class="report-grid" style="grid-auto-rows: minmax({{ grid.row_height_px|default:64 }}px, auto);">
             {% for f in section.widgets %}
-            <article class="card widget-frame" data-widget-id="{{ f.id }}" data-type="{{ f.type }}"
+            <article class="card widget-frame" data-widget-id="{{ f.id }}" data-type="{{ f.type }}" data-measurement="{{ f.measurement }}"
                      data-data-url="{{ f.data_url }}" data-context-token="{{ f.context_token }}"
                      style="grid-column: span {{ f.width }}; grid-row: span {{ f.height }};">
                 <header class="widget-header"><h3>{{ f.title }}</h3></header>
@@ -86,13 +86,14 @@
                     <button type="reset" class="btn btn-secondary" data-action="reset">Reset</button>
                 </form>
                 {% endif %}
-                <p class="widget-downloads">{% for link in f.csv_links %}<a href="{{ link.url }}" data-csv-download>{{ link.label }}</a>{% endfor %}</p>
-                <p class="widget-summary" role="status">{{ f.summary }}</p>
+                {% if f.type != "value" %}<p class="widget-summary" role="status">{{ f.summary }}</p>{% endif %}
                 <div class="widget-body" data-widget-body>
                     {# Server-side empty message, always present so report.js can read it per frame #}
                     {# (report.js: node.querySelector('[data-role="empty-message"]')); hidden from view. #}
                     <p class="widget-empty" data-role="empty-message" hidden>{{ f.empty_message }}</p>
-                    {% if f.payload.rows %}
+                    {% if f.type == "value" and not f.payload.error %}
+                    <p class="widget-primary-value">{{ f.primary_value }}</p>
+                    {% elif f.payload.rows %}
                     <table class="widget-table">
                         <thead><tr>
                             {% for key in f.payload.rows.0.keys %}<th>{{ key }}</th>{% endfor %}

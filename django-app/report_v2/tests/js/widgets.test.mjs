@@ -168,7 +168,7 @@ test("table: union columns, formatted numeric, null cell, pageinfo", () => {
     assert.ok(table);
     assert.equal(table.className.split(/\s+/).includes("widget-alt-table"), true);
     const headers = findByClass(table, "widget-thead").children[0].children.map((node) => node.textContent);
-    assert.deepEqual(headers, ["accession", "sensitivity", "record_count", "latency"]);
+    assert.deepEqual(headers, ["accession", "sensitivity", "record count", "latency"]);
     const bodyRows = findByClass(table, "widget-tbody").children;
     assert.equal(collectText(bodyRows[0].children[1]), "87.3%");
     assert.equal(collectText(bodyRows[1].children[1]), "—");
@@ -264,4 +264,13 @@ test("source scan: no forbidden tokens in the six module files", async () => {
             assert.equal(text.toLowerCase().includes(token.toLowerCase()), false, name + " must not contain " + token);
         }
     }
+});
+
+test('primary-only values display one measure and omit denominator text', () => {
+    const container = new FakeNode('div');
+    valueRenderer.render(container, {aggregates: {accuracy: 0.8, n: 12}, units: {accuracy: 'rate[0,1]'}}, {primaryOnly: true, measurement: 'accuracy'});
+    assert.equal(container.children.length, 1);
+    assert.equal(container.children[0].textContent, '80.0%');
+    valueRenderer.render(container, {aggregates: {n: 12}, units: {n: 'count'}}, {primaryOnly: true, measurement: 'record_count'});
+    assert.equal(container.children[0].textContent, '12');
 });

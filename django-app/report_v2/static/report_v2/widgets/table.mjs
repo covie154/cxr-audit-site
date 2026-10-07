@@ -32,7 +32,7 @@ export function render(container, payload, options) {
     table.appendChild(caption);
     const head = el("thead", "widget-thead");
     const headRow = el("tr", "widget-head-row");
-    for (const key of columns) { headRow.appendChild(el("th", "widget-th", key)); }
+    for (const key of columns) { headRow.appendChild(el("th", "widget-th", key.replaceAll("_", " "))); }
     head.appendChild(headRow);
     table.appendChild(head);
     const body = el("tbody", "widget-tbody");

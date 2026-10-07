@@ -67,3 +67,13 @@ class ReportRoutingTests(SimpleTestCase):
                 html = render_to_string("report_v2/page.html", {"slug": "sample", "sections_ctx": [{"widgets": [frame]}]})
                 self.assertEqual('data-role="controls"' in html, expected)
                 self.assertEqual('data-action="apply"' in html, expected)
+
+    def test_summary_primary_values_and_no_csv_links(self):
+        payload = {"aggregates": {"n": 12, "accuracy": .8}, "units": {"accuracy": "rate[0,1]"}}
+        self.assertEqual(views._primary_value({"query": {"measurement": "record_count"}}, payload), "12")
+        self.assertEqual(views._primary_value({"query": {"measurement": "accuracy"}}, payload), "80.0%")
+        frame = {"type": "value", "primary_value": "12", "payload": payload, "summary": "matching 12 of 12", "csv_links": [{"url": "/sample.csv", "label": "Download CSV"}]}
+        html = render_to_string("report_v2/page.html", {"slug": "sample", "sections_ctx": [{"widgets": [frame]}]})
+        self.assertIn('class="widget-primary-value">12', html)
+        self.assertNotIn("matching 12 of 12", html)
+        self.assertNotIn("Download CSV", html)

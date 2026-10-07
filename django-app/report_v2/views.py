@@ -383,6 +383,19 @@ def _fmt_aggregate_value(value: object) -> str:
     return str(value)
 
 
+def _primary_value(widget: dict, payload: dict) -> str:
+    key = (widget.get("query") or {}).get("measurement")
+    if key == "record_count":
+        key = "n"
+    value = (payload.get("aggregates") or {}).get(key)
+    if value is None:
+        return "—"
+    unit = (payload.get("units") or {}).get(key, "")
+    if "rate[0,1]" in unit or "ratio" in unit or "probability" in unit:
+        return f"{value * 100:.1f}%"
+    return f"{value:,}" if isinstance(value, int) else str(value)
+
+
 def _summary_text(payload: dict) -> str:
     """A one-line, human-readable account of what the payload measured (or why it is empty)."""
     if isinstance(payload, dict) and payload.get("error"):
@@ -469,6 +482,8 @@ def report_page(request, slug: str):
                     "id": widget_id,
                     "title": widget.get("title"),
                     "type": widget.get("type"),
+                    "measurement": (widget.get("query") or {}).get("measurement"),
+                    "primary_value": _primary_value(widget, payload),
                     "width": (widget.get("layout") or {}).get("width"),
                     "height": (widget.get("layout") or {}).get("height"),
                     "controls": _allowed_controls(widget),

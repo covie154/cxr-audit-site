@@ -23,6 +23,12 @@ export function render(container, payload, options) {
         container.appendChild(el("p", "widget-error", String(payload.error)));
         return instance;
     }
+    if (options && options.primaryOnly) {
+        const key = options.measurement === "record_count" ? "n" : options.measurement;
+        const value = ((payload && payload.aggregates) || {})[key];
+        container.appendChild(el("p", "widget-primary-value", formatValue(value, ((payload && payload.units) || {})[key])));
+        return instance;
+    }
     const list = entries(payload && payload.aggregates);
     if ((payload && payload.empty === true) || list.length === 0) {
         container.appendChild(el("p", "widget-empty", "No matching records in this window."));
