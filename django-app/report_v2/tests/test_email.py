@@ -273,7 +273,7 @@ class EmailFlowTests(TestCase):
         for title in ("Value One", "Share Pie", "Discrepancy Table", "Full Table"):
             self.assertIn(title, text_html)
             self.assertIn(title, text_plain)
-        self.assertIn("2026-08-02 .. 2026-09-01", text_html)
+        self.assertIn("02/08/2026 .. 01/09/2026", text_html)
         self.assertIn("site=SYNTH-SITE-A", text_html)
         self.assertIn("matching 3 of 3", text_html)
         self.assertIn("record_count", text_html)
@@ -289,7 +289,7 @@ class EmailFlowTests(TestCase):
         self.assertEqual(image_parts[0].get_payload(decode=True), _PNG_BYTES)
         # Readable prose fallback, not a monospaced dump and not a bare pointer.
         self.assertIn("Sent via PRIMER-LLM by t18-normal.", text_plain)
-        self.assertIn("Window 2026-08-02 .. 2026-09-01", text_plain)
+        self.assertIn("Window 02/08/2026 .. 01/09/2026", text_plain)
         self.assertNotIn("See HTML version", text_plain)
 
     def test_email_values_come_from_the_snapshot_not_later_data(self):

@@ -23,7 +23,7 @@ from unittest import mock
 from django.contrib.auth.models import User
 from django.test import Client, TestCase, override_settings
 
-from report_v2 import snapshots
+from report_v2 import snapshots, views
 from report_v2.tests.test_pages import LAYOUT, _SETTINGS, _Seam, _make_seam
 
 LAYOUT_V2_TITLE = "Task 13 Report Republished"
@@ -195,8 +195,8 @@ class PrintFlowTests(TestCase):
         self.assertIn("print.css", page)
         # Per-widget dates / anchor / state / grouping.
         self.assertIn("Window", page)
-        self.assertIn("2026-08-02 .. 2026-09-01", page)  # default D-30 window
-        self.assertIn("2026-09-01", page)                # anchor D
+        self.assertIn("02/08/2026 .. 01/09/2026", page)  # default D-30 window
+        self.assertIn("01/09/2026", page)                # anchor D
         self.assertIn("site=SYNTH-SITE-A", page)
         self.assertIn("group by site", page)
         self.assertIn("window D-7", page)
@@ -235,7 +235,7 @@ class PrintFlowTests(TestCase):
         self.assertTrue(widget["payload"]["time_groups"])
         printed = client.get(response.json()["print_url"])
         self.assertEqual(printed.status_code, 200)
-        self.assertIn(widget["payload"]["time_groups"][0]["label"], printed.content.decode())
+        self.assertIn(views._display_dates(widget["payload"]["time_groups"][0]["label"]), printed.content.decode())
 
     # -- 5. later data changes or publication do not alter the captured export ------------
     def test_print_is_frozen_against_data_and_publication_changes(self):

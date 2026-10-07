@@ -460,7 +460,7 @@ class BrowserLayoutTests(unittest.TestCase):
         self.assertEqual(picker.get_attribute('data-opened'), 'yes')
         self.page.keyboard.press('Escape')
         picker.fill(anchor)
-        self.assertEqual(frame.locator('[data-date="end"]').input_value(), '-'.join(reversed(anchor.split('-'))))
+        self.assertEqual(frame.locator('[data-date="end"]').input_value(), '/'.join(reversed(anchor.split('-'))))
         frame.locator('[data-date="start"]').fill('01/01/2026')
         with self.page.expect_response(lambda response: '/widget/' in response.url and response.url.endswith('/data/')) as result:
             frame.locator('[data-action="apply"]').click()

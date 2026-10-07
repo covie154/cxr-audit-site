@@ -121,7 +121,7 @@ class GroupingTests(SimpleTestCase):
             self.assertEqual(group["payload"]["dates"]["anchor_date"], payload["dates"]["anchor_date"])
         tables = _widget_tables(payload)
         self.assertEqual(len(tables), 2)
-        self.assertIn(payload["time_groups"][0]["label"], tables[0]["caption"])
+        self.assertIn(views._display_dates(payload["time_groups"][0]["label"]), tables[0]["caption"])
         self.assertNotIn("time_groups", self.payload("total", rows=rows, time_grouping=""))
 
     def test_date_boundaries_are_validated_before_fetch(self):
@@ -142,7 +142,7 @@ class GroupingTests(SimpleTestCase):
         controls = views._allowed_controls(widget)
         frame = {"id": "total", "type": "value", "controls": controls}
         html = render_to_string("report_v2/page.html", {"sections_ctx": [{"widgets": [frame]}]})
-        self.assertIn('data-date="start" value="12-12-2025"', html)
+        self.assertIn('data-date="start" value="12/12/2025"', html)
         self.assertIn('data-date="end" value="W"', html)
         self.assertIn('data-date-picker="start" value="2025-12-12"', html)
         self.assertIn('data-date-picker="end" value=""', html)

@@ -148,9 +148,10 @@
         if (className) { node.className= className; }
         return node;
     };
+    const displayDates = (value) => String(value).replace(/\b(\d{4})-(\d{2})-(\d{2})\b/g, '$3/$2/$1');
     const textRow = (parent, text) => {
         const cell = el('td');
-        cell.textContent= text === null || text === undefined ? '—' : String(text);
+        cell.textContent= text === null || text === undefined ? '—' : displayDates(text);
         parent.append(cell);
     };
 
@@ -201,7 +202,7 @@
         let text = 'matching ' + counts.matching + ' of ' + counts.incoming +
             ' · ' + counts['eligible'] + ' eligible for measurement';
         const coverage = ((payload.dates || {}).coverage_note);
-        if (coverage) { text += ' (' + coverage + ')'; }
+        if (coverage) { text += ' (' + displayDates(coverage) + ')'; }
         return text;
     }
 
@@ -466,13 +467,19 @@
             const input = frame.el.querySelector('[data-date="' + bound + '"]');
             const picker = frame.el.querySelector('[data-date-picker="' + bound + '"]');
             if (!input || !picker) { continue; }
+            const displayDate = () => {
+                const value = dateExpression(input.value);
+                if (/^\d{4}-\d{2}-\d{2}$/.test(value)) { input.value = value.split('-').reverse().join('/'); }
+            };
+            displayDate();
+            input.addEventListener('blur', displayDate);
             picker.addEventListener('click', () => {
                 if (typeof picker.showPicker === 'function') {
                     try { picker.showPicker(); } catch (error) { /* Native control remains available. */ }
                 }
             });
             picker.addEventListener('change', () => {
-                if (picker.value) { input.value = picker.value.split('-').reverse().join('-'); }
+                if (picker.value) { input.value = picker.value.split('-').reverse().join('/'); }
             });
             input.addEventListener('input', () => {
                 const value = dateExpression(input.value);

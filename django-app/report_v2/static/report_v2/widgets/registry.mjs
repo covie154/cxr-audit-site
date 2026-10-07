@@ -1,3 +1,5 @@
+import { formatDateText } from "./format.mjs";
+
 export class RendererError extends Error {
     constructor(message) {
         super(message);
@@ -108,7 +110,7 @@ export function render(type, container, payload, options) {
         try {
             for (const group of payload.time_groups) {
                 const section = el("section", "widget-period");
-                section.appendChild(el("h4", "widget-period-label", group.label));
+                section.appendChild(el("h4", "widget-period-label", formatDateText(group.label)));
                 const mount = el("div", "widget-mount");
                 section.appendChild(mount);
                 container.appendChild(section);

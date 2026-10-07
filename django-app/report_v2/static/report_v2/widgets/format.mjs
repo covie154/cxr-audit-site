@@ -49,3 +49,7 @@ export function groupColor(label) {
     }
     return PALETTE[hash % PALETTE.length];
 }
+
+export function formatDateText(value) {
+    return String(value).replace(/\b(\d{4})-(\d{2})-(\d{2})\b/g, "$3/$2/$1");
+}

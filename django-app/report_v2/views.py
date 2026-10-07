@@ -184,7 +184,7 @@ def _allowed_controls(widget: dict) -> dict:
     query = widget.get("query") or {}
     window = {"start": "D-30", "end": "D", **(widget.get("window") or {})}
     native_dates = {key: value if _ISO_RE.fullmatch(value) else "" for key, value in window.items()}
-    date_inputs = {key: parse_date_literal(value).strftime("%d-%m-%Y") if native_dates[key] else value
+    date_inputs = {key: parse_date_literal(value).strftime("%d/%m/%Y") if native_dates[key] else value
                    for key, value in window.items()}
     return {
         "enabled": True,
@@ -456,6 +456,10 @@ def _primary_value(widget: dict, payload: dict) -> str:
     return f"{value:,}" if isinstance(value, int) else str(value)
 
 
+def _display_dates(value: object) -> str:
+    return re.sub(r"\b(\d{4})-(\d{2})-(\d{2})\b", r"\3/\2/\1", str(value))
+
+
 def _summary_text(payload: dict) -> str:
     """A one-line, human-readable account of what the payload measured (or why it is empty)."""
     if isinstance(payload, dict) and payload.get("error"):
@@ -472,7 +476,7 @@ def _summary_text(payload: dict) -> str:
     )
     coverage = ((payload or {}).get("dates") or {}).get("coverage_note")
     if coverage:
-        text = f"{text} ({coverage})"
+        text = f"{text} ({_display_dates(coverage)})"
     return text
 
 

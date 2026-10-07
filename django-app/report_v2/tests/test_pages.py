@@ -581,6 +581,7 @@ class PublishedReportPageTests(TestCase):
         script = (
             "const cases = " + json.dumps(cases) + ";\n"
             "const DEFAULT_EMPTY = " + json.dumps(views._EMPTY_MESSAGE) + ";\n"
+            + re.search(r"const displayDates = [^\n]+", source).group(0) + "\n"
             + summary_fn.group(1) + "\n"
             + "process.stdout.write(JSON.stringify(cases.map(summaryText)));\n"
         )

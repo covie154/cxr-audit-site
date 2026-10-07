@@ -313,3 +313,10 @@ test('calendar periods reuse renderers and dispose every child', () => {
     assert.equal(container.children.length, 0);
     assert.equal(instance.disposed, true);
 });
+
+test('table dates use day-first slashes', () => {
+    const container = makeContainer();
+    render('table', container, { rows: [{ study_date: '2025-12-12' }] });
+    const body = container.children[0].children.find((node) => node.tag === 'tbody');
+    assert.equal(body.children[0].children[0].textContent, '12/12/2025');
+});

@@ -374,7 +374,7 @@ test('day-first dates and native pickers preserve relative expressions', async (
     frames[0].form.fire('submit', { preventDefault() {} });
     assert.deepEqual(JSON.parse(requests[0].init.body).date, { start: '2026-08-03', end: '2026-08-11' });
     picker.value = '2026-08-05'; picker.fire('change');
-    assert.equal(start.value, '05-08-2026');
+    assert.equal(start.value, '05/08/2026');
     start.value = 'W-2'; start.fire('input');
     assert.equal(picker.value, '');
     let opened = false; picker.showPicker = () => { opened = true; }; picker.fire('click');
@@ -405,4 +405,16 @@ test('two-digit years use the 2000s and four-digit years stay literal', async ()
         frames[0].form.fire('submit', { preventDefault() {} });
         assert.deepEqual(JSON.parse(requests.at(-1).init.body).date, { start: expected + '-04-05', end: expected + '-04-07' });
     }
+});
+
+test('defaults and typed fixed dates display with day-first slashes', async () => {
+    const { frames } = await runReportScript(true, true);
+    const start = frames[0].frame.querySelector('[data-date="start"]');
+    const end = frames[0].frame.querySelector('[data-date="end"]');
+    assert.equal(start.value, '12/12/2025');
+    assert.equal(end.value, 'D');
+    start.value = '5-4-26'; start.fire('blur');
+    assert.equal(start.value, '05/04/2026');
+    start.value = 'W-2'; start.fire('blur');
+    assert.equal(start.value, 'W-2');
 });

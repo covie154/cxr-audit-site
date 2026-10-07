@@ -1,4 +1,4 @@
-import { formatValue, groupColor } from "./format.mjs";
+import { formatValue, groupColor, formatDateText } from "./format.mjs";
 import { el, clearContainer, observeLifecycle, buildChart } from "./registry.mjs";
 
 const PREFERRED = ["value", "mean", "median", "sensitivity", "specificity", "positive_predictive_value"];
@@ -19,7 +19,7 @@ function matchUnit(a, b) {
 function bucketSpine(buckets) {
     const list = Array.isArray(buckets) ? buckets.slice() : [];
     list.sort((a, b) => (Number(a && a.index) || 0) - (Number(b && b.index) || 0));
-    return list;
+    return list.map((bucket) => ({ ...bucket, label: formatDateText(bucket.label) }));
 }
 
 function seriesFromCells(cells, spine) {

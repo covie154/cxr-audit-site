@@ -57,6 +57,7 @@ from .views import (
     TamperedContextError,
     OverrideRejectedError,
     _evaluate,
+    _display_dates,
     _layout_widgets,
     _parse_widget_context,
     _summary_text,
@@ -306,7 +307,7 @@ def _fmt(value: Any) -> str:
         return ", ".join(f"{k}={_fmt(v)}" for k, v in value.items())
     if isinstance(value, (list, tuple)):
         return " | ".join(_fmt(item) for item in value)
-    return str(value)
+    return _display_dates(value)
 
 
 def _table(caption: str, columns: list[str], rows: list[list[str]], kind: str = "meta") -> dict[str, Any]:
@@ -331,7 +332,7 @@ def _applied_line(applied: Mapping[str, Any]) -> str:
         parts.append(f"group by {applied['comparison']}")
     if applied.get("page") and int(applied["page"] or 1) > 1:
         parts.append(f"page {applied['page']}")
-    return "; ".join(parts) if parts else "default window and filters"
+    return _display_dates("; ".join(parts)) if parts else "default window and filters"
 
 
 def _counts_line(payload: Mapping[str, Any]) -> str:
@@ -359,7 +360,7 @@ def _bucket_label(payload: Mapping[str, Any], index: Any) -> str:
         return _fmt(index)
     label = bucket.get("label")
     if label:
-        return str(label)
+        return _display_dates(label)
     start, end = bucket.get("start"), bucket.get("end")
     if start and end:
         return f"{start}..{end}"
@@ -372,7 +373,7 @@ def _widget_tables(payload: Mapping[str, Any]) -> list[dict[str, Any]]:
     if payload.get("time_groups"):
         for group in payload["time_groups"]:
             for table in _widget_tables(group["payload"]):
-                tables.append({**table, "caption": f"{group['label']} — {table['caption']}"})
+                tables.append({**table, "caption": _display_dates(f"{group['label']} — {table['caption']}")})
         return tables
     chart = payload.get("chart") or payload
 
@@ -480,10 +481,10 @@ def _print_view_model(document: Mapping[str, Any]) -> dict[str, Any]:
                 "summary": _summary_text(payload) if not error else str(error),
                 "applied_line": _applied_line(widget.get("applied") or {}),
                 "counts_line": _counts_line(payload) if not error else "",
-                "window": f"{dates.get('window_start') or '?'} .. {dates.get('window_end') or '?'}",
-                "anchor": dates.get("anchor_date") or "—",
+                "window": _display_dates(f"{dates.get('window_start') or '?'} .. {dates.get('window_end') or '?'}"),
+                "anchor": _display_dates(dates.get("anchor_date") or "—"),
                 "timezone": dates.get("timezone") or "",
-                "coverage": dates.get("coverage_note") or "",
+                "coverage": _display_dates(dates.get("coverage_note") or ""),
                 "measurement": versions.get("measurement_id") or "",
                 "policy": versions.get("policy_ref") or "—",
                 "tables": [] if error else _widget_tables(payload),

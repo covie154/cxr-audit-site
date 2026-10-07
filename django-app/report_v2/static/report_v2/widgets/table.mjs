@@ -1,10 +1,10 @@
-import { formatValue } from "./format.mjs";
+import { formatValue, formatDateText } from "./format.mjs";
 import { el, clearContainer, observeLifecycle } from "./registry.mjs";
 
 function cellText(value, unit) {
     if (value === null || value === undefined) { return "—"; }
     if (typeof value === "number") { return formatValue(value, unit); }
-    return String(value);
+    return formatDateText(value);
 }
 
 export function render(container, payload, options) {
