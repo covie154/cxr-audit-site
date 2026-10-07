@@ -11,16 +11,7 @@ AUDIT_DATABASE_NAME) so this module never hard-codes a path into any real tree.
 """
 from __future__ import annotations
 
-import mimetypes as _mimetypes
 import os as _os
-
-# Serve ES modules (.mjs) with a JavaScript MIME type so Chromium accepts <script type="module">;
-# Python's mimetypes has no default for the .mjs suffix and a wrong type blocks module loading.
-# Python 3.13 made init() rebuild the database on every call, so the mapping must be added AFTER a
-# single init() and init() must NOT be called again (it would silently drop this fix).
-_mimetypes.init()
-_mimetypes.add_type("text/javascript", ".mjs")
-_mimetypes.add_type("text/javascript", ".js")
 
 from lunit_audit.settings import *  # noqa: F401,F403
 
