@@ -8,6 +8,7 @@
 {% block body %}
 {# The editor is a plain textarea + buttons. There is deliberately no pointer-reordering editing UI. #}
 <div class="report-v2-editor" data-editor
+     data-editor-url="{% url 'report_v2:editor' %}"
      data-save-url="{% url 'report_v2:editor_save_draft' %}"
      data-preview-url="{% url 'report_v2:editor_preview' %}"
      data-publish-url="{% url 'report_v2:editor_publish' %}"

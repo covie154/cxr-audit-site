@@ -131,6 +131,8 @@ None yet.
 
 | 261007-lc4 | Enable admin editor in local synthetic preview | 2026-10-07 | See quick summary | [261007-lc4](./quick/261007-lc4-enable-admin-editor-in-synthetic-preview/) |
 
+| 261007-leb | Fix editor selector navigation URL | 2026-10-07 | See quick summary | [261007-leb](./quick/261007-leb-fix-report-editor-selector-navigation-ur/) |
+
 ## Deferred Items
 
 | Category | Item | Status | Deferred At |

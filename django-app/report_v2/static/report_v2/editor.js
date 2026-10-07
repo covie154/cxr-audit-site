@@ -279,7 +279,7 @@
 
   if (selector) {
     selector.addEventListener("change", function () {
-      window.location.assign(selector.value ? "layout/editor/" + encodeURIComponent(selector.value) + "/" : "layout/");
+      window.location.assign(root.getAttribute("data-editor-url") + (selector.value ? "editor/" + encodeURIComponent(selector.value) + "/" : ""));
     });
   }
 
