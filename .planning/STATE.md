@@ -103,6 +103,8 @@ None yet.
 
 | 261007-ha1 | Collapse card settings and separate date ranges from calendar time grouping | 2026-10-07 | 68c1e1c | [261007-ha1](./quick/261007-ha1-collapse-report-card-settings-and-separa/) |
 
+| 261007-i5n | Fit report cards to content and enlarge graph plotting areas | 2026-10-07 | 8fcc977 | [261007-i5n](./quick/261007-i5n-fit-report-cards-to-content-and-increase/) |
+
 ## Deferred Items
 
 | Category | Item | Status | Deferred At |
