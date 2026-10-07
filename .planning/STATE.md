@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-06-14)
 Phase: 6 of 6 (remaining hipaa controls plan)
 Plan: Not started
 Status: Ready to execute
-Last activity: 2026-10-07 - Completed quick task 261007-khl: Date expressions, calendar grouping and day-first date pickers
+Last activity: 2026-10-07 - Completed quick task 261007-kyp: Flexible day-first dates and two-digit years
 
 Progress: [----------] 0%
 
@@ -120,6 +120,8 @@ None yet.
 | 261007-klk | Disable grouping for pie and confusion matrix | 2026-10-07 | eac294a | [261007-klk](./quick/261007-klk-disable-grouping-controls-for-pie-and-co/) |
 
 | 261007-khl | Two date expressions, calendar grouping on all cards and day-first native date pickers | 2026-10-07 | 75a8d93 | [261007-khl](./quick/261007-khl-condense-report-date-controls-and-enable/) |
+
+| 261007-kyp | Accept single-digit day/month and two-digit years in report date fields | 2026-10-07 | c032b79 | [261007-kyp](./quick/261007-kyp-accept-single-digit-day-first-report-dat/) |
 
 ## Deferred Items
 
