@@ -1,0 +1,3 @@
+# Quick task 261007-jhf
+
+Rename sidebar Report V2 to Report. Replace placeholder index with all published reports accessible to signed-in users. Without a default /report/ opens the list; with a valid per-user default it redirects there. /report/?list=1 always opens the list, including via a back link on each report. Store the default in a small user-owned model; CSRF-protected POST validates published membership, supports clearing, and never trusts a submitted user identifier. Unpublished defaults fall back to the list. Add migration and focused preference/navigation/security tests, refresh synthetic preview, commit and record validation.

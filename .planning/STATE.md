@@ -107,6 +107,8 @@ None yet.
 
 | 261007-jby | Match metadata fonts and compact Include groups dropdown | 2026-10-07 | 8e2da08 | [261007-jby](./quick/261007-jby-match-report-metadata-fonts-and-compact-/) |
 
+| 261007-jhf | Report list, back navigation and persistent per-user defaults | 2026-10-07 | e154276 | [261007-jhf](./quick/261007-jhf-add-report-list-navigation-and-per-user-/) |
+
 ## Deferred Items
 
 | Category | Item | Status | Deferred At |
