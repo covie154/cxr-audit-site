@@ -113,6 +113,8 @@ None yet.
 
 | 261007-k0t | Enlarge confusion matrix typography and cells | 2026-10-07 | d0dd378 | [261007-k0t](./quick/261007-k0t-enlarge-confusion-matrix-typography-and-/) |
 
+| 261007-k71 | Square green confusion heatmap with clear axes | 2026-10-07 | 2d31fe3 | [261007-k71](./quick/261007-k71-square-green-confusion-matrix-with-clear/) |
+
 ## Deferred Items
 
 | Category | Item | Status | Deferred At |
