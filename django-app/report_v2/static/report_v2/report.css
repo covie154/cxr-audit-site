@@ -162,3 +162,6 @@
 .widget-frame[data-type="heading"] .widget-body { display: none; }
 
 .widget-frame[data-type="divider"] hr { margin: auto 0; flex: 0 0 auto; }
+
+/* Single numbers occupy the body, whose height already excludes the heading. */
+.widget-single-value, .widget-body > .widget-primary-value { align-self: center; flex: 0 0 auto; margin: auto; max-width: 100%; white-space: nowrap; overflow-wrap: normal; line-height: 1; text-align: center; font-size: min(65cqh, 28cqw); }

@@ -320,3 +320,30 @@ test('table dates use day-first slashes', () => {
     const body = container.children[0].children.find((node) => node.tag === 'tbody');
     assert.equal(body.children[0].children[0].textContent, '12/12/2025');
 });
+
+test("single value fits body width and height, resizes and disposes", () => {
+    const box = makeContainer();
+    const instance = valueRenderer.render(box, { aggregates: { n: 4571 }, units: { n: "count" } }, { primaryOnly: true, measurement: "record_count" });
+    const number = findByClass(box, "widget-single-value");
+    box.clientWidth = 200;
+    box.clientHeight = 160;
+    number.style = {};
+    Object.defineProperty(number, "scrollWidth", { get: () => parseFloat(number.style.fontSize) * number.textContent.length * 0.6 });
+    number.getBoundingClientRect = () => ({ height: parseFloat(number.style.fontSize) });
+    instance.resize();
+    const size = parseFloat(number.style.fontSize);
+    assert.ok(size > 48 && size <= 60);
+    box.clientWidth = 400;
+    instance.resize();
+    assert.ok(parseFloat(number.style.fontSize) > size);
+    number.textContent = "1,234,567,890";
+    instance.resize();
+    assert.ok(number.scrollWidth <= 360);
+    box.clientHeight = 30;
+    instance.resize();
+    assert.ok(parseFloat(number.style.fontSize) <= 24);
+    instance.dispose();
+    assert.equal(instance.disposed, true);
+    assert.equal(box.children.length, 0);
+    instance.resize();
+});

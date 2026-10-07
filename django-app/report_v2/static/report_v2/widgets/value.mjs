@@ -42,7 +42,33 @@ export function render(container, payload, options) {
             return instance;
         }
         const value = ((payload && payload.aggregates) || {})[key];
-        container.appendChild(el("p", "widget-primary-value", formatValue(value, ((payload && payload.units) || {})[key])));
+        const number = el("p", "widget-primary-value widget-single-value", formatValue(value, ((payload && payload.units) || {})[key]));
+        container.appendChild(number);
+        instance.resize = () => {
+            if (disposed || !container.clientWidth || !container.clientHeight) { return; }
+            let low = 0;
+            let high = container.clientHeight;
+            // Measure the actual text so long counts and durations also fit.
+            while (high - low > 0.5) {
+                const size = (low + high) / 2;
+                number.style.fontSize = size + "px";
+                if (number.scrollWidth <= container.clientWidth * 0.9 && number.getBoundingClientRect().height <= container.clientHeight * 0.8) {
+                    low = size;
+                } else {
+                    high = size;
+                }
+            }
+            number.style.fontSize = low + "px";
+        };
+        const disconnect = observeLifecycle(instance, container, instance.resize);
+        instance.dispose = () => {
+            if (disposed) { return; }
+            disposed = true;
+            instance.disposed = true;
+            disconnect();
+            clearContainer(container);
+        };
+        instance.resize();
         return instance;
     }
     const list = entries(payload && payload.aggregates);
