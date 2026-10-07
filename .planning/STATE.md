@@ -101,6 +101,8 @@ None yet.
 
 | 261007-glk | Project-defined grouping, group selection and pooled Overall rows on report cards | 2026-10-07 | 500e20a | [261007-glk](./quick/261007-glk-project-defined-grouping-and-group-selec/) |
 
+| 261007-ha1 | Collapse card settings and separate date ranges from calendar time grouping | 2026-10-07 | 68c1e1c | [261007-ha1](./quick/261007-ha1-collapse-report-card-settings-and-separa/) |
+
 ## Deferred Items
 
 | Category | Item | Status | Deferred At |
