@@ -15,7 +15,6 @@
     {# the csrftoken cookie, which report.js then reads for its X-CSRFToken header. #}
     <span class="widget-csrf" data-role="csrf" aria-hidden="true">{% csrf_token %}</span>
     <h1 class="page-title">{{ title }} <small>{{ version }}</small></h1>
-    <p class="report-v2-legacy"><a href="{{ legacy_report_url }}">Open the previous report</a></p>
     {# Task 17/18: freeze the current widget states server-side, then print or email. #}
     {# report.js blocks the request until every pending widget update has settled. #}
     <p class="report-v2-exportbar">
@@ -51,7 +50,7 @@
         <h2>{{ section.title }}</h2>
         <div class="report-grid" style="grid-auto-rows: minmax({{ grid.row_height_px|default:64 }}px, auto);">
             {% for f in section.widgets %}
-            <article class="widget-frame" data-widget-id="{{ f.id }}" data-type="{{ f.type }}"
+            <article class="card widget-frame" data-widget-id="{{ f.id }}" data-type="{{ f.type }}"
                      data-data-url="{{ f.data_url }}" data-context-token="{{ f.context_token }}"
                      style="grid-column: span {{ f.width }}; grid-row: span {{ f.height }};">
                 <header class="widget-header"><h3>{{ f.title }}</h3></header>

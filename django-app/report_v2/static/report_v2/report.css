@@ -6,10 +6,13 @@
    grow vertically instead of clipping, and keeping keyboard focus rings visible (no absolute/
    fixed positioning, no negative margins, no overflow:hidden on the frames). */
 
-.report-v2-page { max-width: 1400px; margin: 0 auto; min-width: 0; }
+.report-v2-page { max-width: 1400px; margin: 0 auto; min-width: 0; padding: 34px clamp(16px, 3vw, 32px) 64px; }
+.report-v2-page .page-title { font-size: clamp(1.55rem, 2.5vw, 2rem); font-weight: 700; margin-bottom: 4px; }
+.report-v2-page .page-subtitle { font-size: .92em; margin-bottom: 28px; }
 .report-v2-page h1 small { color: var(--c-text-muted); font-size: .6em; }
-.report-v2-legacy { margin-bottom: 24px; color: var(--c-text-muted); }
 .report-v2-page .card { padding: 24px; }
+.report-v2-page > .card { margin-bottom: 24px; }
+.report-v2-adminbar, .report-v2-exportbar { margin-bottom: 24px; }
 .report-v2-page h2 { margin-bottom: 12px; }
 .report-v2-page [role="status"] { color: var(--c-text-muted); }
 .report-v2-chart { width: 100%; height: 320px; }
@@ -26,26 +29,26 @@
 .widget-summary { overflow-wrap: anywhere; word-break: normal; }
 .widget-controls { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px; min-width: 0; }
 .widget-controls label { display: flex; flex-direction: column; gap: 2px; min-width: 0; max-width: 100%; font-size: 0.85rem; }
-.widget-controls input, .widget-controls select { max-width: 100%; min-width: 0; box-sizing: border-box; padding: 0.35rem 0.5rem; border: 1px solid var(--border, #c9d1d8); border-radius: 4px; background: var(--surface, #ffffff); color: var(--c-text, #111a2b); }
+.widget-controls input, .widget-controls select { max-width: 100%; min-width: 0; box-sizing: border-box; padding: 0.35rem 0.5rem; border: 1px solid var(--c-border); border-radius: 8px; background: var(--c-surface); color: var(--c-text); }
 .widget-controls .btn { flex: 0 0 auto; }
 .widget-live { min-width: 0; }
 .widget-chart, .widget-chart-box { width: 100%; min-height: 240px; max-width: 100%; }
 .widget-values { display: grid; gap: 4px 16px; min-width: 0; }
 .widget-value { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
 
-.widget-controls input:focus-visible, .widget-controls select:focus-visible, .widget-controls .btn:focus-visible, .widget-more:focus-visible { outline: 2px solid var(--accent, #2f6feb); outline-offset: 1px; }
+.widget-controls input:focus-visible, .widget-controls select:focus-visible, .widget-controls .btn:focus-visible, .widget-more:focus-visible { outline: 2px solid var(--c-primary); outline-offset: 1px; }
 
-@media (max-width: 720px) { .report-grid { grid-template-columns: repeat(1, minmax(0, 1fr)); } .report-grid > .widget-frame { grid-column: span 12 !important; } }
+@media (max-width: 720px) { .report-v2-page { padding: 22px 12px 40px; } .report-v2-page .card { padding: 20px; } .report-grid { grid-template-columns: repeat(1, minmax(0, 1fr)); } .report-grid > .widget-frame { grid-column: span 12 !important; } }
 
 /* Task 18: the email modal (recipients + optional note). Transient by design -- nothing
    here persists after the dialog closes, matching the "no saved user settings" rule. */
 .report-v2-exportbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .email-modal { position: fixed; inset: 0; background: rgba(15, 23, 32, 0.45); display: flex; align-items: center; justify-content: center; z-index: 50; }
 .email-modal[hidden] { display: none; }
-.email-modal-card { background: var(--surface, #ffffff); color: var(--c-text, #111a2b); border-radius: 6px; padding: 20px; width: min(520px, calc(100vw - 32px)); box-shadow: 0 12px 32px rgba(15, 23, 32, 0.25); }
+.email-modal-card { background: var(--c-surface); color: var(--c-text, #111a2b); border-radius: 6px; padding: 20px; width: min(520px, calc(100vw - 32px)); box-shadow: 0 12px 32px rgba(15, 23, 32, 0.25); }
 .email-modal-card h3 { margin: 0 0 12px; }
 .email-modal-card form { display: flex; flex-direction: column; gap: 8px; }
 .email-modal-card label { font-size: 0.85rem; color: var(--c-text-muted); }
-.email-modal-card textarea { box-sizing: border-box; width: 100%; padding: 0.45rem 0.55rem; border: 1px solid var(--border, #c9d1d8); border-radius: 4px; background: var(--surface, #ffffff); color: var(--c-text, #111a2b); font: inherit; resize: vertical; }
+.email-modal-card textarea { box-sizing: border-box; width: 100%; padding: 0.45rem 0.55rem; border: 1px solid var(--c-border); border-radius: 8px; background: var(--c-surface); color: var(--c-text); font: inherit; resize: vertical; }
 .email-modal-card .email-status { min-height: 1.2em; font-size: 0.85rem; color: var(--c-text-muted); overflow-wrap: anywhere; }
 .email-modal-card button { align-self: flex-start; }

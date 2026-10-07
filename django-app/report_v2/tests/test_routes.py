@@ -1,9 +1,12 @@
+from pathlib import Path
+import re
 from unittest.mock import Mock
 
 from django.contrib.auth.models import AnonymousUser, User
 from django.contrib.staticfiles import finders
 from django.test import RequestFactory, SimpleTestCase, override_settings
 from django.urls import resolve, reverse
+from django.template.loader import render_to_string
 
 from report import urls as legacy_urls
 from .. import views
@@ -40,3 +43,18 @@ class ReportRoutingTests(SimpleTestCase):
     def test_static_assets_are_discoverable(self):
         for asset in ("report.js", "report.css", "vendor/echarts.min.js"):
             self.assertIsNotNone(finders.find(f"report_v2/{asset}"))
+
+    def test_report_sidebar_items_have_independent_active_states(self):
+        for url, active_label in (("/report/", "Report V2"), ("/report-old/", "Report V1")):
+            request = RequestFactory().get(url)
+            request.user = Mock(is_authenticated=True, is_superuser=False, username="reviewer")
+            request.resolver_match = resolve(url)
+            html = render_to_string("base.html", {"user": request.user}, request=request)
+            links = re.findall(r'<a href="(/report(?:-old)?/)"[^>]*>.*?</a>', html, re.S)
+            self.assertEqual(set(links), {"/report/", "/report-old/"})
+            active = re.search(r'<a href="/report(?:-old)?/"[^>]*aria-current="page"[^>]*>(.*?)</a>', html, re.S)
+            self.assertIsNotNone(active)
+            self.assertIn(active_label, active.group(1))
+        source = Path(__file__).resolve().parent.parent / "templates" / "report_v2"
+        for name in ("index.html", "page.html"):
+            self.assertNotIn('class="report-v2-legacy"', (source / name).read_text())
