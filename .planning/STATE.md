@@ -117,6 +117,8 @@ None yet.
 
 | 261007-khw | Centre Prediction above matrix columns | 2026-10-07 | 037a802 | [261007-khw](./quick/261007-khw-centre-prediction-above-confusion-matrix/) |
 
+| 261007-klk | Disable grouping for pie and confusion matrix | 2026-10-07 | eac294a | [261007-klk](./quick/261007-klk-disable-grouping-controls-for-pie-and-co/) |
+
 ## Deferred Items
 
 | Category | Item | Status | Deferred At |
