@@ -309,27 +309,17 @@ class EditorAdminSecurityTests(TestCase):
         self.assertEqual(page.status_code, 200)
         self.assertIn("Report editor", page.content.decode())
 
-    # -- 8. no pointer-reordering (drag-and-drop) editing was added ------
-    def test_no_drag_and_drop(self):
-        """Source-level guard: the shipped editor assets introduce no DnD handlers/attributes."""
-        targets = [
-            Path(av.__file__),
-            Path(__file__).parent.parent / "templates" / "report_v2" / "layout.html",
-            Path(__file__).parent.parent / "templates" / "report_v2" / "_editor_form.html",
-            Path(__file__).parent.parent / "static" / "report_v2" / "editor.js",
-            Path(__file__).parent.parent / "static" / "report_v2" / "editor.css",
-        ]
-        forbidden = (
-            "draggable", "ondrag", "ondrop", "ondragstart", "ondragover", "ondragend",
-            "addeventlistener('drag", 'addeventlistener("drag', "setdata(", "getdata(", "dropeffect",
-            "drag-", "drag_", "grab", "dragover",
-        )
-        for target in targets:
-            self.assertTrue(target.exists(), f"missing deliverable: {target}")
-            text = target.read_text(encoding="utf-8").lower()
-            for token in forbidden:
-                with self.subTest(target=target.name, token=token):
-                    self.assertNotIn(token, text)
+    def test_visual_editor_updates_yaml_without_saving(self):
+        client = self._as_admin()
+        response = client.post("/layout/actions/visual/", {
+            "yaml_text": VALID_YAML,
+            "operation": '{"action":"resize","section_id":"s","widget_id":"w","layout":{"width":6,"height":4}}',
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("width: 6", response.json()["yaml_text"])
+        self.assertFalse((self.root / "prime" / "drafts").exists())
+        client = self._as_admin(enforce_csrf=True)
+        self.assertEqual(client.post("/layout/actions/visual/", {"yaml_text": VALID_YAML}).status_code, 403)
 
     # -- 14A.4 selector lists published + drafts with a state label ------------------- #
     def test_editor_selector_lists_published_and_drafts_with_state(self):
@@ -562,3 +552,46 @@ class EditorAdminSecurityTests(TestCase):
             response = self._as_admin().get(entry["editor_url"])
             self.assertEqual(response.status_code, 200)
             self.assertIn('data-def-id="'+entry["def_id"]+'"', response.content.decode())
+
+    def test_empty_height_and_ci_enabled_are_reported_after_save_and_preview(self):
+        invalid = VALID_YAML.replace("height: 3", "height:").replace("enabled: false", "enabled:")
+        client = self._as_admin()
+        for action in ("save", "preview"):
+            response = client.post(_MUTATION_PATHS[action], {"def_id": "invalid_values", "yaml_text": invalid})
+            self.assertEqual(response.status_code, 200)
+            self.assertFalse(response.json()["valid"])
+            errors = " ".join(response.json()["errors"])
+            self.assertIn("layout.height", errors)
+            self.assertIn("ci.enabled", errors)
+        self.assertEqual(self._repo().read_draft("invalid_values")[0], invalid)
+        response = client.post(_MUTATION_PATHS["publish"], {"def_id": "invalid_values", "yaml_text": invalid})
+        self.assertEqual(response.status_code, 422)
+        self.assertIsNone(self._repo().get_current_version("invalid_values"))
+
+    def test_full_card_preview_controls_are_temporary_and_validated(self):
+        import json
+        from unittest.mock import patch
+
+        draft = VALID_YAML
+        with patch("report_v2.data.fetch_project_rows", return_value=[]):
+            response = self._as_admin().post(_MUTATION_PATHS["preview"], {
+                "def_id": "testreport", "yaml_text": draft,
+                "overrides": json.dumps({"date": {"start": "2025-12-20", "end": "2025-12-21"}}),
+            })
+        card = response.json()["card_html"]
+        self.assertIn('class="card widget-frame"', card)
+        self.assertIn('class="widget-settings"', card)
+        self.assertIn('name="time_grouping"', card)
+        self.assertIn('data-action="apply"', card)
+        self.assertIn('data-action="reset"', card)
+        self.assertIn('data-initial-payload', card)
+        self.assertIsNone(self._repo()._read_pointer("testreport"))
+        with self.assertRaises(DraftNotFoundError):
+            self._repo().read_draft("testreport")
+        with patch("report_v2.data.fetch_project_rows") as fetch:
+            rejected = self._as_admin().post(_MUTATION_PATHS["preview"], {
+                "def_id": "testreport", "yaml_text": draft,
+                "overrides": json.dumps({"comparison": "unknown_dimension"}),
+            })
+        self.assertEqual(rejected.status_code, 400)
+        fetch.assert_not_called()

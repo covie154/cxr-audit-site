@@ -1,0 +1,93 @@
+<article class="card widget-frame" data-widget-id="{{ f.id }}" data-type="{{ f.type }}" data-measurement="{{ f.measurement }}" data-default-comparison="{{ f.controls.default_compare_by|default_if_none:'' }}"
+         data-data-url="{{ f.data_url }}" data-context-token="{{ f.context_token }}"
+         style="grid-column: span {{ f.width }}; grid-row: span {{ f.height }}; --widget-rows: {{ f.height }};">
+    {% if f.type == "text" %}<h3>{{ f.title }}</h3>{% elif f.type != "divider" %}
+    <details class="widget-settings">
+    <summary class="widget-header"><h3>{{ f.title }}</h3></summary>
+    <div class="widget-settings-content">
+    {% if f.controls.enabled %}
+    <form class="widget-controls" data-role="controls" novalidate>
+        {% if f.controls.date_range %}
+        <div class="widget-date-control">
+            <label for="date-start-{{ f.id }}">From</label>
+            <div class="widget-date-field">
+                <input id="date-start-{{ f.id }}" type="text" name="date_start" data-date="start" value="{{ f.controls.date_inputs.start }}" placeholder="DD/MM/YYYY or W-2" title="DD-MM-YYYY, DD/MM/YYYY or D/W/M/Y with an optional minus offset" autocomplete="off">
+                <span class="widget-date-picker"><span aria-hidden="true">📅</span><input type="date" data-date-picker="start" value="{{ f.controls.native_dates.start }}" aria-label="Choose From date"></span>
+            </div>
+        </div>
+        <div class="widget-date-control">
+            <label for="date-end-{{ f.id }}">To</label>
+            <div class="widget-date-field">
+                <input id="date-end-{{ f.id }}" type="text" name="date_end" data-date="end" value="{{ f.controls.date_inputs.end }}" placeholder="DD/MM/YYYY or D" title="DD-MM-YYYY, DD/MM/YYYY or D/W/M/Y with an optional minus offset" autocomplete="off">
+                <span class="widget-date-picker"><span aria-hidden="true">📅</span><input type="date" data-date-picker="end" value="{{ f.controls.native_dates.end }}" aria-label="Choose To date"></span>
+            </div>
+        </div>
+        {% endif %}
+        <label>Grouping
+            <select name="time_grouping" data-time-grouping>
+                {% if f.type != "line" %}<option value=""{% if not f.controls.time_grouping %} selected{% endif %}>Overall</option>{% endif %}
+                <option value="day"{% if f.controls.time_grouping == "day" %} selected{% endif %}>Day</option>
+                <option value="week"{% if f.controls.time_grouping == "week" %} selected{% endif %}>Week</option>
+                <option value="month"{% if f.controls.time_grouping == "month" %} selected{% endif %}>Month</option>
+                <option value="year"{% if f.controls.time_grouping == "year" %} selected{% endif %}>Year</option>
+            </select>
+        </label>
+        <label>Group by
+            <select name="comparison" data-comparison{% if f.type == "pie" or f.type == "confusion_matrix" %} disabled{% endif %}>
+                <option value="">None</option>
+                {% if f.type != "pie" and f.type != "confusion_matrix" %}
+                {% for dim in f.controls.compare_by %}
+                <option value="{{ dim.id }}"{% if dim.id == f.controls.default_compare_by %} selected{% endif %}>{{ dim.label }}</option>
+                {% endfor %}
+                {% endif %}
+            </select>
+        </label>
+        <div class="widget-group-picker" data-group-picker hidden>
+            <button type="button" class="btn btn-secondary" data-group-trigger popovertarget="groups-{{ f.id }}">Include groups <span data-group-count></span> ▾</button>
+            <div id="groups-{{ f.id }}" class="widget-group-menu" data-group-menu popover="auto" aria-label="Include groups">
+            <div class="widget-group-actions">
+                <button type="button" class="btn btn-secondary" data-action="select-groups">Select all</button>
+                <button type="button" class="btn btn-secondary" data-action="clear-groups">Clear</button>
+            </div>
+            <fieldset data-group-options><legend class="widget-a11y">Included groups</legend></fieldset>
+            </div>
+        </div>
+        <button type="submit" class="btn btn-primary" data-action="apply">Apply</button>
+        <button type="reset" class="btn btn-secondary" data-action="reset">Reset</button>
+    </form>
+    {% endif %}
+    <p class="widget-summary" role="status"{% if f.type == "value" %} hidden{% endif %}>{% if f.type != "value" %}{{ f.summary }}{% endif %}</p>
+    <p class="widget-reference" data-reference>{% if f.type != "value" %}{{ f.payload.caption }}{% endif %}</p>
+    </div>
+    </details>
+    {% endif %}
+    <div class="widget-body" data-widget-body>
+        {# Server-side empty message, always present so report.js can read it per frame #}
+        {# (report.js: node.querySelector('[data-role="empty-message"]')); hidden from view. #}
+        <p class="widget-empty" data-role="empty-message" hidden>{{ f.empty_message }}</p>
+        {% if f.type == "text" %}<p class="widget-static-text">{{ f.payload.text }}</p>
+        {% elif f.type == "divider" %}<hr>
+        {% elif f.type == "value" and not f.payload.error %}
+        {% if f.payload.empty %}<p class="widget-empty">{{ f.empty_message }}</p>{% else %}<p class="widget-primary-value">{{ f.primary_value }}</p>{% endif %}
+        {% elif f.payload.rows %}
+        <table class="widget-table">
+            <thead><tr>
+                {% for key in f.payload.rows.0.keys %}<th>{{ key }}</th>{% endfor %}
+            </tr></thead>
+            <tbody>
+            {% for row in f.payload.rows %}
+                <tr>{% for value in row.values %}<td>{{ value }}</td>{% endfor %}</tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        {% elif f.payload.error %}
+        <p class="widget-empty">{% if f.type != "value" %}{{ f.summary }}{% endif %}</p>
+        {% else %}
+        <p class="widget-empty">{{ f.empty_message }}</p>
+        {% endif %}
+        {% if f.type == "table" %}
+        <button type="button" class="btn btn-secondary widget-more" data-action="more" hidden>Show more</button>
+        {% endif %}
+    </div>
+    <pre class="widget-initial" hidden data-initial-payload>{{ f.initial_json|safe }}</pre>
+</article>

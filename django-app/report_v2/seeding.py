@@ -217,6 +217,8 @@ def validate_seed_bindings(report_yaml: str | None = None, *, project=None) -> l
 
     violations: list[str] = []
     for widget in _iter_widgets(report_data):
+        if widget.get("type") in {"text", "divider"}:
+            continue
         widget_id = widget.get("id", "<no-id>")
         query = widget.get("query") or {}
         measurement = query.get("measurement")

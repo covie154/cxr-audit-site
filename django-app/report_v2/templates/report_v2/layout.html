@@ -7,9 +7,10 @@
 <link rel="stylesheet" href="{% static 'report_v2/editor.css' %}">
 {% endblock %}
 {% block body %}
-{# The editor is a plain textarea + buttons. There is deliberately no pointer-reordering editing UI. #}
+{# Both editing modes share the authoritative YAML draft. #}
 <div class="report-v2-page report-v2-editor" data-editor data-def-id="{{ def_id }}"
      data-editor-url="{% url 'report_editor:editor' %}"
+     data-visual-url="{% url 'report_editor:editor_visual' %}"
      data-save-url="{% url 'report_editor:editor_save_draft' %}"
      data-preview-url="{% url 'report_editor:editor_preview' %}"
      data-publish-url="{% url 'report_editor:editor_publish' %}"
@@ -23,5 +24,7 @@
 {% block extra_js %}
 <script src="{% static 'report_v2/vendor/echarts.min.js' %}"></script>
 <script type="module" src="{% static 'report_v2/widgets/boot.mjs' %}"></script>
+<script defer src="{% static 'report_v2/report.js' %}"></script>
+<script defer src="{% static 'report_v2/visual_editor.js' %}"></script>
 <script defer src="{% static 'report_v2/editor.js' %}"></script>
 {% endblock %}

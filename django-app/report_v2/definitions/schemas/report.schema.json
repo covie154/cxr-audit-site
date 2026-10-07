@@ -71,7 +71,9 @@
                     "bar",
                     "pie",
                     "confusion_matrix",
-                    "boxplot"
+                    "boxplot",
+                    "text",
+                    "divider"
                   ]
                 },
                 "layout": {
@@ -262,20 +264,80 @@
                     "full",
                     "summary"
                   ]
+                },
+                "text": {
+                  "type": "string",
+                  "maxLength": 10000
                 }
               },
               "required": [
                 "id",
                 "title",
                 "type",
-                "layout",
-                "query",
-                "window",
-                "controls",
-                "ci",
-                "export"
+                "layout"
               ],
-              "additionalProperties": false
+              "additionalProperties": false,
+              "allOf": [
+                {
+                  "if": {
+                    "properties": {
+                      "type": {
+                        "enum": [
+                          "text",
+                          "divider"
+                        ]
+                      }
+                    }
+                  },
+                  "then": {
+                    "properties": {
+                      "query": false,
+                      "window": false,
+                      "bucket": false,
+                      "controls": false,
+                      "default_compare_by": false,
+                      "ci": false,
+                      "benchmarks": false,
+                      "columns": false,
+                      "options": false,
+                      "export": false
+                    },
+                    "allOf": [
+                      {
+                        "if": {
+                          "properties": {
+                            "type": {
+                              "const": "text"
+                            }
+                          }
+                        },
+                        "then": {
+                          "required": [
+                            "text"
+                          ]
+                        },
+                        "else": {
+                          "properties": {
+                            "text": false
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  "else": {
+                    "required": [
+                      "query",
+                      "window",
+                      "controls",
+                      "ci",
+                      "export"
+                    ],
+                    "properties": {
+                      "text": false
+                    }
+                  }
+                }
+              ]
             }
           }
         },

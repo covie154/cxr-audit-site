@@ -5,6 +5,7 @@ from . import admin_views
 app_name = "report_editor"
 urlpatterns = [
     path("", admin_views.editor, name="editor"),
+    path("actions/visual/", admin_views.editor_visual, name="editor_visual"),
     path("actions/save/", admin_views.editor_save_draft, name="editor_save_draft"),
     path("actions/preview/", admin_views.editor_preview, name="editor_preview"),
     path("actions/publish/", admin_views.editor_publish, name="editor_publish"),

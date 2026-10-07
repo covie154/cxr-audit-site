@@ -132,3 +132,11 @@
 .widget-confusion_matrix .widget-summary-line { font-size: 1.05rem; text-align: center; margin: 12px 0 0; }
 
 .widget-confusion-prediction { margin-left: 90px; text-align: center; font-size: 1.05rem; padding-bottom: 4px; }
+
+.widget-static-text { white-space: pre-wrap; overflow-wrap: anywhere; }
+.widget-frame[data-type="text"] .widget-body { max-height: none; overflow: visible; }
+.widget-frame[data-type="divider"] hr { border: 0; border-top: 1px solid var(--c-border); width: 100%; }
+
+.report-grid { grid-auto-rows: minmax(var(--report-row-height, 64px), auto); }
+.report-grid > .widget-frame { min-height: calc(var(--widget-rows, 1) * var(--report-row-height, 64px) + (var(--widget-rows, 1) - 1) * 16px); }
+@media (max-width: 700px) { .report-grid > .widget-frame { grid-row: auto !important; min-height: 0; } }

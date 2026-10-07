@@ -1,13 +1,33 @@
-{# Editor form partial. Plain controls only - no pointer-reordering editing anywhere. #}
+{# Tabbed workspace with shared draft actions and a separate preview dialog. #}
 <div class="editor-columns">
-<section class="card editor-workspace" aria-labelledby="workspaceTitle">
-    <h2 id="workspaceTitle">YAML editor</h2>
+<section class="card editor-workspace" aria-label="Report layout editor">
+    <div class="editor-tabs" role="tablist" aria-label="Editor mode">
+        <button type="button" class="editor-tab" id="visualEditorTab" role="tab" aria-selected="true" aria-controls="visualEditorPanel" data-action="editor-tab">Visual editor</button>
+        <button type="button" class="editor-tab" id="yamlEditorTab" role="tab" aria-selected="false" aria-controls="yamlEditorPanel" tabindex="-1" data-action="editor-tab">YAML editor</button>
+    </div>
     <p class="editor-revision" data-role="revision-indicator" data-revision="{{ revision }}" data-source-state="{{ source_state }}" data-published-version="{{ published_version|default:'' }}">
         Revision: <code>{% if revision %}{{ revision }}{% else %}{{ published_version|default:"(no draft yet)" }}{% endif %}</code> ({% if revision %}Draft{% else %}Published{% endif %})
     </p>
-    <textarea id="id_yaml_text" name="yaml_text" class="editor-yaml" rows="24" spellcheck="off"
+    <div id="visualEditorPanel" class="editor-panel editor-visual" role="tabpanel" aria-labelledby="visualEditorTab" tabindex="0">
+        <div class="visual-toolbar">
+            <button type="button" class="btn btn-outline" data-visual-action="undo" disabled>Undo</button>
+            <p class="editor-help">Drag the move handle to arrange cards. Drag the corner to resize.</p>
+        </div>
+        <p class="editor-help">Visual edits update YAML and normalize its formatting, including removing comments.</p>
+        <p class="visual-status" data-role="visual-status" role="status">Loading layout…</p>
+        <div class="visual-canvas" data-role="visual-canvas"></div>
+    </div>
+    <div id="yamlEditorPanel" class="editor-panel" role="tabpanel" aria-labelledby="yamlEditorTab" hidden>
+    <textarea id="id_yaml_text" name="yaml_text" class="editor-yaml" spellcheck="off"
               data-role="yaml-textarea" aria-label="Report YAML definition">{% if draft_text %}{{ draft_text }}{% endif %}</textarea>
-    <p class="editor-status" role="status" data-role="dirty-indicator" data-dirty="false">No unsaved changes.</p>
+    </div>
+    <div class="editor-status-row">
+        <p class="editor-status" role="status" data-role="dirty-indicator" data-dirty="false">No unsaved changes.</p>
+        <details class="editor-validation" data-role="validation-callout">
+            <summary data-role="validation-summary">Not validated</summary>
+            <ul class="editor-error-list" data-role="error-list" role="alert"></ul>
+        </details>
+    </div>
     <p class="editor-conflict" role="alert" data-role="conflict-indicator" hidden>
         Version conflict: someone else saved this report. Reload before saving again.
     </p>
@@ -16,27 +36,60 @@
         <button type="button" class="btn btn-outline" data-action="preview" title="Validate YAML and evaluate the selected card using current study data">Preview</button>
         <button type="button" class="btn btn-success" data-action="publish" title="Validate YAML and make a new report version available">Publish</button>
     </div>
-    <p class="editor-help">Save keeps your work as a draft. Preview checks the YAML and shows the selected card with current study data. Publish makes this definition the current report version.</p>
 </section>
-
-<div class="editor-review">
-<section class="card editor-errors" aria-labelledby="errorsTitle">
-    <h2 id="errorsTitle">Validation errors</h2>
-    <ul class="editor-error-list" data-role="error-list"></ul>
-    <p class="editor-empty" data-role="errors-empty">No validation run yet.</p>
-</section>
-
-<section class="card editor-preview" aria-labelledby="previewTitle">
-    <h2 id="previewTitle">Preview</h2>
-    <label class="editor-report-label" for="id_preview_widget">Card
-        <select id="id_preview_widget" data-role="preview-card">
-            {% for widget in widgets %}<option value="{{ widget.id }}">{{ widget.title }}</option>{% empty %}<option value="">No cards yet</option>{% endfor %}
-        </select>
-    </label>
-    <div class="editor-preview-output" data-role="preview-output" role="region" aria-label="Widget preview">
-        <p class="editor-empty">Choose a card and press Preview to review its current results.</p>
+</div>
+<dialog class="editor-dialog editor-preview" data-role="preview-dialog" aria-labelledby="previewTitle">
+    <header class="editor-header">
+        <h2 id="previewTitle">Preview</h2>
+        <button type="button" class="btn btn-outline" data-action="close-preview">Close</button>
+    </header>
+    <div class="editor-preview-controls">
+        <label class="editor-report-label" for="id_preview_widget">Card
+            <select id="id_preview_widget" data-role="preview-card">
+                {% for widget in widgets %}<option value="{{ widget.id }}">{{ widget.title }}</option>{% empty %}<option value="">No cards yet</option>{% endfor %}
+            </select>
+        </label>
     </div>
-</section>
+    <div class="editor-preview-output report-grid" data-role="preview-output" role="region" aria-label="Widget preview">
+        <p class="editor-empty">Choose a card to preview its current results.</p>
+    </div>
+</dialog>
 
-</div>
-</div>
+<dialog class="editor-dialog card-options-dialog" data-role="card-options" aria-labelledby="cardOptionsTitle">
+    <form data-role="card-options-form">
+        <header class="editor-header"><h2 id="cardOptionsTitle">Edit card</h2><button type="button" class="btn btn-outline" data-visual-action="cancel">Cancel</button></header>
+        <p class="editor-help">Choose the content, then adjust the optional settings and size.</p>
+        <fieldset><legend>1. Content and display</legend>
+            <label>Card title<input name="title" required maxlength="200"></label>
+            <label>Card type<select name="type"></select></label>
+            <label data-dynamic>What to measure<select name="measurement"></select><span class="editor-help" data-role="measure-description"></span></label>
+            <div data-role="source-options" data-dynamic></div>
+            <label data-text>Text<textarea name="text" rows="5" maxlength="10000"></textarea></label>
+        </fieldset>
+        <details data-dynamic><summary>2. Optional settings</summary>
+            <div class="card-optional">
+                <label>Population<select name="cohort"></select></label>
+                <label>Threshold policy<select name="policy"></select></label>
+                <div class="card-size-fields"><label>From<input name="start" placeholder="M or YYYY-MM-DD"></label><label>To<input name="end" placeholder="D or YYYY-MM-DD"></label></div>
+                <p class="editor-help">D = latest date, M = start of month, D-30 = thirty days earlier. Dates use YYYY-MM-DD.</p>
+                <label data-line>Time interval<select name="bucket"><option value="day">Day</option><option value="week">Week</option><option value="month">Month</option><option value="year">Year</option></select></label>
+                <fieldset data-role="filter-options"><legend>Allow filters</legend></fieldset>
+                <fieldset data-role="comparison-options"><legend>Allow grouping</legend></fieldset>
+                <label>Default grouping<select name="default_group"></select></label>
+                <label class="card-check"><input name="ci" type="checkbox">Show 95% confidence intervals (Wilson)</label>
+                <fieldset data-role="column-options"><legend>Table columns</legend></fieldset>
+                <label data-pie class="card-check"><input name="donut" type="checkbox">Doughnut chart</label>
+                <label data-box>Whiskers<select name="whiskers"><option value="tukey">Tukey</option><option value="min_max">Minimum and maximum</option><option value="p5_p95">5th to 95th percentile</option></select></label>
+                <label data-matrix>Values<select name="normalization"><option value="count">Counts</option><option value="row_percent">Row percentages</option><option value="column_percent">Column percentages</option></select></label>
+                <label>Case rows in exports<select name="export"><option value="summary">Summary only</option><option value="full">Include permitted rows</option></select></label>
+                <fieldset data-role="benchmark-options"><legend>Fixed targets</legend><div data-role="benchmark-list"></div><button type="button" class="btn btn-outline" data-visual-action="add-target">Add target</button></fieldset>
+            </div>
+        </details>
+        <fieldset><legend>3. Size</legend><div class="card-size-fields">
+            <label>Width (columns)<input name="width" type="number" min="1" max="12" required></label>
+            <label>Minimum height (rows)<input name="height" type="number" min="1" max="30" required></label>
+        </div><button type="button" class="btn btn-outline" data-visual-action="preset">Use preset size</button></fieldset>
+        <p class="card-form-error" data-role="card-form-error" role="alert"></p>
+        <div class="editor-actions"><button type="submit" class="btn btn-primary">Apply</button><button type="button" class="btn btn-outline" data-visual-action="preview-options">Preview</button><button type="button" class="btn btn-outline" data-visual-action="delete-card">Delete card</button></div>
+    </form>
+</dialog>

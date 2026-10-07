@@ -20,7 +20,7 @@ Security posture (the point of Task 12):
 * ``editor_publish`` is the **only** code path that may move a publication pointer, and only on an
   explicit user action. ``editor_preview`` never publishes and never sends mail; a rejected publish
   leaves the old pointer exactly where it was (Task 11's guarantee, relied upon, never bypassed).
-* There is no pointer-reordering editing surface: the editor is a plain ``<textarea>`` plus buttons.
+* Visual transformations update submitted YAML in memory; only Save and Publish persist changes.
 """
 from __future__ import annotations
 
@@ -35,6 +35,7 @@ from django.conf import settings as django_settings
 from django.contrib.auth.models import AnonymousUser
 from django.http import HttpResponseForbidden, HttpResponseRedirect, JsonResponse
 from django.shortcuts import render
+from django.template.loader import render_to_string
 from django.urls import reverse
 from django.utils.text import slugify
 from django.views.decorators.csrf import csrf_protect
@@ -43,6 +44,8 @@ from django.views.decorators.http import require_GET, require_POST
 from . import data
 from . import permissions
 from . import seeding
+from .definitions import visual
+from .definitions.validation import DisplayValidationError
 from .definitions.repository import (
     DefinitionRepository,
     DraftNotFoundError,
@@ -52,13 +55,14 @@ from .definitions.repository import (
     default_root,
 )
 from .definitions.loader import DefinitionError, load_report_definition, load_policy
-from .views import _evaluate
+from .views import _evaluate, _widget_frame, _validate_overrides, OverrideRejectedError
 
 __all__ = [
     "editor",
     "editor_new",
     "editor_delete",
     "editor_preview",
+    "editor_visual",
     "editor_publish",
     "editor_save_draft",
     "editor_seed",
@@ -358,7 +362,9 @@ def editor_save_draft(request):
         )
     except (RepositoryError,) as exc:
         return JsonResponse({"error": str(exc), "def_id": def_id}, status=400)
-    return JsonResponse({"def_id": def_id, "revision": revision, "status": "saved"}, status=200)
+    errors = repo.validate_preview(def_id, yaml_text)
+    return JsonResponse({"def_id": def_id, "revision": revision, "status": "saved",
+                         "valid": not errors, "errors": errors}, status=200)
 
 
 @require_POST
@@ -368,8 +374,8 @@ def editor_preview(request):
     """Validate and render a preview. Read-only by contract: no draft, no publish, no mail.
 
     ``repo.validate_preview`` (loader 03 + display validators 09) produces the typed error list;
-    only when that list is empty do we ask :func:`report_v2.evaluation.evaluate` for the data of
-    the *first supported widget* so the normal renderer can paint something. An evaluation failure
+    only when that list is empty do we evaluate the selected widget with temporary, validated
+    control overrides and render the same card as the published report. An evaluation failure
     is reported as preview information -- it can never turn into a publication.
     """
     def_id = str(_param(request, "def_id", "")).strip()
@@ -391,7 +397,20 @@ def editor_preview(request):
         payload["preview_error"] = "Select a card from this report to preview." if widget_id else "Add a card to preview this report."
         return JsonResponse(payload, status=400 if widget_id else 200)
     try:
-        payload["preview"] = _evaluate(layout, widget)
+        overrides = json.loads(str(_param(request, "overrides", "{}")))
+        if not isinstance(overrides, dict):
+            raise OverrideRejectedError("preview overrides must be an object")
+        date, filters, comparison, grouping, page = _validate_overrides(widget, overrides)
+    except (ValueError, TypeError, OverrideRejectedError) as exc:
+        return JsonResponse({"error": str(exc), "status": "rejected"}, status=400)
+    try:
+        payload["preview"] = _evaluate(
+            layout, widget, date_override=date, filters=filters, comparison=comparison,
+            grouping=grouping, page=page, time_grouping=overrides.get("time_grouping"),
+        )
+        payload["card_html"] = render_to_string("report_v2/_widget_card.html", {
+            "f": _widget_frame(def_id, "", widget, payload["preview"], preview=True),
+        }, request=request)
     except Exception:
         # Do not expose clinical values from adapter or database exceptions.
         payload["preview_error"] = "Unable to evaluate this widget. Check its configuration and data connection."
@@ -544,3 +563,24 @@ def editor_seed(request):
             status=422,
         )
     return JsonResponse({**receipt, "status": "seeded", "drafts_only": True, "published": False}, status=200)
+
+
+@require_POST
+@csrf_protect
+@require_admin
+def editor_visual(request):
+    """Project or transform the submitted draft in memory; never evaluate clinical data."""
+    text = str(_param(request, "yaml_text", ""))
+    try:
+        operation = _param(request, "operation", "")
+        if operation:
+            if isinstance(operation, str):
+                operation = json.loads(operation)
+            text, layout = visual.transform(text, operation)
+        else:
+            layout = visual.project_document(text)
+        return JsonResponse({"yaml_text": text, "layout": layout, "catalog": visual.catalog()})
+    except (DefinitionError, ValueError, DisplayValidationError) as exc:
+        errors = getattr(exc, "errors", None)
+        messages = [f"{error.get('path') or '$'}: {error['message']}" for error in errors] if errors else [str(exc)]
+        return JsonResponse({"errors": messages}, status=422)

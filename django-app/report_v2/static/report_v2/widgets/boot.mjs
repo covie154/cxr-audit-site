@@ -1,5 +1,5 @@
 /*
- * Classic module entry for report pages: registers the seven shipped renderers with the registry
+ * Classic module entry for report pages: registers the dynamic and static renderers with the registry
  * and flags the host global ready. registry.mjs already mirrors the api onto window.__rv2widgets;
  * boot only adds the idempotent registrations (registry.renderers is a Map) plus the bootReady flag
  * report.js reads before it takes the registry path. No DOM APIs besides window; no inner*HTML, no
@@ -12,8 +12,11 @@ import * as lineRenderer from "./line.mjs";
 import * as barRenderer from "./bar.mjs";
 import * as pieRenderer from "./pie.mjs";
 import * as confusionRenderer from "./confusion.mjs";
+import * as staticRenderer from "./static.mjs";
 import * as boxplotRenderer from "./boxplot.mjs";
 
+register("text", staticRenderer);
+register("divider", staticRenderer);
 register("value", valueRenderer);
 register("table", tableRenderer);
 register("line", lineRenderer);

@@ -49,7 +49,7 @@ BASE_URL = "http://rv2gallery.test"
 
 WIDGET_FILES = [
     "registry.mjs", "boot.mjs", "format.mjs", "value.mjs", "table.mjs",
-    "line.mjs", "bar.mjs", "pie.mjs", "confusion.mjs", "boxplot.mjs",
+    "line.mjs", "bar.mjs", "pie.mjs", "confusion.mjs", "boxplot.mjs", "static.mjs",
 ]
 
 REQUIRED_KINDS = ["value", "table", "line", "bar", "pie", "confusion_matrix", "boxplot"]

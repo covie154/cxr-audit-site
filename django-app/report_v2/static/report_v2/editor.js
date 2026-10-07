@@ -1,7 +1,7 @@
 /* PRIMER - LLM-based Chest X-Ray Audit Tool
    Copyright (C) 2026 Goh Shu Wen
    Licensed under AGPL-3.0-or-later. See LICENSE at the repository root. */
-/* report_v2 admin layout editor: framework-free, no CDN, no pointer-reordering editing.
+/* report_v2 admin layout editor: framework-free, no CDN, shared YAML draft and visual layout editing.
  *
  * The whole job of this script is (a) track a dirty flag against the last saved revision and (b) POST the
  * YAML to the four admin endpoints carrying the CSRF token the server set. Publishing happens only on
@@ -22,6 +22,9 @@
   var errorList = root.querySelector('[data-role="error-list"]');
   var errorsEmpty = root.querySelector('[data-role="errors-empty"]');
   var previewOut = root.querySelector('[data-role="preview-output"]');
+  var previewDialog = root.querySelector('[data-role="preview-dialog"]');
+  var validationCallout = root.querySelector('[data-role="validation-callout"]');
+  var validationSummary = root.querySelector('[data-role="validation-summary"]');
   var newNameInput = root.querySelector('[data-role="new-report-name"]');
   var createDialog = root.querySelector('[data-role="create-dialog"]');
   var createForm = root.querySelector('[data-role="create-form"]');
@@ -36,7 +39,9 @@
   var savedText = textarea ? textarea.value : "";
   var savedRevision = revisionNode ? revisionNode.getAttribute("data-revision") || "" : "";
   var dirty = false;
-  var previewInstance = null;
+  var disposePreview = null;
+  var previewRequest = 0;
+  var activePreviewYaml = null;
 
   function token() {
     var parts = (document.cookie || "").split(";");
@@ -59,6 +64,8 @@
 
   function showErrors(messages) {
     var items = messages || [];
+    if (validationSummary) { validationSummary.textContent = items.length ? items.length + " validation issue" + (items.length === 1 ? "" : "s") : "No errors"; }
+    if (validationCallout) { validationCallout.open = items.length > 0; }
     if (errorList) {
       errorList.innerHTML = "";
       for (var i = 0; i < items.length; i += 1) {
@@ -120,7 +127,7 @@
     return fields.join("&");
   }
 
-  function post(url, extra) {
+  function post(url, extra, signal) {
     if (!url) {
       return Promise.resolve();
     }
@@ -131,7 +138,8 @@
         "Content-Type": "application/x-www-form-urlencoded; charset=utf-8",
         "X-CSRFToken": token()
       },
-      body: body(extra)
+      body: body(extra),
+      signal: signal
     }).then(function (response) {
       return response.json().catch(function () {
         return {};
@@ -159,47 +167,55 @@
       savedText = submittedText;
       setRevision(data.revision);
       setDirty(textarea && textarea.value !== savedText);
-      showErrors([]);
+      if (!textarea || textarea.value === submittedText) { showErrors(data.errors || []); }
     });
   }
 
-  function preview() {
+  function preview(extra) {
+    var requestId = ++previewRequest;
+    if (previewDialog && !previewDialog.open) { previewDialog.showModal(); }
+    if (disposePreview) { disposePreview(); disposePreview = null; }
+    var previewYaml = extra && extra.yaml_text !== undefined ? extra.yaml_text : (textarea ? textarea.value : "");
+    activePreviewYaml = previewYaml;
+    var previewWidget = extra && extra.widget_id !== undefined ? extra.widget_id : (cardSelect ? cardSelect.value : "");
+    if (cardSelect && previewWidget) { cardSelect.value = previewWidget; }
+    fill(previewOut, "Loading preview…");
     showConflict(false);
-    return post(root.getAttribute("data-preview-url")).then(function (result) {
+    return post(root.getAttribute("data-preview-url"), extra && (extra.yaml_text !== undefined || extra.widget_id !== undefined) ? extra : null).then(function (result) {
+      if (requestId !== previewRequest) { return; }
       var data = result.data;
+      if (cardSelect && data.widgets) {
+        cardSelect.innerHTML = "";
+        data.widgets.forEach(function (widget) {
+          var option = document.createElement("option");
+          option.value = widget.id; option.textContent = widget.title;
+          cardSelect.appendChild(option);
+        });
+        previewWidget = data.widget_id || previewWidget;
+        cardSelect.value = previewWidget;
+      }
       showErrors(data.errors || (data.error ? [data.error] : []));
       if (!previewOut) {
         return;
       }
-      if (previewInstance && window.__rv2widgets) {
-        window.__rv2widgets.registry.disposeInstance(previewInstance);
-        previewInstance = null;
-      }
-      if (data.preview && window.__rv2widgets && window.__rv2widgets.bootReady) {
-        previewOut.innerHTML = "";
-        var title = document.createElement("h3");
-        title.textContent = data.widget.title || data.widget.id;
-        var mount = document.createElement("div");
-        mount.className = "widget-body";
-        previewOut.appendChild(title);
-        previewOut.appendChild(mount);
-        try {
-          previewInstance = window.__rv2widgets.registry.render(data.widget.type, mount, data.preview, {
-            measurement: data.widget.query.measurement,
-            primaryOnly: data.widget.type === "value",
-            columns: data.widget.columns,
-            benchmarks: data.widget.benchmarks
+      if (data.card_html && window.__rv2initializeReport) {
+        previewOut.innerHTML = data.card_html;
+        disposePreview = window.__rv2initializeReport(previewOut, function (url, options) {
+          return post(url, {
+            yaml_text: previewYaml, widget_id: previewWidget,
+            overrides: options.body
+          }, options.signal).then(function (result) {
+            var response = result.data;
+            return { ok: result.status < 400 && !response.preview_error && response.valid,
+              status: result.status,
+              json: function () { return Promise.resolve(response.preview || {
+                error: response.preview_error || response.error || (response.errors || []).join("; ")
+              }); }
+            };
           });
-          var counts = data.preview.counts || {};
-          var summary = document.createElement("p");
-          summary.className = "editor-help";
-          summary.textContent = (counts.matching || 0) + " matching records · " + (counts.eligible || 0) + " eligible";
-          previewOut.appendChild(summary);
-        } catch (error) {
-          fill(previewOut, "Preview could not render. Reload and try again.");
-        }
+        });
       } else {
-        fill(previewOut, data.preview_error || "Nothing to preview yet.");
+        fill(previewOut, data.preview_error || (data.errors || []).join("; ") || "Nothing to preview yet.");
       }
     });
   }
@@ -248,6 +264,7 @@
     var requestId = ++cardRequest;
     return post(root.getAttribute("data-preview-url"), { list_only: "1" }).then(function (result) {
       if (requestId !== cardRequest) { return; }
+      showErrors(result.data.errors || (result.data.error ? [result.data.error] : []));
       var previous = cardSelect.value;
       cardSelect.innerHTML = "";
       (result.data.widgets || []).forEach(function (widget) {
@@ -287,11 +304,36 @@
     }).finally(function () { button.disabled = deleteConfirmation.value !== "delete this report"; });
   }
 
+  function selectEditorTab(tab) {
+    root.querySelectorAll('[role="tab"]').forEach(function (item) {
+      var selected = item === tab;
+      item.setAttribute("aria-selected", String(selected));
+      item.tabIndex = selected ? 0 : -1;
+      root.querySelector("#" + item.getAttribute("aria-controls")).hidden = !selected;
+    });
+  }
+
+  root.addEventListener("keydown", function (event) {
+    var tab = event.target.closest('[role="tab"]');
+    if (!tab) { return; }
+    var tabs = Array.from(root.querySelectorAll('[role="tab"]'));
+    var index = tabs.indexOf(tab);
+    if (event.key === "ArrowRight") { index = (index + 1) % tabs.length; }
+    else if (event.key === "ArrowLeft") { index = (index + tabs.length - 1) % tabs.length; }
+    else if (event.key === "Home") { index = 0; }
+    else if (event.key === "End") { index = tabs.length - 1; }
+    else { return; }
+    event.preventDefault();
+    selectEditorTab(tabs[index]);
+    tabs[index].focus();
+  });
+
   if (textarea) {
     textarea.addEventListener("input", function () {
       setDirty(textarea.value !== savedText);
       clearTimeout(cardTimer);
       ++cardRequest;
+      if (validationSummary) { validationSummary.textContent = "Checking YAML…"; }
       cardTimer = setTimeout(refreshCards, 400);
     });
   }
@@ -301,12 +343,20 @@
     if (!trigger) {
       return;
     }
+    if (trigger.closest && trigger.closest(".widget-frame")) { return; }
     var action = trigger.getAttribute("data-action");
     event.preventDefault();
-    if (action === "save") {
+    if (action === "editor-tab") {
+      selectEditorTab(trigger);
+    } else if (action === "save") {
       save();
     } else if (action === "preview") {
       preview();
+    } else if (action === "close-preview") {
+      ++previewRequest;
+      if (disposePreview) { disposePreview(); disposePreview = null; }
+      previewDialog.close();
+      activePreviewYaml = null;
     } else if (action === "publish") {
       publish();
     } else if (action === "create") {
@@ -333,8 +383,11 @@
       root.querySelector('[data-action="confirm-delete"]').disabled = deleteConfirmation.value !== "delete this report";
     });
   }
+  if (cardSelect) { cardSelect.addEventListener("change", function () { return preview({ yaml_text: activePreviewYaml !== null ? activePreviewYaml : (textarea ? textarea.value : ""), widget_id: cardSelect.value }); }); }
   if (createForm) {
     createForm.addEventListener("submit", function (event) { event.preventDefault(); createReport(); });
   }
+  if (window.PrimerVisualEditor) { window.PrimerVisualEditor(root, { post: post, preview: preview }); }
   setDirty(false);
+  if (textarea && cardSelect) { refreshCards(); }
 })();

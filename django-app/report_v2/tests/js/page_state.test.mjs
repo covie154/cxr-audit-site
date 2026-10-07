@@ -190,6 +190,7 @@ async function runReportScript(withControls = true, withGroups = false) {
         root.children.push(frame);
         frames.push({ frame, body, summary, form });
     }
+    root.register('.widget-frame', root.children);
     document.querySelector = (selector) => (selector === '[data-report-page]' ? root : null);
     const chartBox = new FakeNode('div');
     document.querySelectorAll = (selector) => (selector === '.widget-frame' ? root.children

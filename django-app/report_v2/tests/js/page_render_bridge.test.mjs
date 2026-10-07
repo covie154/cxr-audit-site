@@ -104,6 +104,7 @@ function installGlobals({ registry }) {
     globalThis.ResizeObserver = class { constructor(cb) { this.cb = cb; this.seen = []; } observe(n) { this.seen.push(n); } disconnect() {} };
     globalThis.MutationObserver = class { constructor(cb) { this.cb = cb; this.seen = []; } observe(n) { this.seen.push(n); } disconnect() {} };
 
+    root.register('.widget-frame', root.children);
     document.querySelector = (selector) => (selector === '[data-report-page]' ? root : null);
     document.querySelectorAll = (selector) => (selector === '.widget-frame' ? root.children : selector === '[data-report-chart]' ? [] : []);
 

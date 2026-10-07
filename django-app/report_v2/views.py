@@ -180,6 +180,8 @@ def _build_specs(layout: dict) -> dict[str, WidgetSpec]:
 
 def _allowed_controls(widget: dict) -> dict:
     """The client-visible control surface for a widget (a copy of its controls + a few read-only hints)."""
+    if widget.get("type") in {"text", "divider"}:
+        return {"enabled": False}
     controls = widget.get("controls") or {}
     query = widget.get("query") or {}
     window = {"start": "D-30", "end": "D", **(widget.get("window") or {})}
@@ -338,6 +340,8 @@ def _evaluate(
     time_grouping: str | None = None,
 ) -> dict:
     """Evaluate one widget into a JSON-safe payload dict. NEVER raises for a domain failure."""
+    if widget.get("type") in {"text", "divider"}:
+        return {"widget_id": widget["id"], "static_type": widget["type"], "text": widget.get("text", "")}
     if rows is None:
         rows = data.fetch_project_rows(_PROJECT_ID, layout_widget=widget)
     project = get_project_definition()
@@ -532,6 +536,43 @@ def set_default_report(request):
     return redirect(reverse("report_v2:index") + "?list=1")
 
 
+
+def _widget_frame(slug, version, widget, payload, *, preview=False):
+    """Shared server-hydrated card for published reports and read-only previews."""
+    widget_id = widget.get("id")
+    row_columns = (list(payload["rows"][0].keys())
+                  if isinstance(payload, dict) and payload.get("rows") else [])
+    row_cells = ([[row.get(key) for key in row_columns] for row in payload.get("rows") or []]
+                if row_columns else [])
+    return {
+        "id": widget_id,
+        "title": widget.get("title"),
+        "type": widget.get("type"),
+        "measurement": (widget.get("query") or {}).get("measurement"),
+        "primary_value": _primary_value(widget, payload),
+        "width": (widget.get("layout") or {}).get("width"),
+        "height": (widget.get("layout") or {}).get("height"),
+        "controls": _allowed_controls(widget),
+        "context_token": "" if preview else _widget_context_token(slug, version, widget_id),
+        "data_url": reverse("report_editor:editor_preview") if preview else reverse("report_v2:widget_data", args=[slug, widget_id]),
+        "csv_links": [] if preview else _csv_links(slug, version, widget, payload),
+        "payload": payload,
+        "summary": _summary_text(payload),
+        "empty_message": _EMPTY_MESSAGE,
+        # Pre-formatted aggregate rows for the server-side rendering: name/value pairs as
+        # plain strings so the template never iterates dict internals or emits raw markup.
+        "aggregates_view": [
+            {"name": str(key), "value": _fmt_aggregate_value(value)}
+            for key, value in (payload.get("aggregates") or {}).items()
+        ] if isinstance(payload, dict) and not payload.get("error") else [],
+        "has_rows": bool(isinstance(payload, dict) and payload.get("rows")),
+        "row_columns": row_columns,
+        "row_cells": row_cells,
+        # The view applies escape() itself so the template can mark this |safe; the
+        # embedded JSON can then never break out of the <pre> as markup.
+        "initial_json": escape(json.dumps(payload, default=str)),
+    }
+
 @login_required
 @require_GET
 def report_page(request, slug: str):
@@ -554,40 +595,7 @@ def report_page(request, slug: str):
                 payload = _evaluate(layout, widget)
             except Exception as exc:  # a single bad frame must not 500 the page or its siblings
                 payload = {"widget_id": widget_id, "error": str(exc)}
-            row_columns = (list(payload["rows"][0].keys())
-                          if isinstance(payload, dict) and payload.get("rows") else [])
-            row_cells = ([[row.get(key) for key in row_columns] for row in payload.get("rows") or []]
-                        if row_columns else [])
-            frames.append(
-                {
-                    "id": widget_id,
-                    "title": widget.get("title"),
-                    "type": widget.get("type"),
-                    "measurement": (widget.get("query") or {}).get("measurement"),
-                    "primary_value": _primary_value(widget, payload),
-                    "width": (widget.get("layout") or {}).get("width"),
-                    "height": (widget.get("layout") or {}).get("height"),
-                    "controls": _allowed_controls(widget),
-                    "context_token": _widget_context_token(slug, version, widget_id),
-                    "data_url": reverse("report_v2:widget_data", args=[slug, widget_id]),
-                    "csv_links": _csv_links(slug, version, widget, payload),
-                    "payload": payload,
-                    "summary": _summary_text(payload),
-                    "empty_message": _EMPTY_MESSAGE,
-                    # Pre-formatted aggregate rows for the server-side rendering: name/value pairs as
-                    # plain strings so the template never iterates dict internals or emits raw markup.
-                    "aggregates_view": [
-                        {"name": str(key), "value": _fmt_aggregate_value(value)}
-                        for key, value in (payload.get("aggregates") or {}).items()
-                    ] if isinstance(payload, dict) and not payload.get("error") else [],
-                    "has_rows": bool(isinstance(payload, dict) and payload.get("rows")),
-                    "row_columns": row_columns,
-                    "row_cells": row_cells,
-                    # The view applies escape() itself so the template can mark this |safe; the
-                    # embedded JSON can then never break out of the <pre> as markup.
-                    "initial_json": escape(json.dumps(payload, default=str)),
-                }
-            )
+            frames.append(_widget_frame(slug, version, widget, payload))
         sections_ctx.append(
             {
                 "id": section.get("id"),

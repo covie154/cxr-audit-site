@@ -148,7 +148,7 @@ class AcceptanceFlowTests(TestCase):
         printed_html = printed.content.decode("utf-8")
         self.assertIn("window D-7", printed_html)       # v1 carries its own override
         self.assertIn("site=SYNTH-SITE-A", printed_html)
-        self.assertIn("2026-08-02 .. 2026-09-01", printed_html)  # t2 kept its default window
+        self.assertIn("02/08/2026 .. 01/09/2026", printed_html)  # t2 kept its default window
         self.assertIn("group by site", printed_html)
         self.assertIn(version, printed_html)
 

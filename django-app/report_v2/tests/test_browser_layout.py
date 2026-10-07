@@ -470,13 +470,17 @@ class BrowserLayoutTests(unittest.TestCase):
         self.assertEqual(payload['dates']['window_end'], anchor)
         self._shot('date-controls-picker-1440.png', full_page=True)
 
-    def test_collapsed_cards_fit_content_and_charts_have_taller_plots(self):
+    def test_cards_honor_minimum_height_and_charts_have_taller_plots(self):
         self._goto(self.report_url, width=1440, height=900)
         for toggle in self.page.locator(".widget-settings > summary").all():
             toggle.click()
         for frame in self.page.locator(".report-grid > .widget-frame").all():
             gap = frame.evaluate("n => { const b = n.querySelector('.widget-body'); return n.getBoundingClientRect().bottom - b.getBoundingClientRect().bottom; }")
-            self.assertLessEqual(gap, 26, "card reserves blank grid rows below its content")
+            minimum = frame.evaluate("n => parseFloat(getComputedStyle(n).minHeight)")
+            height = frame.bounding_box()["height"]
+            self.assertGreaterEqual(height, minimum)
+            if height > minimum + 1:
+                self.assertLessEqual(gap, 26, "card reserves space beyond its declared minimum height")
         for chart in self.page.locator(".widget-chart-box").all():
             box = chart.bounding_box()
             self.assertGreaterEqual(box["height"], 360)
@@ -575,6 +579,14 @@ class BrowserLayoutTests(unittest.TestCase):
         textarea = self.page.locator("#id_yaml_text").first
         self.assertIn("Browser Layout 14A", textarea.input_value())
         self.assertFalse((self.server.root / "drafts" / DEF_ID).exists(), "the editor GET must not write a draft")
+        self.assertLessEqual(self.page.evaluate("document.documentElement.scrollHeight"), 901)
+        preview = self.page.locator('[data-role="preview-dialog"]')
+        self.assertFalse(preview.is_visible())
+        self.page.locator('.editor-workspace [data-action="preview"]').click()
+        preview.wait_for(state="visible")
+        self.assertGreater(preview.bounding_box()["width"], 1200)
+        self.page.locator('[data-action="close-preview"]').click()
+        self.assertFalse(preview.is_visible())
         self._shot(f"editor-1440.png", full_page=True)
 
         # An ordinary user gets no edit-layout affordance at all.

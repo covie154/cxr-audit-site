@@ -45,10 +45,7 @@
     }
 
     // -- report page -------------------------------------------------------------------------
-    const root = document.querySelector('[data-report-page]');
-    if (!root) {
-        return;
-    }
+    function initializeReport(root, transport) {
 
     const canonical = window.__rv2 || null;
 
@@ -120,9 +117,8 @@
 
     const DEFAULT_EMPTY = 'No matching records in this window -- the dates or filters may exclude every record. Adjust the controls or reset them.';
 
-    // The harness (and the browser) register the frames on the document, so the frame enumeration
-    // is a document-level query; every lookup *inside* a frame stays scoped to that frame element.
-    const frames = Array.from(document.querySelectorAll('.widget-frame'), (node) => {
+    // Scope frames to this report or preview so their controls stay independent.
+    const frames = Array.from(root.querySelectorAll('.widget-frame'), (node) => {
         const placeholder = node.querySelector('[data-role="empty-message"]');
         return {
             id: node.dataset.widgetId,
@@ -248,7 +244,7 @@
         const reg = widgetRegistry();
         const kind = frame.type;
         let usedRegistry = false;
-        if (reg && (kind === 'value' || kind === 'table' || kind === 'line' || kind === 'bar' || kind === 'pie' || kind === 'confusion_matrix' || kind === 'boxplot')) {
+        if (reg && (kind === 'text' || kind === 'divider' || kind === 'value' || kind === 'table' || kind === 'line' || kind === 'bar' || kind === 'pie' || kind === 'confusion_matrix' || kind === 'boxplot')) {
             try {
                 if (frame.regInstance && !frame.regDisposed) {
                     reg.disposeInstance(frame.regInstance);
@@ -438,7 +434,7 @@
         if (Object.keys(overrides.filters).length) { body.filters = overrides.filters; }
         if (overrides.comparison !== null) { body.comparison = overrides.comparison; }
         if (frame.type === 'table' && overrides.page > 1) { body.page = overrides.page; }
-        window.fetch(frame.el.dataset.dataUrl, {
+        (transport || window.fetch)(frame.el.dataset.dataUrl, {
             method: 'POST',
             credentials: 'same-origin',
             headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRFToken() },
@@ -745,4 +741,17 @@
                 });
         });
     }
+    return function disposeReport() {
+        inflightByWidget.forEach((controller) => controller.abort());
+        frames.forEach((frame) => {
+            if (frame.regInstance && !frame.regDisposed && widgetRegistry()) {
+                widgetRegistry().disposeInstance(frame.regInstance);
+                frame.regDisposed = true;
+            }
+        });
+    };
+    }
+    window.__rv2initializeReport = initializeReport;
+    const root = document.querySelector('[data-report-page]');
+    if (root) { initializeReport(root); }
 })();

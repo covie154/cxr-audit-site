@@ -321,7 +321,11 @@ class DefinitionRepository:
         try:
             data = load_report_definition(yaml_text)
         except (DefinitionError,) as exc:
-            violations.append(str(exc))
+            errors = getattr(exc, "errors", None)
+            if errors:
+                violations.extend(f"{error.get('path') or '$'}: {error['message']}" for error in errors)
+            else:
+                violations.append(str(exc))
             return violations
         # display validations
         try:

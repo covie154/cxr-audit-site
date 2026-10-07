@@ -34,6 +34,9 @@
             {% endif %}
             {% for w in email.widgets %}
             <div style="margin:0 0 16px;border-top:1px solid #e5eaf0;padding-top:12px;">
+                {% if w.type == "text" %}<h2 style="font-size:15px;">{{ w.title }}</h2><p style="white-space:pre-wrap;">{{ w.text }}</p>
+                {% elif w.type == "divider" %}<hr>
+                {% else %}
                 <h2 style="font-size:15px;margin:0 0 4px;">{{ w.title }}
                     <span style="color:#52606d;font-weight:normal;font-size:12px;">({{ w.type }})</span></h2>
                 <p style="font-size:12px;color:#52606d;margin:0 0 8px;">
@@ -64,6 +67,7 @@
                     {% if not w.tables and not w.image_cid %}
                     <p style="font-size:12px;color:#52606d;margin:0;">{{ w.summary }}</p>
                     {% endif %}
+                {% endif %}
                 {% endif %}
             </div>
             {% endfor %}
