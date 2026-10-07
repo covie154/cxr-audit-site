@@ -199,6 +199,7 @@
         return;
       }
       if (data.card_html && window.__rv2initializeReport) {
+        previewOut.style.setProperty("--report-row-height", data.row_height_px + "px");
         previewOut.innerHTML = data.card_html;
         disposePreview = window.__rv2initializeReport(previewOut, function (url, options) {
           return post(url, {
@@ -220,24 +221,38 @@
     });
   }
 
-  function publish() {
+  function publish(trigger) {
     showConflict(false);
-    return post(root.getAttribute("data-publish-url")).then(function (result) {
-      var data = result.data;
-      if (result.status === 409) {
-        showConflict(true);
-        showErrors([data.error || "version conflict: reload"]);
-        return;
-      }
+    var version = trigger.getAttribute("data-version") || "";
+    var label = version ? "Unpublish" : "Publish";
+    var extra = { expected_version: version };
+    if (trigger.getAttribute("data-def-id")) {
+      extra.def_id = trigger.getAttribute("data-def-id");
+      extra.expected_revision = trigger.getAttribute("data-revision");
+    }
+    trigger.disabled = true;
+    trigger.textContent = version ? "Unpublishing…" : "Publishing…";
+    return post(root.getAttribute(version ? "data-unpublish-url" : "data-publish-url"), extra).then(function (result) {
       if (result.status >= 400) {
-        // Rejected publish: the previously published pointer stays where it is (server-side guarantee).
-        showErrors(data.errors || [data.error || "publish rejected"]);
+        showConflict(result.status === 409);
+        showErrors(result.data.errors || [result.data.error || "Publication could not be changed."]);
         return;
       }
-      setDirty(textarea && textarea.value !== savedText);
-      showErrors([]);
-      fill(previewOut, "Published " + (data.version || "") + ".");
-    });
+      if (version) {
+        if (!textarea) { window.location.reload(); }
+        else {
+          trigger.setAttribute("data-version", ""); label = "Publish";
+          var view = root.querySelector('[data-role="view-report"]');
+          var disabledView = document.createElement("button");
+          disabledView.type = "button"; disabledView.className = view.className;
+          disabledView.setAttribute("data-role", "view-report"); disabledView.textContent = "View report";
+          disabledView.disabled = true; view.replaceWith(disabledView);
+        }
+      }
+      else { setDirty(false); window.location.assign(result.data.url); }
+    }).catch(function () {
+      showErrors(["Publication could not be changed. Try again."]);
+    }).finally(function () { trigger.disabled = false; trigger.textContent = label; });
   }
 
   function createReport() {
@@ -358,7 +373,7 @@
       previewDialog.close();
       activePreviewYaml = null;
     } else if (action === "publish") {
-      publish();
+      publish(trigger);
     } else if (action === "create") {
       if (!dirty || window.confirm("Leave this report with unsaved changes?")) { createDialog.showModal(); }
     } else if (action === "cancel-create") {

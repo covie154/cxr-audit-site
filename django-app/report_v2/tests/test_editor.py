@@ -71,6 +71,7 @@ _MUTATION_PATHS = {
     "save": "/layout/actions/save/",
     "preview": "/layout/actions/preview/",
     "publish": "/layout/actions/publish/",
+    "unpublish": "/layout/actions/unpublish/",
     "new": "/layout/actions/new/",
 }
 
@@ -301,7 +302,7 @@ class EditorAdminSecurityTests(TestCase):
         # A stray slug path is NOT swallowed by the reserved block (still 404, i.e. no catch-all
         # was added and the legacy report lives on its own separate /report-old/ mount).
         with self.assertRaises(Resolver404):
-            resolve("/report/some-random-slug/")
+            resolve("/report/invalid.slug/")
 
         # The admin page itself renders 200 through the full stack (proves the base-template
         # inheritance and the static assets actually resolve).
@@ -595,3 +596,30 @@ class EditorAdminSecurityTests(TestCase):
             })
         self.assertEqual(rejected.status_code, 400)
         fetch.assert_not_called()
+
+    def test_publication_controls_and_republish_preserve_history(self):
+        client = self._as_admin()
+        repo = self._repo()
+        revision = repo.save_draft("cycle", VALID_YAML, expected_revision=None)
+        page = client.get("/layout/editor/t/").content.decode()
+        self.assertIn('data-role="view-report" disabled', page)
+        result = client.post(_MUTATION_PATHS["publish"], {"def_id": "cycle", "expected_revision": revision})
+        self.assertEqual(result.status_code, 200)
+        self.assertEqual(result.json()["url"], "/report/cycle/")
+        page = client.get("/layout/editor/t/").content.decode()
+        self.assertIn('>Unpublish</button>', page)
+        self.assertIn('href="/report/cycle/">View report', page)
+        stale = client.post(_MUTATION_PATHS["unpublish"], {"def_id": "cycle", "expected_version": "cycle@r0"})
+        self.assertEqual(stale.status_code, 409)
+        self.assertEqual(repo.get_current_version("cycle"), "cycle@r1")
+        result = client.post(_MUTATION_PATHS["unpublish"], {"def_id": "cycle", "expected_version": "cycle@r1"})
+        self.assertEqual(result.status_code, 200)
+        self.assertIsNone(repo.get_current_version("cycle"))
+        self.assertEqual(repo.read_draft("cycle")[0], VALID_YAML)
+        self.assertEqual(client.get("/report/cycle/").status_code, 404)
+        result = client.post(_MUTATION_PATHS["publish"], {"def_id": "cycle", "yaml_text": VALID_YAML.replace("height: 3", "height: 5")})
+        self.assertEqual(result.json()["version"], "cycle@r2")
+        self.assertEqual(repo._blob_path("cycle", "cycle@r1").read_text(), VALID_YAML)
+        repo._draft_path("cycle").unlink()
+        repo.unpublish("cycle", expected_version="cycle@r2")
+        self.assertIn("height: 5", repo.read_draft("cycle")[0])

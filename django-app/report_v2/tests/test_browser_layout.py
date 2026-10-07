@@ -226,12 +226,14 @@ class _Server:
         assert done.returncode == 0, f"row seed failed:\n{done.stdout}\n{done.stderr}"
 
     def start(self) -> None:
-        self.proc = subprocess.Popen(
-            [sys.executable, "manage.py", "runserver", f"127.0.0.1:{self.port}",
-             "--noreload", "--insecure"],
-            cwd=str(DJANGO_APP), env=self.env,
-            stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
-        )
+        # A file keeps an unread PIPE from blocking the server during longer browser suites.
+        with (self.tmp / "server.log").open("w", encoding="utf-8") as log:
+            self.proc = subprocess.Popen(
+                [sys.executable, "manage.py", "runserver", f"127.0.0.1:{self.port}",
+                 "--noreload", "--insecure"],
+                cwd=str(DJANGO_APP), env=self.env,
+                stdout=log, stderr=subprocess.STDOUT, text=True,
+            )
         self._wait_ready()
 
     def _wait_ready(self, *, timeout: float = 30.0) -> None:

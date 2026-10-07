@@ -305,6 +305,21 @@ class DefinitionRepository:
             pointer.unlink(missing_ok=True)
             draft.unlink(missing_ok=True)
 
+    def unpublish(self, def_id: str, *, expected_version: str) -> None:
+        """Remove availability while retaining the draft and immutable version history."""
+        pointer = self._pointer_path(def_id)
+        with self._locked(def_id):
+            current = self._read_pointer(def_id)
+            if not current or current != expected_version:
+                raise StaleRevisionError("The publication changed. Reload before unpublishing.")
+            draft = self._draft_path(def_id)
+            if not draft.exists():
+                temporary = self._tmp_dir / f"unpublish-{def_id}-{os.getpid()}"
+                temporary.write_bytes(self._blob_path(def_id, current).read_bytes())
+                _fsync_path(temporary)
+                os.replace(str(temporary), str(draft))
+            pointer.unlink()
+
     def read_draft(self, def_id: str) -> tuple[str, str]:
         """Return (yaml_text, revision). Raise DraftNotFoundError if absent."""
         path = self._draft_path(def_id)
@@ -370,7 +385,9 @@ class DefinitionRepository:
     def _next_version(self, def_id: str, current_pointer: str | None) -> str:
         """Compute the next version string for def_id."""
         if current_pointer is None:
-            return f"{def_id}@r1"
+            revisions = [int(path.stem.split("@r")[-1]) for path in self._blobs_dir.glob(f"{def_id}@r*.yaml")
+                         if path.stem.split("@r")[-1].isdigit()]
+            return f"{def_id}@r{max(revisions, default=0) + 1}"
         # parse trailing number after @r
         parts = current_pointer.split("@r")
         try:

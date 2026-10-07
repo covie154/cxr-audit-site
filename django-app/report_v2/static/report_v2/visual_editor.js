@@ -15,6 +15,8 @@
     var status = root.querySelector('[data-role="visual-status"]');
     var dialog = root.querySelector('[data-role="card-options"]');
     var form = root.querySelector('[data-role="card-options-form"]');
+    var currentCard;
+    var addCard = root.querySelector('[data-visual-action="add-card"]');
     var undo = root.querySelector('[data-visual-action="undo"]');
     var formError = root.querySelector('[data-role="card-form-error"]');
     var layout, catalog, selected, history = [], historyText = textarea.value, typingTimer, syncTimer;
@@ -42,6 +44,7 @@
     function state(message) {
       status.textContent = message || "";
       canvas.inert = busy || !valid;
+      addCard.disabled = busy || !valid;
       form.inert = busy;
       canvas.classList.toggle("visual-paused", busy || !valid);
       undo.disabled = !history.length || busy;
@@ -79,7 +82,8 @@
         }
         if (previewOnly) {
           var cards = result.data.layout.sections.find(function (s) { return s.id === operation.section_id; }).widgets;
-          var id = operation.action === "add" ? cards[cards.length - 1].id : operation.widget_id;
+          var previousIds = layout.sections.flatMap(function (section) { return section.widgets.map(function (card) { return card.id; }); });
+          var id = operation.action === "add" ? cards.find(function (card) { return previousIds.indexOf(card.id) < 0; }).id : operation.widget_id;
           api.preview({ yaml_text: result.data.yaml_text, widget_id: id });
         } else {
           if (before !== result.data.yaml_text) { remember(before); write(result.data.yaml_text); }
@@ -116,6 +120,8 @@
           var resize = button("◢", "resize", "visual-resize"); resize.setAttribute("aria-label", "Resize " + card.title); node.appendChild(resize);
           node.addEventListener("click", function (event) {
             if (busy || !valid) { return; }
+            currentCard = card.id;
+            canvas.querySelectorAll(".visual-selected").forEach(function (item) { item.classList.remove("visual-selected"); });
             node.classList.toggle("visual-selected", true);
             var action = event.target.closest("[data-visual-action]");
             if (!action) { return; }
@@ -256,7 +262,7 @@
       try { card = candidate(); } catch (error) { formError.textContent = error.message; return; }
       if (selected.card && selected.card.type !== card.type && !window.confirm("Changing type may remove incompatible chart, column, and data settings. Apply this change?")) { return; }
       return mutate({ action: selected.card ? "edit" : "add", section_id: selected.section.id,
-        widget_id: selected.card ? selected.card.id : "", card: card }, previewOnly).then(function (success) { if (success && !previewOnly) { dialog.close(); } });
+        widget_id: selected.card ? selected.card.id : "", index: selected.index, card: card }, previewOnly).then(function (success) { if (success && !previewOnly) { dialog.close(); } });
     }
     function startGesture(event, section, card, node, grid, action) {
       if (event.button !== 0 || busy || !valid || window.matchMedia("(max-width: 700px)").matches) { return; }
@@ -304,6 +310,18 @@
       var node = event.target.closest("[data-visual-action]"); if (!node) { return; }
       var action = node.dataset.visualAction;
       if (action === "undo" && !busy) { finishTyping(); if (history.length) { write(history.pop()); sync(); } }
+      if (action === "add-card" && valid && !busy) {
+        var nodes = Array.from(canvas.querySelectorAll(".visual-card"));
+        var current = nodes.find(function (item) { return item.dataset.widgetId === currentCard; }) || nodes[nodes.length - 1];
+        var section = current ? layout.sections.find(function (item) { return item.id === current.closest(".visual-section").dataset.sectionId; }) : layout.sections[0];
+        var row = current ? Array.from(current.parentNode.children).filter(function (item) { return item.offsetTop === current.offsetTop; }) : [];
+        var last = row[row.length - 1];
+        var index = last ? section.widgets.findIndex(function (card) { return card.id === last.dataset.widgetId; }) + 1 : section.widgets.length;
+        var used = row.reduce(function (sum, item) { return sum + section.widgets.find(function (card) { return card.id === item.dataset.widgetId; }).layout.width; }, 0);
+        openOptions(section, null, "value");
+        selected.index = index;
+        field("width").value = used < 12 ? Math.min(catalog.presets.value[0], 12 - used) : catalog.presets.value[0];
+      }
       if (action === "cancel") { dialog.close(); }
       if (action === "preset") { var preset = catalog.presets[field("type").value]; field("width").value = preset[0]; field("height").value = preset[1]; }
       if (action === "add-target") { addTarget({}); }

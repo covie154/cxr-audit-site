@@ -11,6 +11,7 @@
     <div id="visualEditorPanel" class="editor-panel editor-visual" role="tabpanel" aria-labelledby="visualEditorTab" tabindex="0">
         <div class="visual-toolbar">
             <button type="button" class="btn btn-outline" data-visual-action="undo" disabled>Undo</button>
+            <button type="button" class="btn btn-outline" data-visual-action="add-card" disabled>Add card</button>
             <p class="editor-help">Drag the move handle to arrange cards. Drag the corner to resize.</p>
         </div>
         <p class="editor-help">Visual edits update YAML and normalize its formatting, including removing comments.</p>
@@ -34,7 +35,8 @@
     <div class="editor-actions" aria-label="Draft actions">
         <button type="button" class="btn btn-primary" data-action="save" title="Save YAML without changing the published report">Save draft</button>
         <button type="button" class="btn btn-outline" data-action="preview" title="Validate YAML and evaluate the selected card using current study data">Preview</button>
-        <button type="button" class="btn btn-success" data-action="publish" title="Validate YAML and make a new report version available">Publish</button>
+        <button type="button" class="btn btn-success" data-action="publish" data-version="{{ published_version|default:'' }}">{% if published_version %}Unpublish{% else %}Publish{% endif %}</button>
+        {% if published_version %}<a class="btn btn-outline" data-role="view-report" href="{% url 'report_v2:page' def_id %}">View report</a>{% else %}<button type="button" class="btn btn-outline" data-role="view-report" disabled>View report</button>{% endif %}
     </div>
 </section>
 </div>
@@ -87,7 +89,7 @@
         </details>
         <fieldset><legend>3. Size</legend><div class="card-size-fields">
             <label>Width (columns)<input name="width" type="number" min="1" max="12" required></label>
-            <label>Minimum height (rows)<input name="height" type="number" min="1" max="30" required></label>
+            <label>Height (rows)<input name="height" type="number" min="1" max="30" required></label>
         </div><button type="button" class="btn btn-outline" data-visual-action="preset">Use preset size</button></fieldset>
         <p class="card-form-error" data-role="card-form-error" role="alert"></p>
         <div class="editor-actions"><button type="submit" class="btn btn-primary">Apply</button><button type="button" class="btn btn-outline" data-visual-action="preview-options">Preview</button><button type="button" class="btn btn-outline" data-visual-action="delete-card">Delete card</button></div>

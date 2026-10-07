@@ -30,8 +30,8 @@ urlpatterns += [
 # --- APPEND-ONLY (Task 13): the published report-detail + per-widget data routes ------------------
 # Pure append below the Task-12 reserved block; every line above this comment is byte-for-byte the
 # existing file. Both new routes carry the ``defid`` converter. The converter regex is deliberately
-# narrower than ``validate_definition_id``'s full alphabet: it excludes hyphen, dot, tilde and upper
-# case, so a reserved-style or stray slug such as ``some-random-slug`` fails the regex and matches no
+# narrower than ``validate_definition_id``'s full alphabet: it excludes dot, tilde and upper
+# case, so an invalid slug such as ``some.random.slug`` fails the regex and matches no
 # pattern at all -> Resolver404 (which is what ``test_editor_route_before_slug`` pins). ``to_python``
 # still delegates to the repository validator: Django's RoutePattern.match catches ANY exception from
 # a converter and reports no-match, so an id that passes the regex but fails validation degrades to a
@@ -43,7 +43,7 @@ from .definitions.repository import validate_definition_id
 
 
 class _DefIdConverter(PathConverter):
-    regex = r"[a-z][a-z0-9_]*"
+    regex = r"[a-z][a-z0-9_-]*"
 
     def to_python(self, value):
         validate_definition_id(value)

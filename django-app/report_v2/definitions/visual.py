@@ -135,7 +135,10 @@ def transform(text, operation):
         if action == 'edit':
             cards[cards.index(card)] = candidate
         else:
-            cards.append(candidate)
+            index = operation.get('index', len(cards))
+            if type(index) is not int or not 0 <= index <= len(cards):
+                raise ValueError('Choose a valid position in this section.')
+            cards.insert(index, candidate)
     elif action == 'delete':
         if len(cards) == 1:
             raise ValueError('Keep at least one card in this section.')

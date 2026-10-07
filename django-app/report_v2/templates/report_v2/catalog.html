@@ -9,6 +9,8 @@
 {% block body %}
 <div class="report-v2-page report-v2-editor" data-editor
      data-editor-url="{% url 'report_editor:editor' %}"
+     data-publish-url="{% url 'report_editor:editor_publish' %}"
+     data-unpublish-url="{% url 'report_editor:editor_unpublish' %}"
      data-new-url="{% url 'report_editor:editor_new' %}"
      data-delete-url="{% url 'report_editor:editor_delete' %}">
     <header class="editor-header">
@@ -25,6 +27,7 @@
                     <small class="report-v2-list-meta">{{ entry.def_id }} — {{ entry.state_label }}{% if entry.version %} · {{ entry.version }}{% endif %}</small></div>
                 <div class="editor-actions">
                     <a class="btn btn-outline" href="{{ entry.editor_url }}">Edit</a>
+                    <button type="button" class="btn btn-success" data-action="publish" data-def-id="{{ entry.def_id }}" data-revision="{{ entry.revision }}" data-version="{{ entry.version }}">{% if entry.version %}Unpublish{% else %}Publish{% endif %}</button>
                     <button type="button" class="btn btn-danger" data-action="delete" data-def-id="{{ entry.def_id }}" data-title="{{ entry.title }}" data-revision="{{ entry.revision }}" data-version="{{ entry.version }}">Delete</button>
                 </div>
             </li>

@@ -2,8 +2,7 @@
 
    The 12-column grid, the fault-isolated widget frames and the long-table scroll region are the
    observable contract the page tests pin (see report_v2/tests/test_pages.py). The additions below
-   keep that contract byte-for-byte while stopping horizontal page overflow, letting cards/tables
-   grow vertically instead of clipping, and keeping keyboard focus rings visible (no absolute/
+   keep that contract byte-for-byte while stopping horizontal page overflow, honoring configured card heights with scrolling, and keeping keyboard focus rings visible (no absolute/
    fixed positioning, no negative margins, no overflow:hidden on the frames). */
 
 .report-v2-page { max-width: 1400px; margin: 0 auto; min-width: 0; padding: 34px clamp(16px, 3vw, 32px) 64px; }
@@ -137,6 +136,6 @@
 .widget-frame[data-type="text"] .widget-body { max-height: none; overflow: visible; }
 .widget-frame[data-type="divider"] hr { border: 0; border-top: 1px solid var(--c-border); width: 100%; }
 
-.report-grid { grid-auto-rows: minmax(var(--report-row-height, 64px), auto); }
-.report-grid > .widget-frame { min-height: calc(var(--widget-rows, 1) * var(--report-row-height, 64px) + (var(--widget-rows, 1) - 1) * 16px); }
-@media (max-width: 700px) { .report-grid > .widget-frame { grid-row: auto !important; min-height: 0; } }
+.report-grid { grid-auto-rows: var(--report-row-height, 64px); }
+.report-grid > .widget-frame { height: calc(var(--widget-rows, 1) * var(--report-row-height, 64px) + (var(--widget-rows, 1) - 1) * 16px); box-sizing: border-box; overflow: auto; }
+@media (max-width: 700px) { .report-grid { grid-auto-rows: auto; } .report-grid > .widget-frame { grid-row: auto !important; } }

@@ -101,3 +101,21 @@ test("editor tabs switch panels with clicks and keyboard without changing YAML",
   assert.match(template, /id="yamlEditorPanel"[^>]* hidden>/);
   assert.ok(template.indexOf('id="visualEditorTab"') < template.indexOf('id="yamlEditorTab"'));
 });
+
+test("publish shows progress and navigates only after success", async () => {
+  let click, finish, destination;
+  const trigger = { disabled: false, textContent: "Publish", getAttribute: name => name === "data-action" ? "publish" : "", closest: () => null };
+  const root = { querySelector: () => null, addEventListener: (name, handler) => { if (name === "click") click = handler; }, getAttribute: () => "/publish/" };
+  runInNewContext(source, {
+    document: { querySelector: () => root, cookie: "" }, window: { location: { assign: url => { destination = url; } } },
+    fetch: () => new Promise(resolve => { finish = resolve; }),
+  });
+  click({ target: { closest: () => trigger }, preventDefault() {} });
+  assert.equal(trigger.disabled, true);
+  assert.equal(trigger.textContent, "Publishing…");
+  assert.equal(destination, undefined);
+  finish({ status: 200, json: async () => ({ url: "/report/synthetic/" }) });
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(destination, "/report/synthetic/");
+  assert.equal(trigger.disabled, false);
+});

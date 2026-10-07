@@ -102,3 +102,11 @@ class VisualEditorTests(SimpleTestCase):
             'widget_id': divider['id'], 'title': divider['title'], 'type': 'divider', 'payload': static_result,
         }]})
         self.assertIn('<hr>', render_to_string('report_v2/print.html', {'print': vm}))
+
+    def test_add_card_inserts_at_row_end_and_rejects_invalid_position(self):
+        card = {'title': 'Note', 'type': 'text', 'text': 'Synthetic', 'layout': {'width': 2, 'height': 3}}
+        text, document = self.operation('add', card=card, index=0)
+        self.assertEqual([w['id'] for w in document['sections'][0]['widgets']], ['card_1', 'w'])
+        for index in (-1, 2, True):
+            with self.assertRaises(ValueError):
+                self.operation('add', card=card, index=index)

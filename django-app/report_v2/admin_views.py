@@ -289,7 +289,7 @@ def editor(request, def_id: str | None = None):
     draft_text = ""
     revision = ""
     source_state = "none"
-    published_version: str | None = None
+    published_version = repo.get_current_version(def_id)
     if def_id:
         try:
             # A draft always wins when it exists (the private working copy).
@@ -414,6 +414,7 @@ def editor_preview(request):
     except Exception:
         # Do not expose clinical values from adapter or database exceptions.
         payload["preview_error"] = "Unable to evaluate this widget. Check its configuration and data connection."
+    payload["row_height_px"] = layout["grid"]["row_height_px"]
     payload["widget_id"] = widget["id"]
     payload["widget"] = widget
     return JsonResponse(payload, status=200)
@@ -435,6 +436,8 @@ def editor_publish(request):
         return JsonResponse({"error": "def_id is required"}, status=400)
     repo = _repository()
     try:
+        if not yaml_text:
+            yaml_text, _ = repo.read_draft(def_id)
         receipt = repo.publish(def_id, yaml_text, expected_revision=_expected_revision(request))
     except (PublishRejectedError,) as exc:
         return JsonResponse(
@@ -454,9 +457,24 @@ def editor_publish(request):
             "version": receipt.version,
             "pointer": repo._read_pointer(def_id),
             "status": "published",
+            "url": reverse("report_v2:page", args=[def_id]),
         },
         status=200,
     )
+
+
+@require_POST
+@csrf_protect
+@require_admin
+def editor_unpublish(request):
+    def_id = str(_param(request, "def_id", "")).strip()
+    try:
+        _repository().unpublish(def_id, expected_version=str(_param(request, "expected_version", "")))
+    except StaleRevisionError as exc:
+        return JsonResponse({"error": str(exc)}, status=409)
+    except RepositoryError as exc:
+        return JsonResponse({"error": str(exc)}, status=400)
+    return JsonResponse({"status": "unpublished", "def_id": def_id})
 
 
 @require_POST

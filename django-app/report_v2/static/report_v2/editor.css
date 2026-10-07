@@ -14,7 +14,7 @@
 .editor-conflict { padding: 12px; background: var(--c-danger-soft); color: var(--c-danger); border-radius: var(--radius-sm); }
 .editor-error-list { padding-left: 20px; color: var(--c-danger); font-size: 13px; }
 .editor-preview-output { min-height: 120px; overflow-x: auto; }
-.editor-preview-output .widget-body { min-height: 220px; }
+
 .editor-preview-output h3 { margin-bottom: 12px; }
 .editor-preview-output .editor-help { margin-top: 12px; }
 @media (max-width: 600px) { .editor-workspace { padding: 16px; } .editor-actions .btn { flex: 1; } }
