@@ -480,13 +480,21 @@
                 signal: controller.signal
             })
                 .then((response) => response.json()
-                    .then((payload) => ({ ok: response.ok, status: response.status, payload })))
-                .then((result) => handleResult(frame, widgetId, seq, result))
+                    .then((payload) => ({ ok: response.ok, status: response.status, payload }))
+                    .catch(() => ({ ok: false, payload: { error: response.redirected
+                        ? 'Your session has expired. Reload the page to sign in.'
+                        : 'The card server returned an invalid response (HTTP ' + response.status + '). Use Apply to retry.' } })))
+                .then((result) => {
+                    try { handleResult(frame, widgetId, seq, result); }
+                    catch (_) {
+                        loadingStatus(frame, 'The card loaded, but could not be displayed. Reload the page.');
+                    }
+                })
                 .catch((error) => {
                     if (error && error.name === 'AbortError') { return; }   // superseded by a newer request
                     handleResult(frame, widgetId, seq, {
                         ok: false,
-                        payload: { error: 'Unable to load this card. Use Apply to retry.' }
+                        payload: { error: 'Could not connect to the card server. Use Apply to retry.' }
                     });
                 });
         });

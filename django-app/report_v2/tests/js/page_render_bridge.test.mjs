@@ -138,7 +138,7 @@ function buildFrames(root, types) {
     return built;
 }
 
-async function runScript({ types, registry, loading = false }) {
+async function runScript({ types, registry, loading = false, transport }) {
     const { document, root, requests, pending } = installGlobals({ registry });
     const frames = buildFrames(root, types);
     if (loading) {
@@ -154,6 +154,7 @@ async function runScript({ types, registry, loading = false }) {
     new Function('document', 'window', 'AbortController', 'ResizeObserver', 'MutationObserver', 'fetch',
         '"use strict";' + source)(document, globalThis.window, globalThis.AbortController,
         globalThis.ResizeObserver, globalThis.MutationObserver, globalThis.fetch);
+    if (transport) { window.__rv2initializeReport(root, transport); }
     return { frames, requests, pending };
 }
 
@@ -310,4 +311,12 @@ test('skeleton cards prioritize visible cards and keep at most three requests ac
     while (pending.length) { pending.shift()(RESOLVED); }
     await flush();
     assert.equal(calls.render.length, 5);
+});
+
+test('HTML failures show HTTP status and the initial queue continues', async () => {
+    const transport = async () => ({ ok: false, status: 503, redirected: false, json: async () => { throw new SyntaxError('HTML body'); } });
+    const { frames } = await runScript({ types: ['value'], loading: true, transport });
+    await flush();
+    assert.match(frames[0].summary.textContent, /HTTP 503/);
+    assert.equal(frames[0].frame.attributes['aria-busy'], 'false');
 });
