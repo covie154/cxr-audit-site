@@ -19,6 +19,38 @@ class VisualEditorBrowserTests(unittest.TestCase):
     def draft(self):
         return load_report_definition(self.page.locator('#id_yaml_text').input_value())
 
+    def test_card_deletion_requires_confirmation(self):
+        self.page.goto(self.server.base + '/layout/editor/browser_layout_14a/')
+        self.ready()
+        original = self.page.locator('#id_yaml_text').input_value()
+        card = self.page.locator('[data-widget-id=bv]')
+        title = next(w['title'] for w in self.draft()['sections'][0]['widgets'] if w['id'] == 'bv')
+        card.hover()
+        card.locator('[data-visual-action=edit]').click()
+        form = self.page.locator('[data-role=card-options-form]')
+        prompts = []
+
+        def cancel(dialog):
+            prompts.append((dialog.type, dialog.message))
+            dialog.dismiss()
+
+        self.page.once('dialog', cancel)
+        form.locator('[data-visual-action=delete-card]').click()
+        self.assertEqual(prompts, [('confirm', f'Are you sure you want to delete "{title}"?')])
+        self.assertEqual(self.page.locator('#id_yaml_text').input_value(), original)
+        self.assertEqual(card.count(), 1)
+        self.assertTrue(form.is_visible())
+
+        self.page.once('dialog', lambda dialog: dialog.accept())
+        form.locator('[data-visual-action=delete-card]').click()
+        self.page.locator('[data-role=card-options]').wait_for(state='hidden')
+        self.ready()
+        self.assertEqual(card.count(), 0)
+        self.assertFalse(any(w['id'] == 'bv' for w in self.draft()['sections'][0]['widgets']))
+        self.page.locator('[data-visual-action=undo]').click()
+        self.ready()
+        self.assertEqual(self.page.locator('#id_yaml_text').input_value(), original)
+
     def test_complete_visual_workflow(self):
         errors = []
         self.page.on('pageerror', lambda error: errors.append(str(error)))

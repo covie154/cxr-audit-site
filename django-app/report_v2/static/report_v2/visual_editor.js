@@ -321,6 +321,7 @@
       if (action === "add-target") { addTarget({}); }
       if (action === "preview-options") { submit(true); }
       if (action === "delete-card" && selected.card && selected.text === textarea.value) {
+        if (!window.confirm('Are you sure you want to delete "' + selected.card.title + '"?')) { return; }
         mutate({ action: "delete", section_id: selected.section.id, widget_id: selected.card.id }).then(function (success) { if (success) { dialog.close(); } });
       }
 
