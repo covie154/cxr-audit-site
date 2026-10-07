@@ -109,3 +109,12 @@
 .report-default-label { color: var(--c-primary); font-weight: 600; }
 
 .report-default-actions { display: flex; justify-content: flex-end; }
+
+/* Confusion matrices are the visible display, with roomy cells and heading-sized labels. */
+.widget-confusion_matrix { font-size: 1rem; }
+.widget-confusion { width: 100%; table-layout: fixed; border-collapse: collapse; font-size: 1.05rem; }
+.widget-confusion caption { font-size: 1.05rem; text-align: left; margin-bottom: 12px; }
+.widget-confusion th, .widget-confusion td, .widget-confusion th:first-child { padding: 20px 12px; text-align: center; }
+.widget-confusion th { font-size: 1.05rem; }
+.widget-confusion td { font-size: 1.35rem; font-weight: 600; }
+.widget-confusion_matrix .widget-summary-line { font-size: 1.05rem; margin: 12px 0 0; }
