@@ -1,7 +1,7 @@
 """Project-defined group controls and pooled summaries over synthetic rows only."""
 from dataclasses import replace
 from unittest import mock
-from django.test import SimpleTestCase
+from django.test import SimpleTestCase, override_settings
 from report_v2 import views
 from report_v2.definitions.loader import load_report_definition
 from report_v2.projects.base import Dimension
@@ -90,7 +90,7 @@ class GroupingTests(SimpleTestCase):
         with self.assertRaises(views.OverrideRejectedError):
             views._validate_overrides(self.widgets["total"], {"filters": {"age": [{"gt": 18}]}})
 
-    def test_time_grouping_uses_calendar_buckets_and_rejects_other_cards(self):
+    def test_time_grouping_uses_calendar_buckets_on_every_card(self):
         widget = next(w for w in self.widgets.values() if w.get("bucket"))
         for size in ("day", "week", "month", "year"):
             views._validate_overrides(widget, {"time_grouping": size})
@@ -98,10 +98,60 @@ class GroupingTests(SimpleTestCase):
             self.assertFalse(payload.get("error"))
             self.assertTrue(payload["buckets"])
             self.assertTrue(all(b["size"] == size for b in payload["buckets"]))
-        for widget_id, size in (("total", "day"), (widget["id"], "hour")):
-            with self.assertRaises(views.OverrideRejectedError):
-                views._validate_overrides(self.widgets[widget_id], {"time_grouping": size})
+        for widget_id in self.widgets:
+            views._validate_overrides(self.widgets[widget_id], {"time_grouping": "day"})
+        with self.assertRaises(views.OverrideRejectedError):
+            views._validate_overrides(widget, {"time_grouping": "hour"})
 
     def test_relative_calendar_range_presets_are_valid(self):
         for token in ("D", "W", "M", "Y", "W-2", "M-3", "Y-1"):
             self.assertEqual(views._validate_date({"relative": token}), {"relative": token})
+
+    def test_calendar_groups_keep_anchor_filters_and_export_values(self):
+        from report_v2.exports import _widget_tables
+        widget = self.widgets["total"]
+        prototype = test_seed.SeedSynthEvaluationTests._fake_fetch(layout_widget=widget)[0]
+        rows = [dict(prototype, accession=1, event_date="2026-08-03", site="A"),
+                dict(prototype, accession=2, event_date="2026-08-11", site="A"),
+                dict(prototype, accession=3, event_date="2026-08-11", site="B")]
+        payload = self.payload("total", rows=rows, time_grouping="week", filters={"site": ["A"]})
+        self.assertEqual(len(payload["time_groups"]), 2)
+        for group in payload["time_groups"]:
+            self.assertEqual(group["payload"]["aggregates"]["n"], 1)
+            self.assertEqual(group["payload"]["dates"]["anchor_date"], payload["dates"]["anchor_date"])
+        tables = _widget_tables(payload)
+        self.assertEqual(len(tables), 2)
+        self.assertIn(payload["time_groups"][0]["label"], tables[0]["caption"])
+        self.assertNotIn("time_groups", self.payload("total", rows=rows, time_grouping=""))
+
+    def test_date_boundaries_are_validated_before_fetch(self):
+        self.assertEqual(views._validate_date({"start": "W-2", "end": "M"}), {"start": "W-2", "end": "M"})
+        for bad in ({"start": "2026-02-30", "end": "D"}, {"start": "W+2", "end": "D"},
+                    {"start": "D", "end": "W--2"}, {"start": "D", "end": "D", "anchor": "2026-01-01"}):
+            with self.assertRaises(views.OverrideRejectedError):
+                views._validate_date(bad)
+
+    @override_settings(STORAGES={"staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"}})
+    def test_yaml_boundaries_and_grouping_defaults_are_displayed_and_evaluated(self):
+        from django.template.loader import render_to_string
+        from report_v2.dates import InvalidOffsetError, resolve_window
+        from datetime import date
+        text = report_seed_text().replace("end: D", "end: W")
+        layout = load_report_definition(text)
+        widget = views._layout_widgets(layout)["total"]
+        controls = views._allowed_controls(widget)
+        frame = {"id": "total", "type": "value", "controls": controls}
+        html = render_to_string("report_v2/page.html", {"sections_ctx": [{"widgets": [frame]}]})
+        self.assertIn('data-date="start" value="2025-12-12"', html)
+        self.assertIn('data-date="end" value="W"', html)
+        self.assertIn('value="" selected>Overall', html)
+        with self.assertRaises(InvalidOffsetError):
+            resolve_window(anchor=date(2026, 8, 11), timezone="Asia/Singapore", start="Y-999999999", end="D")
+
+    def test_calendar_group_count_is_bounded(self):
+        from datetime import date, timedelta
+        prototype = test_seed.SeedSynthEvaluationTests._fake_fetch(layout_widget=self.widgets["total"])[0]
+        rows = [dict(prototype, accession=i, event_date=(date(2026, 1, 1) + timedelta(days=i)).isoformat())
+                for i in range(101)]
+        with self.assertRaises(views.OverrideRejectedError):
+            self.payload("total", rows=rows, time_grouping="day")

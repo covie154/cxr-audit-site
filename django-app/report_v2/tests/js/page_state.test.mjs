@@ -175,8 +175,10 @@ async function runReportScript(withControls = true, withGroups = false) {
             for (const action of ['select-groups', 'clear-groups']) {
                 frame.register('[data-action="' + action + '"]', new FakeNode('button'));
             }
-            const relative = new FakeNode('select'); relative.value = '';
-            frame.register('[data-date="relative"]', relative);
+            const start = new FakeNode('input'); start.value = start.defaultValue = '2025-12-12';
+            const end = new FakeNode('input'); end.value = end.defaultValue = 'D';
+            frame.register('[data-date="start"]', start);
+            frame.register('[data-date="end"]', end);
             frame.children.push(holder);
             const initial = new FakeNode('pre');
             initial.textContent = JSON.stringify({ aggregates: { n: 2 }, counts: { matching: 2, incoming: 2, eligible: 2 },
@@ -302,7 +304,7 @@ test('group selections survive date changes, reset on field changes, and remain 
     assert.equal(boxes.length, 2);
     assert.ok(boxes.every((box) => box.checked));
     boxes[1].checked = false;
-    frame.querySelector('[data-date="relative"]').value = 'D-30';
+    frame.querySelector('[data-date="start"]').value = 'D-30';
     frames[0].form.fire('submit', { preventDefault() {} });
     assert.deepEqual(JSON.parse(requests[0].init.body).filters, { site: ['A'] });
     pending.shift()({ aggregates: { n: 1 }, counts: { matching: 1, incoming: 2, eligible: 1 },
@@ -330,10 +332,30 @@ test('time grouping is submitted independently of the selected date range', asyn
     const { frames, requests } = await runReportScript(true, true);
     const windowSelect = new FakeNode('select'); windowSelect.value = 'month';
     frames[0].frame.register('[data-time-grouping]', windowSelect);
-    frames[0].frame.querySelector('[data-date="relative"]').value = 'Y';
+    frames[0].frame.querySelector('[data-date="start"]').value = 'Y';
     frames[0].form.fire('submit', { preventDefault() {} });
     const body = JSON.parse(requests[0].init.body);
     assert.equal(body.time_grouping, 'month');
-    assert.deepEqual(body.date, { relative: 'Y' });
+    assert.deepEqual(body.date, { start: 'Y', end: 'D' });
     assert.equal(JSON.parse(requests[0].init.body).comparison, 'site');
+});
+
+test('blank boundaries restore YAML defaults and accept independently edited tokens', async () => {
+    const { frames, requests } = await runReportScript(true, true);
+    const start = frames[0].frame.querySelector('[data-date="start"]');
+    const end = frames[0].frame.querySelector('[data-date="end"]');
+    start.value = ' w-2 '; end.value = ' m-1 ';
+    frames[0].form.fire('submit', { preventDefault() {} });
+    assert.deepEqual(JSON.parse(requests[0].init.body).date, { start: 'W-2', end: 'M-1' });
+    start.value = ''; end.value = '';
+    frames[0].form.fire('submit', { preventDefault() {} });
+    assert.deepEqual(JSON.parse(requests[1].init.body).date, { start: '2025-12-12', end: 'D' });
+});
+
+test('Overall is an explicit override of the YAML bucket', async () => {
+    const { frames, requests } = await runReportScript(true, true);
+    const grouping = new FakeNode('select'); grouping.value = '';
+    frames[0].frame.register('[data-time-grouping]', grouping);
+    frames[0].form.fire('submit', { preventDefault() {} });
+    assert.equal(JSON.parse(requests[0].init.body).time_grouping, '');
 });

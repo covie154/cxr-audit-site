@@ -323,7 +323,7 @@ def _applied_line(applied: Mapping[str, Any]) -> str:
         else:
             parts.append(f"dates {date.get('start')}..{date.get('end')}")
     if applied.get("time_grouping"):
-        parts.append(f"window {applied['time_grouping']}")
+        parts.append(f"grouping {applied['time_grouping']}")
     filters = applied.get("filters") or {}
     for key in sorted(filters):
         parts.append(f"{key}={_fmt(filters[key])}")
@@ -369,7 +369,12 @@ def _bucket_label(payload: Mapping[str, Any], index: Any) -> str:
 def _widget_tables(payload: Mapping[str, Any]) -> list[dict[str, Any]]:
     """Render the frozen payload as print tables: aggregates, rows, and chart contracts."""
     tables: list[dict[str, Any]] = []
-    chart = payload.get("chart") or {}
+    if payload.get("time_groups"):
+        for group in payload["time_groups"]:
+            for table in _widget_tables(group["payload"]):
+                tables.append({**table, "caption": f"{group['label']} — {table['caption']}"})
+        return tables
+    chart = payload.get("chart") or payload
 
     aggregates = payload.get("aggregates") or {}
     matrix = aggregates.get("matrix")

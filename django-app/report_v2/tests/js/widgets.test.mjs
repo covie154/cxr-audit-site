@@ -297,3 +297,19 @@ test("summary tables mark only the pooled Overall row", () => {
     assert.equal(marked.length, 1);
     assert.equal(marked[0].children[0].textContent, "Overall");
 });
+
+test('calendar periods reuse renderers and dispose every child', () => {
+    const container = makeContainer();
+    const payload = { time_groups: [
+        { label: 'Week A', payload: { aggregates: { n: 2 }, units: { n: 'count' } } },
+        { label: 'Week B', payload: { aggregates: { n: 3 }, units: { n: 'count' } } }
+    ] };
+    const instance = render('value', container, payload, { primaryOnly: true, measurement: 'record_count' });
+    assert.equal(container.children.length, 2);
+    assert.equal(container.children[0].children[0].textContent, 'Week A');
+    assert.equal(container.children[1].children[1].children[0].textContent, '3');
+    instance.resize();
+    disposeInstance(instance);
+    assert.equal(container.children.length, 0);
+    assert.equal(instance.disposed, true);
+});

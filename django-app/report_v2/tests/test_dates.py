@@ -271,10 +271,19 @@ class ExplicitWindowTests(SimpleTestCase):
         with self.assertRaises(InvalidDateLiteralError):
             resolve_window(anchor=ANCHOR, timezone=SINGAPORE, start="not-a-date", end="2026-03-05")
 
-    def test_relative_start_with_non_anchor_end_is_rejected(self):
-        """The "no mixed relative end other than D" contract rejects a relative start paired with an explicit end."""
+    def test_both_boundaries_accept_independent_date_expressions(self):
+        for start, end, expected_start, expected_end in (
+            ("W-2", "W", date(2026, 8, 17), date(2026, 8, 31)),
+            ("M-1", "M", date(2026, 8, 1), date(2026, 9, 1)),
+            ("Y-1", "Y", date(2025, 1, 1), date(2026, 1, 1)),
+            ("2025-12-12", "D-2", date(2025, 12, 12), date(2026, 8, 30)),
+            ("D-7", "2026-09-05", date(2026, 8, 25), date(2026, 9, 5)),
+        ):
+            window = resolve_window(anchor=ANCHOR, timezone=SINGAPORE, start=start, end=end)
+            self.assertEqual((window.start_date, window.end_date), (expected_start, expected_end))
+            self.assertEqual(window.anchor, ANCHOR)
         with self.assertRaises(InvalidWindowError):
-            resolve_window(anchor=ANCHOR, timezone=SINGAPORE, relative="M", end="2026-09-05")
+            resolve_window(anchor=ANCHOR, timezone=SINGAPORE, start="D", end="W-2")
 
 
 # ---------------------------------------------------------------------------

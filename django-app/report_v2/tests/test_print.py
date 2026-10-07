@@ -220,6 +220,23 @@ class PrintFlowTests(TestCase):
         self.assertEqual(widget["applied"]["time_grouping"], "month")
         self.assertTrue(all(b["size"] == "month" for b in widget["payload"]["buckets"]))
 
+    def test_value_calendar_groups_and_relative_end_survive_snapshot(self):
+        self.seam.good[0] = {**self.seam.good[0], "event_date": date(2026, 8, 24)}
+        self._patch_seam()
+        self.flow.publish("t13report")
+        client = self._login(self.normal)
+        response = self._create_snapshot(client, "t13report", state_by_widget={
+            "v1": {"time_grouping": "week", "date": {"start": "W-2", "end": "W"}}
+        })
+        self.assertEqual(response.status_code, 201, response.content[:400])
+        document = snapshots.load_snapshot(response.json()["token"], user_id=self.normal.pk, project_id="prime", slug="t13report")
+        widget = next(w for w in document["widgets"] if w["widget_id"] == "v1")
+        self.assertEqual(widget["applied"]["date"], {"start": "W-2", "end": "W"})
+        self.assertTrue(widget["payload"]["time_groups"])
+        printed = client.get(response.json()["print_url"])
+        self.assertEqual(printed.status_code, 200)
+        self.assertIn(widget["payload"]["time_groups"][0]["label"], printed.content.decode())
+
     # -- 5. later data changes or publication do not alter the captured export ------------
     def test_print_is_frozen_against_data_and_publication_changes(self):
         self._patch_seam()

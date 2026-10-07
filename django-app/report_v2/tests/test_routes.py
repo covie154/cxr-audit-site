@@ -68,6 +68,10 @@ class ReportRoutingTests(SimpleTestCase):
                 html = render_to_string("report_v2/page.html", {"slug": "sample", "sections_ctx": [{"widgets": [frame]}]})
                 self.assertEqual('data-role="controls"' in html, expected)
                 self.assertEqual('data-action="apply"' in html, expected)
+                self.assertIn('data-time-grouping', html)
+                self.assertNotIn('name="date_relative"', html)
+                self.assertIn('data-date="start" value="D-30"', html)
+                self.assertIn('data-date="end" value="D"', html)
 
     def test_summary_primary_values_and_no_csv_links(self):
         payload = {"aggregates": {"n": 12, "accuracy": .8}, "units": {"accuracy": "rate[0,1]"}}

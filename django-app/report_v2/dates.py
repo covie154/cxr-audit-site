@@ -25,7 +25,7 @@ Design rules relied upon by the rest of the layer:
 * **Explicit dates stay explicit.** An ISO start/end override is returned verbatim -- it is never shifted,
   clamped or truncated toward the anchor, even when it names a future date. A caller reads such a range as
   empty / coverage-limited (see :attr:`ResolvedWindow.ends_after_anchor`) rather than the range being rewritten.
-  A reversed range, a mixed relative start that does not end at the anchor, and an impossible calendar literal
+  A reversed range and an impossible calendar literal
   (``2026-02-30`` -- rejected by constructing a real :class:`datetime.date`, not by a regex) all fail loudly.
 * The anchor cannot be moved by a reader. :func:`capture_anchor` derives ``D`` from the latest complete,
   eligible candidate supplied by the caller (returning ``None`` -- not a fabricated date, not "now" -- when
@@ -117,7 +117,7 @@ class InvalidAnchorError(DateRangeError):
 
 
 class InvalidWindowError(DateRangeError):
-    """A resolved / explicit window is reversed, mixes a relative start with a non-anchor end, or the token is not parseable."""
+    """A resolved window is reversed or its date expression is not parseable."""
 
     kind = "invalid-window"
 
@@ -278,7 +278,7 @@ def _normalise_token(token: object) -> tuple[str, int]:
 
 
 def _relative_start_date(token: object, anchor: date) -> date:
-    """Resolve a relative token to its inclusive *start* date against ``anchor`` (the end is always the anchor).
+    """Resolve a relative token to a calendar boundary against ``anchor``.
 
     ``D``/``D-n`` -> anchor minus ``n`` days (``D-7`` is eight inclusive dates through the anchor).
     ``W``/``W-n`` -> Monday of the anchor week, ``n`` weeks earlier.
@@ -286,14 +286,16 @@ def _relative_start_date(token: object, anchor: date) -> date:
     ``Y``/``Y-n`` -> first of January of the anchor year, ``n`` years earlier.
     """
     base, offset = _normalise_token(token)
-    if base == "D":
-        return anchor - timedelta(days=offset)
-    if base == "W":
-        return _week_start(anchor) - timedelta(days=7 * offset)
-    if base == "M":
-        return _shift_months(_month_start(anchor), offset)
-    # base == "Y"
-    return date(anchor.year - offset, 1, 1)
+    try:
+        if base == "D":
+            return anchor - timedelta(days=offset)
+        if base == "W":
+            return _week_start(anchor) - timedelta(days=7 * offset)
+        if base == "M":
+            return _shift_months(_month_start(anchor), offset)
+        return date(anchor.year - offset, 1, 1)
+    except (OverflowError, ValueError) as exc:
+        raise InvalidOffsetError("date offset is outside the supported calendar") from exc
 
 
 def _is_anchor_token(value: object) -> bool:
@@ -585,11 +587,10 @@ def resolve_window(
 ) -> ResolvedWindow:
     """Resolve a widget window from a relative expression *or* explicit ISO overrides against the captured anchor.
 
-    Exactly one of ``relative`` / ``start`` names the window start. ``end`` may be omitted (defaults to the
-    anchor), the literal ``"D"`` (the anchor), or an explicit ISO date literal.
+    Exactly one of ``relative`` / ``start`` names the window start. Both boundaries accept
+    D/W/M/Y with optional minus offsets or ISO dates; an omitted end defaults to D.
+    Relative boundaries resolve to the anchor day, Monday, first of month or first of year.
 
-    * A **relative** start always ends at the anchor and may not be paired with a non-anchor end (the "no mixed
-      relative end other than D" contract) -- violating that is an :class:`InvalidWindowError`.
     * An **explicit** start is returned verbatim together with its explicit end; it is never shifted, clamped or
       truncated toward the anchor even when it names a future date. ``end >= start`` is required; a reversed
       range is an :class:`InvalidWindowError`` and a malformed / impossible ISO literal an
@@ -608,6 +609,8 @@ def resolve_window(
     end_provided = end is not None
     if not end_provided or _is_anchor_token(end):
         end_date = captured
+    elif isinstance(end, str) and end.strip().upper().startswith(_RELATIVE_BASES):
+        end_date = _relative_start_date(end, captured)
     else:
         end_date = parse_date_literal(end, what="window end")
 
@@ -617,17 +620,18 @@ def resolve_window(
 
     if relative is not None:
         base, offset = _normalise_token(relative)
-        if end_provided and not _is_anchor_token(end):
-            raise InvalidWindowError(
-                "a relative window start may only be combined with the 'D' end token (no mixed relative end other than D)"
-            )
         start_date = _relative_start_date(relative, captured)
         token = base if offset == 0 else f"{base}-{offset}"
         explicit = False
     elif start is not None:
-        start_date = parse_date_literal(start, what="window start")
-        token = None
-        explicit = True
+        if isinstance(start, str) and start.strip().upper().startswith(_RELATIVE_BASES):
+            start_date = _relative_start_date(start, captured)
+            token = str(start).strip().upper()
+            explicit = False
+        else:
+            start_date = parse_date_literal(start, what="window start")
+            token = None
+            explicit = True
     else:
         raise InvalidWindowError("a window requires either a relative token or an explicit start")
 

@@ -427,7 +427,7 @@
         inflightByWidget.set(widgetId, controller);
         const body = { context: frame.el.dataset.contextToken, request_seq: seq };
         if (overrides.date) { body.date = overrides.date; }
-        if (overrides.time_grouping) { body.time_grouping = overrides.time_grouping; }
+        if (Object.prototype.hasOwnProperty.call(overrides, 'time_grouping')) { body.time_grouping = overrides.time_grouping; }
         if (Object.keys(overrides.filters).length) { body.filters = overrides.filters; }
         if (overrides.comparison !== null) { body.comparison = overrides.comparison; }
         if (frame.type === 'table' && overrides.page > 1) { body.page = overrides.page; }
@@ -529,7 +529,7 @@
         const overrides = widget.overrides || baseDefaults();
         const entry = { context: frame.el.dataset.contextToken };
         if (overrides.date) { entry.date = overrides.date; }
-        if (overrides.time_grouping) { entry.time_grouping = overrides.time_grouping; }
+        if (Object.prototype.hasOwnProperty.call(overrides, 'time_grouping')) { entry.time_grouping = overrides.time_grouping; }
         if (overrides.filters && Object.keys(overrides.filters).length) { entry.filters = overrides.filters; }
         if (overrides.comparison !== null) { entry.comparison = overrides.comparison; }
         if (frame.type === 'table' && overrides.page > 1) { entry.page = overrides.page; }

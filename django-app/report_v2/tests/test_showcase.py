@@ -39,3 +39,19 @@ class ShowcaseTests(SimpleTestCase):
         payload = views._evaluate(self.layout, widget, rows=rows)
         self.assertNotIn("error", payload)
         self.assertEqual(payload["classes"], ["0", "1"])
+
+    def test_calendar_grouping_renders_all_seven_card_contracts(self):
+        from report_v2.exports import _widget_tables
+        for widget in views._layout_widgets(self.layout).values():
+            rows = test_seed.SeedSynthEvaluationTests._fake_fetch(layout_widget=widget)
+            for i, row in enumerate(rows):
+                row["event_date"] = "2026-08-03" if i % 2 else "2026-08-11"
+            payload = views._evaluate(self.layout, widget, rows=rows, time_grouping="week")
+            self.assertNotIn("error", payload)
+            if widget["type"] == "line":
+                self.assertTrue(payload["series"])
+            else:
+                self.assertEqual(len(payload["time_groups"]), 2, widget["id"])
+                self.assertTrue(_widget_tables(payload))
+                for group in payload["time_groups"]:
+                    self.assertEqual(group["payload"]["dates"]["anchor_date"], payload["dates"]["anchor_date"])

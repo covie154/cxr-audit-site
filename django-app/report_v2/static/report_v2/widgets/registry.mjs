@@ -91,7 +91,36 @@ export function render(type, container, payload, options) {
         liveByContainer.delete(previous.node);
         disposeEntry(previous);
     }
-    const instance = mod.render(container, payload, options || {});
+    let instance;
+    if (payload && Array.isArray(payload.time_groups) && payload.time_groups.length) {
+        clearContainer(container);
+        const children = [];
+        instance = {
+            type, container, disposed: false,
+            resize() { children.forEach((child) => child.resize && child.resize()); },
+            dispose() {
+                if (this.disposed) { return; }
+                this.disposed = true;
+                children.forEach(disposeInstance);
+                clearContainer(container);
+            }
+        };
+        try {
+            for (const group of payload.time_groups) {
+                const section = el("section", "widget-period");
+                section.appendChild(el("h4", "widget-period-label", group.label));
+                const mount = el("div", "widget-mount");
+                section.appendChild(mount);
+                container.appendChild(section);
+                children.push(render(type, mount, group.payload, options));
+            }
+        } catch (error) {
+            instance.dispose();
+            throw error;
+        }
+    } else {
+        instance = mod.render(container, payload, options || {});
+    }
     if (instance && container) { liveByContainer.set(container, { instance, node: container }); }
     return instance;
 }

@@ -44,9 +44,10 @@ from django.views.decorators.csrf import csrf_protect
 from django.views.decorators.http import require_GET, require_POST
 
 from . import data
+from .dates import DateRangeError, parse_date_literal
 from .models import ReportPreference
 from .definitions.repository import InvalidDefinitionIdError, validate_definition_id
-from .evaluation import (EvaluationError, PAIRED_MEASUREMENTS, RequestContract, WidgetSpec, evaluate,
+from .evaluation import (EvaluationError, PAIRED_MEASUREMENTS, RequestContract, WidgetSpec, evaluate, _bucket_rows,
                          _catalog_score_columns, _highest_score_cell)
 from .measurements import fn_fp_cases
 from .permissions import can_edit_catalog
@@ -191,9 +192,9 @@ def _allowed_controls(widget: dict) -> dict:
         ],
         "measurement": query.get("measurement"),
         "inputs": dict(query.get("inputs") or {}),
-        "window": dict(widget.get("window") or {}),
+        "window": {"start": "D-30", "end": "D", **(widget.get("window") or {})},
         "default_compare_by": widget.get("default_compare_by"),
-        "time_grouping": widget.get("bucket") if widget.get("type") in ("line", "bar") else None,
+        "time_grouping": widget.get("bucket") or ("week" if widget.get("type") == "line" else None),
         "type": widget.get("type"),
     }
 
@@ -223,10 +224,16 @@ def _validate_date(raw: object) -> dict | None:
         return {"relative": token}
     start = raw.get("start")
     end = raw.get("end")
-    if not isinstance(start, str) or not _ISO_RE.match(start):
-        raise OverrideRejectedError("date start must be a YYYY-MM-DD date")
-    if not (end == "D" or (isinstance(end, str) and _ISO_RE.match(end))):
-        raise OverrideRejectedError("date end must be a YYYY-MM-DD date or 'D'")
+    if set(raw) - {"start", "end"}:
+        raise OverrideRejectedError("date override carries unexpected keys")
+    for name, value in (("start", start), ("end", end)):
+        if not isinstance(value, str) or not (_ISO_RE.fullmatch(value) or _RELATIVE_RE.fullmatch(value)):
+            raise OverrideRejectedError(f"date {name} must be YYYY-MM-DD or D/W/M/Y with an optional minus offset")
+        if _ISO_RE.fullmatch(value):
+            try:
+                parse_date_literal(value)
+            except DateRangeError as exc:
+                raise OverrideRejectedError(f"date {name} is not a valid calendar date") from exc
     return {"start": start, "end": end}
 
 
@@ -276,9 +283,7 @@ def _validate_comparison(widget: dict, raw: object) -> str | None:
 def _validate_time_grouping(widget: dict, raw: object) -> str | None:
     if raw is None:
         return None
-    if widget.get("type") not in ("line", "bar") or not widget.get("bucket"):
-        raise OverrideRejectedError("time grouping is not supported on this widget")
-    if not isinstance(raw, str) or raw not in {"day", "week", "month", "year"}:
+    if not isinstance(raw, str) or raw not in {"", "day", "week", "month", "year"}:
         raise OverrideRejectedError("time grouping must be day, week, month or year")
     return raw
 
@@ -346,7 +351,7 @@ def _evaluate(
     specs = _build_specs(layout)
     if date_override is None:
         default_window = dict(widget.get("window") or {})
-        if default_window.get("start") and not _WINDOW_START_RE.match(str(default_window["start"])):
+        if default_window.get("start"):
             date_override = default_window
     request = RequestContract(
         widget_id=widget["id"],
@@ -358,7 +363,7 @@ def _evaluate(
         comparison = comparison or widget.get("default_compare_by")
         grouping = [comparison] if comparison else None
     display = widget.get("type")
-    buckets = (time_grouping or widget.get("bucket")) if display in ("line", "bar") else None
+    buckets = (widget.get("bucket") or ("week" if display == "line" else None)) if time_grouping is None else (time_grouping or None)
     ci_registry = {"positive_predictive_value"} if (widget.get("ci") or {}).get("enabled") else None
     policy = (widget.get("query") or {}).get("threshold_policy")
     is_table = display == "table"
@@ -400,6 +405,20 @@ def _evaluate(
     # A synthesized Overall row must not make an empty selection look populated.
     counts = payload.get("counts") or {}
     payload["empty"] = not counts.get("matching")
+    if buckets and display != "line" and not payload["empty"]:
+        # ponytail: bounded per-period evaluation; partition once if 100 groups become too slow.
+        periods = [bucket for bucket in payload["buckets"] if _bucket_rows(rows, bucket)]
+        if len(periods) > 100:
+            raise OverrideRejectedError("calendar grouping exceeds the 100-period limit; choose a coarser grouping")
+        payload["time_groups"] = []
+        for bucket in periods:
+            period_payload = _evaluate(
+                layout, {**widget, "bucket": None}, rows=rows, selected_rows=selected_rows,
+                date_override={"start": bucket["start_date"], "end": bucket["end_date"]},
+                filters=filters, comparison=comparison, grouping=grouping, page=page,
+            )
+            if not period_payload["empty"]:
+                payload["time_groups"].append({"label": bucket["label"], "payload": period_payload})
     return payload
 
 
@@ -659,7 +678,7 @@ def widget_data(request, slug: str, widget_id: str):
             time_grouping=body.get("time_grouping"),
             rows=rows,
         )
-    except (EvaluationError, data.AdapterError) as exc:
+    except (EvaluationError, data.AdapterError, DateRangeError, OverrideRejectedError) as exc:
         return JsonResponse({"status": "error", "error": str(exc), "widget_id": widget_id}, status=200)
 
     # (8) echo the client's sequencing token (int-coerced when it is one) and return the payload.
@@ -772,7 +791,7 @@ def report_csv(request, slug: str, kind: str):
             rows=rows,
             selected_rows=scoped_rows,
         )
-    except (EvaluationError, data.AdapterError) as exc:
+    except (EvaluationError, data.AdapterError, DateRangeError, OverrideRejectedError) as exc:
         return JsonResponse({"status": "error", "error": str(exc), "widget_id": widget}, status=200)
 
     # (l) select the rows to emit, reading every statistic off the already-computed payload.
