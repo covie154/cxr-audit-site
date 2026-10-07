@@ -340,8 +340,8 @@ class EditorAdminSecurityTests(TestCase):
         self.assertEqual(created.status_code, 200)
 
         body = self._as_admin().get("/layout/").content.decode("utf-8")
-        self.assertIn('href="/layout/editor/listed/"', body)
-        self.assertIn('href="/layout/editor/drafted/"', body)
+        self.assertIn('href="/layout/editor/t/"', body)
+        self.assertIn('href="/layout/editor/new_report/"', body)
         self.assertIn('data-state="published"', body)
         self.assertIn('data-state="draft only"', body)
         self.assertIn("listed — published", body)
@@ -358,7 +358,7 @@ class EditorAdminSecurityTests(TestCase):
             _MUTATION_PATHS["publish"], {"def_id": "listed", "yaml_text": VALID_YAML}
         )
         self.assertEqual(published.status_code, 200)
-        response = self._as_admin().get("/layout/editor/listed/")
+        response = self._as_admin().get("/layout/editor/listed/", follow=True)
         self.assertEqual(response.status_code, 200)
         body = response.content.decode("utf-8")
         self.assertIn("title: T", body)
@@ -386,7 +386,7 @@ class EditorAdminSecurityTests(TestCase):
         self.assertTrue((self.root / "drafts" / "listed").exists())
         self.assertEqual(self._repo().read_draft("listed")[0], published_text)
 
-        again = self._as_admin().get("/layout/editor/listed/").content.decode("utf-8")
+        again = self._as_admin().get("/layout/editor/listed/", follow=True).content.decode("utf-8")
         self.assertIn('data-source-state="draft"', again)
 
     # -- 14A.7 previewing from the published view still writes nothing ------------------- #
@@ -442,7 +442,7 @@ class EditorAdminSecurityTests(TestCase):
 
     def test_editor_copy_and_site_styles(self):
         self._as_admin().post(_MUTATION_PATHS["new"], {"def_id": "copytest"})
-        body = self._as_admin().get("/layout/editor/copytest/").content.decode()
+        body = self._as_admin().get("/layout/editor/copytest/", follow=True).content.decode()
         self.assertNotIn("Admin-only. Drafts are saved privately", body)
         self.assertNotIn("Preview renders from synthetic data only", body)
         self.assertNotIn("editor-seeds", body)
@@ -534,3 +534,31 @@ class EditorAdminSecurityTests(TestCase):
         self._as_admin().post(_MUTATION_PATHS["new"], {"name": "Placement check"})
         body = self._as_admin().get(reverse("report_editor:editor")).content.decode()
         self.assertGreater(body.index('data-action="create"'), body.index('href="/layout/editor/placement_check/"'))
+
+    def test_name_based_editor_heading_redirect_and_identity(self):
+        repo = self._repo()
+        text = VALID_YAML.replace("title: T", "title: Analysis Report")
+        repo.save_draft("overview", text, expected_revision=None)
+        client = self._as_admin()
+        response = client.get("/layout/editor/overview/")
+        self.assertRedirects(response, "/layout/editor/analysis_report/")
+        body = client.get("/layout/editor/analysis_report/").content.decode()
+        self.assertIn('class="page-title">Editing: Analysis Report</h1>', body)
+        self.assertIn('data-def-id="overview"', body)
+        self.assertNotIn('class="page-title">Report layout', body)
+        self.assertIn('href="/layout/editor/analysis_report/"', client.get("/layout/").content.decode())
+        normal = Client()
+        normal.force_login(self.normal)
+        self.assertEqual(normal.get("/layout/editor/analysis_report/").status_code, 403)
+
+    def test_duplicate_report_names_have_distinct_safe_editor_urls(self):
+        from report_v2.admin_views import _report_entries
+        repo = self._repo()
+        for identifier in ("first", "second", "t__first"):
+            repo.save_draft(identifier, VALID_YAML, expected_revision=None)
+        entries = _report_entries(repo)
+        self.assertEqual(len({entry["editor_url"] for entry in entries}), 3)
+        for entry in entries:
+            response = self._as_admin().get(entry["editor_url"])
+            self.assertEqual(response.status_code, 200)
+            self.assertIn('data-def-id="'+entry["def_id"]+'"', response.content.decode())

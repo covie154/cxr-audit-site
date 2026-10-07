@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% load static %}
-{% block title %}Report v2 — Layout editor{% endblock %}
+{% block title %}Editing: {{ report_title }} — PRIMER-LLM{% endblock %}
 {% block nav_report_editor %}active{% endblock %}
 {% block extra_head %}
 <link rel="stylesheet" href="{% static 'report_v2/report.css' %}">
@@ -15,7 +15,7 @@
      data-publish-url="{% url 'report_editor:editor_publish' %}"
 >
     <p><a href="{% url 'report_editor:editor' %}">← Report editor</a></p>
-    <header class="editor-header"><div><h1 class="page-title">Report layout</h1><p class="page-subtitle">Editing: <strong>{{ report_title }}</strong></p></div></header>
+    <header class="editor-header"><div><h1 class="page-title">Editing: {{ report_title }}</h1></div></header>
 
     {% include "report_v2/_editor_form.html" %}
 </div>

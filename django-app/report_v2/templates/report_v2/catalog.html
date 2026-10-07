@@ -21,10 +21,10 @@
         <ul class="report-v2-list">
             {% for entry in reports %}
             <li class="report-v2-list-item" data-state="{{ entry.state_label }}">
-                <div><a class="report-v2-list-link" href="{% url 'report_editor:editor_detail' entry.def_id %}">{{ entry.title }}</a>
+                <div><a class="report-v2-list-link" href="{{ entry.editor_url }}">{{ entry.title }}</a>
                     <small class="report-v2-list-meta">{{ entry.def_id }} — {{ entry.state_label }}{% if entry.version %} · {{ entry.version }}{% endif %}</small></div>
                 <div class="editor-actions">
-                    <a class="btn btn-outline" href="{% url 'report_editor:editor_detail' entry.def_id %}">Edit</a>
+                    <a class="btn btn-outline" href="{{ entry.editor_url }}">Edit</a>
                     <button type="button" class="btn btn-danger" data-action="delete" data-def-id="{{ entry.def_id }}" data-title="{{ entry.title }}" data-revision="{{ entry.revision }}" data-version="{{ entry.version }}">Delete</button>
                 </div>
             </li>

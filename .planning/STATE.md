@@ -139,6 +139,8 @@ None yet.
 
 | 261007-m4c | Typed report deletion and focused /layout/ editor | 2026-10-07 | See quick summary | [261007-m4c](./quick/261007-m4c-require-typed-report-deletion-confirmati/) |
 
+| 261007-mjd | Use report name for main heading and editor URL | 2026-10-07 | See quick summary | [261007-mjd](./quick/261007-mjd-use-report-name-in-editor-heading-and-ca/) |
+
 ## Deferred Items
 
 | Category | Item | Status | Deferred At |

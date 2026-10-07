@@ -24,6 +24,7 @@ Security posture (the point of Task 12):
 """
 from __future__ import annotations
 
+from collections import Counter
 import json
 import re
 from pathlib import Path
@@ -244,6 +245,20 @@ def _report_entries(repo: DefinitionRepository) -> list[dict[str, str]]:
                 pass  # Invalid report drafts must remain available for correction.
         entries.append({"def_id": def_id, "title": title, "state_label": state_label,
                         "revision": revision, "version": version})
+    names = {entry["def_id"]: slugify(entry["title"]).replace("-", "_") or entry["def_id"] for entry in entries}
+    counts = Counter(names.values())
+    identifiers = set(names)
+    used = set()
+    for entry in entries:
+        def_id = entry["def_id"]
+        name = names[def_id]
+        if counts[name] > 1:
+            name += "__" + def_id
+        while name in used or (name in identifiers and name != def_id):
+            name += "__" + def_id
+        used.add(name)
+        entry["editor_slug"] = name
+        entry["editor_url"] = reverse("report_editor:editor_detail", args=[name])
     return entries
 
 
@@ -258,9 +273,15 @@ def editor(request, def_id: str | None = None):
     reports = _report_entries(repo)
     if def_id is None:
         return render(request, "report_v2/catalog.html", {"reports": reports})
-    if not any(entry["def_id"] == def_id for entry in reports):
+    report = next((entry for entry in reports if entry["def_id"] == def_id), None)
+    if report is None:
+        report = next((entry for entry in reports if entry["editor_slug"] == def_id), None)
+    if report is None:
         from django.http import Http404
         raise Http404("Report not found")
+    if request.path != report["editor_url"]:
+        return HttpResponseRedirect(report["editor_url"])
+    def_id = report["def_id"]
     draft_text = ""
     revision = ""
     source_state = "none"
@@ -300,7 +321,7 @@ def editor(request, def_id: str | None = None):
         "report_v2/layout.html",
         {
             "def_id": def_id or "",
-            "report_title": next(entry["title"] for entry in reports if entry["def_id"] == def_id),
+            "report_title": report["title"],
             "draft_text": draft_text,
             "revision": revision,
             "reports": reports,
@@ -451,7 +472,7 @@ def editor_new(request):
     except RepositoryError as exc:
         return JsonResponse({"error": str(exc)}, status=400)
     return JsonResponse({"def_id": def_id, "revision": revision, "yaml_text": scaffold,
-                         "status": "created", "url": reverse("report_editor:editor_detail", args=[def_id])})
+                         "status": "created", "url": next(entry["editor_url"] for entry in _report_entries(repo) if entry["def_id"] == def_id)})
 
 
 @require_POST
