@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-06-14)
 Phase: 6 of 6 (remaining hipaa controls plan)
 Plan: Not started
 Status: Ready to execute
-Last activity: 2026-10-07 - Completed quick task 261007-w8k: confirm visual card deletion (7463772)
+Last activity: 2026-10-07 - Completed quick task 261007-wbd: fit and centre single-value cards (7a0164d)
 
 Progress: [----------] 0%
 
@@ -157,6 +157,8 @@ None yet.
 | 261007-vou | Flat heading canvas, fitted cards and live Save | 2026-10-07 | 7beb40f | [261007-vou](./quick/261007-vou-fit-report-card-content-to-height-and-si/) |
 
 | 261007-w8k | Confirm visual card deletion | 2026-10-07 | 7463772 | [261007-w8k](./quick/261007-w8k-confirm-visual-editor-card-deletion/) |
+
+| 261007-wbd | Fit and centre single-value card text below heading | 2026-10-07 | 7a0164d | [261007-wbd](./quick/261007-wbd-fit-and-centre-single-value-card-text-be/) |
 
 ### Report v2 workstream execution
 
