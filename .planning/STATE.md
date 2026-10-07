@@ -160,6 +160,8 @@ None yet.
 
 | 261007-wbd | Fit and centre single-value card text below heading | 2026-10-07 | 7a0164d | [261007-wbd](./quick/261007-wbd-fit-and-centre-single-value-card-text-be/) |
 
+| 261007-w9h | Skeleton-first reports with bounded progressive card loading | 2026-10-07 | 5411b53 | [261007-w9h](./quick/261007-w9h-load-report-shell-first-with-bounded-asy/) |
+
 ### Report v2 workstream execution
 
 Visual layout editor: Complete (2026-10-07). Production commit `84b722e`; execution and verification
