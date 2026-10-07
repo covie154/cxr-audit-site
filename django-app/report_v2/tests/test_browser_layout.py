@@ -455,7 +455,9 @@ class BrowserLayoutTests(unittest.TestCase):
     def test_day_first_dates_and_native_picker_update_one_card(self):
         self._goto(self.report_url, width=1440, height=900)
         frame = self.page.locator('.widget-frame').nth(1)
-        anchor = frame.locator('[data-initial-payload]').evaluate("n => JSON.parse(n.textContent).dates.anchor_date")
+        with self.page.expect_response(lambda response: response.url == self.server.base + frame.get_attribute('data-data-url')) as loaded:
+            frame.locator('[data-action="apply"]').click()
+        anchor = loaded.value.json()['dates']['anchor_date']
         picker = frame.locator('[data-date-picker="end"]')
         picker.evaluate("n => { const native=n.showPicker.bind(n); n.showPicker=() => { n.dataset.opened='yes'; native(); }; }")
         picker.click()

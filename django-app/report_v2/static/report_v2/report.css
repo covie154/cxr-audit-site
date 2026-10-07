@@ -163,5 +163,10 @@
 
 .widget-frame[data-type="divider"] hr { margin: auto 0; flex: 0 0 auto; }
 
+.widget-skeleton { padding: 1rem; color: var(--c-text-muted); }
+.widget-skeleton i { display: block; height: .8rem; margin-top: 1rem; border-radius: .25rem; background: currentColor; opacity: .12; }
+.widget-skeleton i:last-child { width: 65%; }
+.widget-loading-status { color: var(--c-text-muted); font-size: .85rem; }
+
 /* Single numbers occupy the body, whose height already excludes the heading. */
 .widget-single-value, .widget-body > .widget-primary-value { align-self: center; flex: 0 0 auto; margin: auto; max-width: 100%; white-space: nowrap; overflow-wrap: normal; line-height: 1; text-align: center; font-size: min(65cqh, 28cqw); }

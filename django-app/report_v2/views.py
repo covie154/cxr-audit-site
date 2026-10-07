@@ -596,7 +596,8 @@ def report_page(request, slug: str):
         for widget in section.get("widgets") or []:
             widget_id = widget.get("id")
             try:
-                payload = _evaluate(layout, widget)
+                payload = (_evaluate(layout, widget) if widget.get("type") in {"text", "divider", "heading"}
+                           else {"widget_id": widget_id, "loading": True})
             except Exception as exc:  # a single bad frame must not 500 the page or its siblings
                 payload = {"widget_id": widget_id, "error": str(exc)}
             frame = _widget_frame(slug, version, widget, payload)

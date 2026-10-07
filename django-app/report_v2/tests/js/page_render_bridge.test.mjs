@@ -104,7 +104,7 @@ function installGlobals({ registry }) {
     globalThis.ResizeObserver = class { constructor(cb) { this.cb = cb; this.seen = []; } observe(n) { this.seen.push(n); } disconnect() {} };
     globalThis.MutationObserver = class { constructor(cb) { this.cb = cb; this.seen = []; } observe(n) { this.seen.push(n); } disconnect() {} };
 
-    root.register('.widget-frame', root.children);
+    root.register('.widget-frame:not([data-decoration])', root.children);
     document.querySelector = (selector) => (selector === '[data-report-page]' ? root : null);
     document.querySelectorAll = (selector) => (selector === '.widget-frame' ? root.children : selector === '[data-report-chart]' ? [] : []);
 
@@ -138,9 +138,18 @@ function buildFrames(root, types) {
     return built;
 }
 
-async function runScript({ types, registry }) {
+async function runScript({ types, registry, loading = false }) {
     const { document, root, requests, pending } = installGlobals({ registry });
     const frames = buildFrames(root, types);
+    if (loading) {
+        window.innerHeight = 800;
+        frames.forEach(({ frame }, index) => {
+            const initial = new FakeNode('pre');
+            initial.textContent = JSON.stringify({ loading: true });
+            frame.register('[data-initial-payload]', initial);
+            frame.getBoundingClientRect = () => ({ top: index === 3 ? 0 : 1000, bottom: index === 3 ? 100 : 1100 });
+        });
+    }
     const source = await readfile.readFile(pathe.join(staticDir, 'report.js'), 'utf-8');
     new Function('document', 'window', 'AbortController', 'ResizeObserver', 'MutationObserver', 'fetch',
         '"use strict";' + source)(document, globalThis.window, globalThis.AbortController,
@@ -283,4 +292,22 @@ test('Task 16: CSV links follow the applied widget window and site', async () =>
     assert.equal(url.searchParams.get('date_from'), '2026-08-01');
     assert.equal(url.searchParams.get('date_to'), '2026-08-10');
     assert.equal(url.searchParams.get('context'), 'signed');
+});
+
+test('skeleton cards prioritize visible cards and keep at most three requests active after failure', async () => {
+    const { registry, calls } = makeFakeRegistry();
+    const { frames, requests, pending } = await runScript({ types: ['table', 'value', 'value', 'table', 'value'], registry, loading: true });
+    assert.equal(requests.length, 3);
+    assert.match(requests[0].url, /w3/);
+    assert.equal(calls.render.length, 0);
+    pending.shift()({ status: 'error', error: 'Unavailable' });
+    await flush();
+    assert.equal(requests.length, 4);
+    assert.equal(frames[3].frame.attributes['aria-busy'], 'false');
+    pending.shift()(RESOLVED);
+    await flush();
+    assert.equal(requests.length, 5);
+    while (pending.length) { pending.shift()(RESOLVED); }
+    await flush();
+    assert.equal(calls.render.length, 5);
 });

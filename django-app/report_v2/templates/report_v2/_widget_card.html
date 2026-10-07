@@ -65,7 +65,9 @@
         {# Server-side empty message, always present so report.js can read it per frame #}
         {# (report.js: node.querySelector('[data-role="empty-message"]')); hidden from view. #}
         <p class="widget-empty" data-role="empty-message" hidden>{{ f.empty_message }}</p>
-        {% if f.type == "heading" %}{% elif f.type == "text" %}<p class="widget-static-text">{{ f.payload.text }}</p>
+        {% if f.payload.loading %}
+        <div class="widget-skeleton" role="status" aria-live="polite"><span>Loading...</span><i></i><i></i><i></i></div>
+        {% elif f.type == "heading" %}{% elif f.type == "text" %}<p class="widget-static-text">{{ f.payload.text }}</p>
         {% elif f.type == "divider" %}<hr>
         {% elif f.type == "value" and not f.payload.error %}
         {% if f.payload.empty %}<p class="widget-empty">{{ f.empty_message }}</p>{% else %}<p class="widget-primary-value">{{ f.primary_value }}</p>{% endif %}

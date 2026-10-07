@@ -190,10 +190,10 @@ async function runReportScript(withControls = true, withGroups = false) {
         root.children.push(frame);
         frames.push({ frame, body, summary, form });
     }
-    root.register('.widget-frame', root.children);
+    root.register('.widget-frame:not([data-decoration])', root.children);
     document.querySelector = (selector) => (selector === '[data-report-page]' ? root : null);
     const chartBox = new FakeNode('div');
-    document.querySelectorAll = (selector) => (selector === '.widget-frame' ? root.children
+    document.querySelectorAll = (selector) => (selector === '.widget-frame:not([data-decoration])' ? root.children
         : selector === '[data-report-chart]' ? [chartBox] : []);
 
     const requests = [];

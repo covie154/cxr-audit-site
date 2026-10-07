@@ -138,6 +138,24 @@
     const state = createPageState(frames);
     const seqByWidget = new Map();
     const inflightByWidget = new Map();
+    const requestQueue = [];
+    let activeRequests = 0;
+    function drainRequests() {
+        while (activeRequests < 3 && requestQueue.length) {
+            const run = requestQueue.shift();
+            activeRequests += 1;
+            Promise.resolve(run()).finally(() => { activeRequests -= 1; drainRequests(); });
+        }
+    }
+    function loadingStatus(frame, text) {
+        if (!frame.loadingNote) {
+            frame.loadingNote = el('p', 'widget-loading-status');
+            frame.loadingNote.setAttribute('role', 'status');
+            frame.el.append(frame.loadingNote);
+        }
+        frame.loadingNote.textContent = text;
+        frame.el.setAttribute('aria-busy', text ? 'true' : 'false');
+    }
 
     const el = (tag, className) => {
         const node = document.createElement(tag);
@@ -334,15 +352,23 @@
     }
 
     function renderInitialFrames() {
+        const deferred = [];
         frames.forEach((frame) => {
             const initial = frame.el.querySelector('[data-initial-payload]');
             if (!initial) { return; }
             try {
                 const payload = JSON.parse(initial.textContent);
+                if (payload.loading) { deferred.push(frame); return; }
                 state.widgets[frame.id].lastResult = payload;
                 renderFrame(frame, payload);
             } catch (error) { /* Keep the server-rendered content if hydration fails. */ }
         });
+        const visible = (frame) => {
+            const rect = frame.el.getBoundingClientRect();
+            return rect.bottom > 0 && rect.top < window.innerHeight;
+        };
+        deferred.sort((a, b) => Number(visible(b)) - Number(visible(a)));
+        deferred.forEach((frame) => fetchFrame(frame, state.widgets[frame.id].overrides));
     }
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', renderInitialFrames, { once: true });
@@ -403,10 +429,12 @@
         applyWidgetResult(state, widgetId, result, seq);
         if (widget.lastAppliedSeq !== seq) { return; }                  // the reducer dropped it as stale
         inflightByWidget.delete(widgetId);
+        loadingStatus(frame, "");
         const payload = (result && result.payload) || {};
         const status = payload.status;
         const failed = !result.ok || status === 'error' || status === 'rejected' || status === 'stale';
         if (failed) {
+            if (!frame.liveNode) { renderFrame(frame, { error: payload.error || 'Unable to load this card. Use Apply to retry.' }); }
             if (status === 'stale') { showStale(frame, payload.error); return; }
             if (frame.summary) {
                 frame.summary.hidden = false;
@@ -434,27 +462,28 @@
         if (Object.keys(overrides.filters).length) { body.filters = overrides.filters; }
         if (overrides.comparison !== null) { body.comparison = overrides.comparison; }
         if (frame.type === 'table' && overrides.page > 1) { body.page = overrides.page; }
-        (transport || window.fetch)(frame.el.dataset.dataUrl, {
-            method: 'POST',
-            credentials: 'same-origin',
-            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRFToken() },
-            body: JSON.stringify(body),
-            signal: controller.signal
-        })
-            .then((response) => response.json()
-                .then((payload) => ({ ok: response.ok, status: response.status, payload })))
-            .then((result) => handleResult(frame, widgetId, seq, result))
-            .catch((error) => {
-                if (error && error.name === 'AbortError') { return; }   // superseded by a newer request
-                const widget = state.widgets[widgetId];
-                if (widget && widget.pendingSeq=== seq && frame.summary) {
-                    frame.summary.hidden = false;
-                    const settings = frame.el.querySelector(".widget-settings");
-                    if (settings) { settings.open = true; }
-                    frame.summary.textContent = 'The update failed: '
-                        + (error && error.message ? error.message : String(error));
-                }
-            });
+        loadingStatus(frame, frame.liveNode ? 'Updating...' : 'Loading...');
+        requestQueue.push(() => {
+            if (controller.signal.aborted) { return; }
+            return (transport || window.fetch)(frame.el.dataset.dataUrl, {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRFToken() },
+                body: JSON.stringify(body),
+                signal: controller.signal
+            })
+                .then((response) => response.json()
+                    .then((payload) => ({ ok: response.ok, status: response.status, payload })))
+                .then((result) => handleResult(frame, widgetId, seq, result))
+                .catch((error) => {
+                    if (error && error.name === 'AbortError') { return; }   // superseded by a newer request
+                    handleResult(frame, widgetId, seq, {
+                        ok: false,
+                        payload: { error: 'Unable to load this card. Use Apply to retry.' }
+                    });
+                });
+        });
+        drainRequests();
     }
 
     frames.forEach((frame) => {

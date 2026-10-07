@@ -256,6 +256,16 @@ class PublishedReportPageTests(TestCase):
             self.assertIn(version, listed_html)
 
     # -- 2. the report page renders in YAML order on a 12-column grid ----------------------
+    def test_report_shell_does_not_read_studies_or_render_raw_tables(self):
+        self._publish("t13report")
+        with mock.patch("report_v2.data.fetch_project_rows", side_effect=AssertionError("shell must not read studies")) as fetch:
+            page = self._page(self._login(self.normal), "t13report")
+        fetch.assert_not_called()
+        self.assertEqual(page.count('class="widget-skeleton"'), 3)
+        self.assertNotIn('<table', page)
+        for widget_id in ("v1", "v2", "t1"):
+            self.assertTrue(self._initial_payload(page, widget_id)["loading"])
+
     def test_report_page_renders_in_yaml_order_on_12col_grid(self):
         self._publish("t13report")
         with mock.patch("report_v2.data.fetch_project_rows", side_effect=_make_seam(empty_ids={"v2"})):
@@ -462,10 +472,9 @@ class PublishedReportPageTests(TestCase):
 
             # Page render still 200: the failing frame reports the fault, siblings still hydrate.
             page_html = self._page(client, "t13report")
-            self.assertIn(_DATA_ERROR_MESSAGE, self._frame(page_html, "t1"))
+            self.assertTrue(self._initial_payload(page_html, "t1")["loading"])
             sibling = self._initial_payload(page_html, "v1")
-            self.assertFalse(sibling["empty"])
-            self.assertEqual(sibling["counts"]["matching"], 3)
+            self.assertTrue(sibling["loading"])
 
     # -- 9. an empty widget explains itself --------------------------------------------------
     def test_empty_widget_explains_itself(self):
@@ -477,8 +486,8 @@ class PublishedReportPageTests(TestCase):
         empty_message = views._EMPTY_MESSAGE
         v2 = self._frame(html_text, "v2")
         self.assertIn(empty_message, v2)
-        self.assertTrue(self._initial_payload(html_text, "v2")["empty"])
-        self.assertFalse(self._initial_payload(html_text, "v1")["empty"])
+        self.assertTrue(self._initial_payload(html_text, "v2")["loading"])
+        self.assertTrue(self._initial_payload(html_text, "v1")["loading"])
 
         # Every frame body carries the hidden server empty-message element report.js reads.
         frames = re.findall(r'data-widget-id="[^"]+".*?</article>', html_text, re.S)
