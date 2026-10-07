@@ -54,6 +54,7 @@
                      data-data-url="{{ f.data_url }}" data-context-token="{{ f.context_token }}"
                      style="grid-column: span {{ f.width }}; grid-row: span {{ f.height }};">
                 <header class="widget-header"><h3>{{ f.title }}</h3></header>
+                {% if f.controls.enabled %}
                 <form class="widget-controls" data-role="controls" novalidate>
                     {% if f.controls.date_range %}
                     <label>From <input type="date" name="date_start" data-date="start"></label>
@@ -84,6 +85,7 @@
                     <button type="submit" class="btn btn-primary" data-action="apply">Apply</button>
                     <button type="reset" class="btn btn-secondary" data-action="reset">Reset</button>
                 </form>
+                {% endif %}
                 <p class="widget-downloads">{% for link in f.csv_links %}<a href="{{ link.url }}" data-csv-download>{{ link.label }}</a>{% endfor %}</p>
                 <p class="widget-summary" role="status">{{ f.summary }}</p>
                 <div class="widget-body" data-widget-body>

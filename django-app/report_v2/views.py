@@ -181,6 +181,7 @@ def _allowed_controls(widget: dict) -> dict:
     controls = widget.get("controls") or {}
     query = widget.get("query") or {}
     return {
+        "enabled": widget.get("type") != "value" and (widget.get("layout") or {}).get("width", 12) >= 3,
         "date_range": bool(controls.get("date_range")),
         "filters": list(controls.get("filters") or ()),
         "compare_by": list(controls.get("compare_by") or ()),

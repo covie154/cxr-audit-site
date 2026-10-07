@@ -27,10 +27,10 @@
 .widget-frame .widget-header, .widget-frame .widget-summary, .widget-frame .widget-controls, .widget-frame .widget-body { min-width: 0; max-width: 100%; overflow-wrap: anywhere; }
 
 .widget-summary { overflow-wrap: anywhere; word-break: normal; }
-.widget-controls { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px; min-width: 0; }
-.widget-controls label { display: flex; flex-direction: column; gap: 2px; min-width: 0; max-width: 100%; font-size: 0.85rem; }
-.widget-controls input, .widget-controls select { max-width: 100%; min-width: 0; box-sizing: border-box; padding: 0.35rem 0.5rem; border: 1px solid var(--c-border); border-radius: 8px; background: var(--c-surface); color: var(--c-text); }
-.widget-controls .btn { flex: 0 0 auto; }
+.widget-controls { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 6px 8px; min-width: 0; }
+.widget-controls label { display: flex; flex-direction: column; gap: 2px; min-width: 0; max-width: 100%; font-size: .75rem; color: var(--c-text-muted); }
+.widget-controls input, .widget-controls select { max-width: 100%; min-width: 0; box-sizing: border-box; min-height: 32px; font-size: .8125rem; padding: 4px 6px; border: 1px solid var(--c-border); border-radius: 8px; background: var(--c-surface); color: var(--c-text); }
+.widget-controls .btn { flex: 0 0 auto; min-height: 32px; padding: 5px 10px; font-size: .8125rem; }
 .widget-live { min-width: 0; }
 .widget-chart, .widget-chart-box { width: 100%; min-height: 240px; max-width: 100%; }
 .widget-values { display: grid; gap: 4px 16px; min-width: 0; }

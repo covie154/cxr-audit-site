@@ -134,7 +134,7 @@ function installDom(pageAttributes) {
     return { document, root, FakeNode };
 }
 
-async function runReportScript() {
+async function runReportScript(withControls = true) {
     const { document, root, FakeNode } = installDom({ slug: 'overview', version: 'overview@r1' });
     const forms = [];
     const frames = [];
@@ -152,7 +152,7 @@ async function runReportScript() {
         emptyNote.textContent = 'EMPTY-NOTE-' + index;
         frame.register('[data-role="empty-message"]', emptyNote);
         const form = new FakeNode('form');
-        frame.register('[data-role="controls"]', form);
+        if (withControls) { frame.register('[data-role="controls"]', form); }
         forms.push(form);
         if (type === 'table') {
             const more = new FakeNode('button');
@@ -259,4 +259,11 @@ test('no storage API may ever be referenced from the page script', async () => {
     for (const forbidden of ['Storage', 'cookie', 'indexedDB']) {
         assert.equal(stateSource.includes(forbidden), false, 'forbidden token present in reducer: ' + forbidden);
     }
+});
+
+test('tables without settings still load the next page', async () => {
+    const { frames, requests } = await runReportScript(false);
+    frames[1].frame.querySelector('[data-action="more"]').fire('click', {});
+    assert.equal(requests.length, 1);
+    assert.equal(JSON.parse(requests[0].init.body).page, 2);
 });

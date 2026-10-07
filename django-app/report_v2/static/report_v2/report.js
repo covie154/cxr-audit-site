@@ -375,19 +375,20 @@
 
     frames.forEach((frame) => {
         const form = frame.form;
-        if (!form) { return; }
-        form.addEventListener('submit', (event) => {
-            event.preventDefault();
-            const widget = state.widgets[frame.id];
-            widget.overrides = collectOverrides(frame);
-            fetchFrame(frame, widget.overrides);
-        });
-        form.addEventListener('reset', () => {
-            window.setTimeout(() => {                        // let the browser clear the controls first
-                resetWidgetState(state, frame.id);
-                fetchFrame(frame, state.widgets[frame.id].overrides);
-            }, 0);
-        });
+        if (form) {
+            form.addEventListener('submit', (event) => {
+                event.preventDefault();
+                const widget = state.widgets[frame.id];
+                widget.overrides = collectOverrides(frame);
+                fetchFrame(frame, widget.overrides);
+            });
+            form.addEventListener('reset', () => {
+                window.setTimeout(() => {                        // let the browser clear the controls first
+                    resetWidgetState(state, frame.id);
+                    fetchFrame(frame, state.widgets[frame.id].overrides);
+                }, 0);
+            });
+        }
         if (frame.more) {
             frame.more.addEventListener('click', () => {
                 const widget = state.widgets[frame.id];
