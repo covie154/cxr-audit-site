@@ -1,0 +1,222 @@
+# Showcase uses the same project adapter and dataset as Analysis Report.
+schema_version: 1
+project: prime
+id: showcase
+title: Showcase
+grid:
+  columns: 12
+  row_height_px: 64
+sections:
+- id: total
+  title: Number
+  widgets:
+  - id: total
+    title: Number — total studies
+    type: value
+    layout:
+      width: 4
+      height: 1
+    query:
+      measurement: record_count
+      inputs: {}
+    window:
+      start: '2025-12-12'
+      end: D
+    controls:
+      date_range: true
+      filters:
+      - site
+      - age
+      compare_by:
+      - site
+      - age
+    ci:
+      enabled: false
+    export: full
+- id: metrics
+  title: Table
+  widgets:
+  - id: metrics
+    title: Table — classification by group
+    type: table
+    layout:
+      width: 12
+      height: 1
+    query:
+      measurement: classification_summary
+      inputs:
+        prediction: lunit_findings
+        ground_truth: llm_abnormal
+      threshold_policy: lunit-defaults@1
+    window:
+      start: '2025-12-12'
+      end: D
+    controls:
+      date_range: true
+      filters:
+      - site
+      - age
+      compare_by:
+      - site
+      - age
+    ci:
+      enabled: false
+    export: full
+    columns:
+    - n
+    - accuracy
+    - balanced_accuracy
+    - sensitivity
+    - specificity
+    - ppv
+    - npv
+    - tp
+    - tn
+    - fp
+    - fn
+    - predicted_negative_fraction
+    default_compare_by: site
+- id: trend
+  title: Line
+  widgets:
+  - id: trend
+    title: Line — balanced accuracy over time
+    type: line
+    layout:
+      width: 12
+      height: 1
+    query:
+      measurement: balanced_accuracy
+      inputs:
+        prediction: lunit_findings
+        ground_truth: llm_abnormal
+      threshold_policy: lunit-defaults@1
+    window:
+      start: '2025-12-12'
+      end: D
+    controls:
+      date_range: true
+      filters:
+      - site
+      - age
+      compare_by:
+      - site
+      - age
+    ci:
+      enabled: false
+    export: full
+    bucket: week
+- id: counts
+  title: Bar
+  widgets:
+  - id: counts
+    title: Bar — studies by group
+    type: bar
+    layout:
+      width: 12
+      height: 1
+    query:
+      measurement: categorical_count
+      inputs:
+        category: llm_abnormal
+    window:
+      start: '2025-12-12'
+      end: D
+    controls:
+      date_range: true
+      filters:
+      - site
+      - age
+      compare_by:
+      - site
+      - age
+    ci:
+      enabled: false
+    export: full
+    default_compare_by: site
+- id: distribution
+  title: Pie
+  widgets:
+  - id: distribution
+    title: Pie — label distribution
+    type: pie
+    layout:
+      width: 12
+      height: 1
+    query:
+      measurement: categorical_count
+      inputs:
+        category: llm_abnormal
+    window:
+      start: '2025-12-12'
+      end: D
+    controls:
+      date_range: true
+      filters:
+      - site
+      - age
+      compare_by:
+      - site
+      - age
+    ci:
+      enabled: false
+    export: full
+- id: matrix
+  title: Confusion matrix
+  widgets:
+  - id: matrix
+    title: Confusion matrix — LLM versus Lunit
+    type: confusion_matrix
+    layout:
+      width: 12
+      height: 1
+    query:
+      measurement: confusion_matrix
+      inputs:
+        prediction: lunit_findings
+        ground_truth: llm_abnormal
+      threshold_policy: lunit-defaults@1
+    window:
+      start: '2025-12-12'
+      end: D
+    controls:
+      date_range: true
+      filters:
+      - site
+      - age
+      compare_by:
+      - site
+      - age
+    ci:
+      enabled: false
+    export: full
+- id: durations
+  title: Boxplot
+  widgets:
+  - id: durations
+    title: Boxplot — end-to-end reporting time
+    type: boxplot
+    layout:
+      width: 12
+      height: 1
+    query:
+      measurement: duration_summary
+      inputs:
+        value: time_to_clinical_decision
+    window:
+      start: '2025-12-12'
+      end: D
+    controls:
+      date_range: true
+      filters:
+      - site
+      - age
+      compare_by:
+      - site
+      - age
+    ci:
+      enabled: false
+    export: full
+    options:
+      whiskers: tukey
+    default_compare_by: site

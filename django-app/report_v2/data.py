@@ -218,6 +218,8 @@ def _map_inputs(row: dict[str, Any], study: Any, inputs: dict[str, Any], measure
             row["gt_label"] = value
         elif role == "prediction":
             row["pred_label"] = value
+        elif role == "category":
+            row["category"] = value
         elif role == "value":
             if measurement == "duration_summary":
                 row["duration_seconds"] = _as_float(value)

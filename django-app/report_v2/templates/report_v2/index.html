@@ -29,9 +29,9 @@
             {% endfor %}
         </ul>
         {% if default_slug %}
-        <form method="post" action="{% url 'report_v2:set_default' %}">
+        <form class="report-default-actions" method="post" action="{% url 'report_v2:set_default' %}">
             {% csrf_token %}<input type="hidden" name="slug" value="">
-            <button class="btn btn-secondary" type="submit">Clear default — open this list</button>
+            <button class="btn btn-secondary" type="submit">Clear default</button>
         </form>
         {% endif %}
         {% else %}

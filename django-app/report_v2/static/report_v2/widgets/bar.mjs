@@ -153,7 +153,7 @@ export function render(container, payload, options) {
         legend: { type: "scroll", bottom: 0, data: groupNames },
         grid: { top: 20, bottom: 48, left: 16, right: 16, containLabel: true },
         xAxis: { type: "category", data: labels, boundaryGap: true },
-        yAxis: { type: "value", scale: true },
+        yAxis: { type: "value", scale: !isCount(chartUnit) },
         series: series.map((entry) => {
             const config = { name: entry.name, type: "bar", data: entry.data, barMaxWidth: 48, itemStyle: { color: groupColor(entry.name) } };
             if (entry.markLine) { config.markLine = entry.markLine; }

@@ -194,6 +194,13 @@ def _build_measurements():
             description="Count of records carrying a given label value.",
         ),
     ]
+    measurement_set.extend([
+        MeasurementSignature("categorical_count", inputs={"category": "label"},
+                             supports_comparison=True, supported_displays=("bar", "pie"), units={"count": "count"}),
+        MeasurementSignature("confusion_matrix", inputs={"ground_truth": "label", "prediction": "label"},
+                             requires_threshold_policy=True, supports_comparison=True,
+                             supported_displays=("confusion_matrix",), units={"count": "count"}),
+    ])
     for metric_id in ("accuracy", "sensitivity", "specificity", "balanced_accuracy"):
         measurement_set.append(
             MeasurementSignature(

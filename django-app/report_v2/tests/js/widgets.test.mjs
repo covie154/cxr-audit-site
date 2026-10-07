@@ -203,6 +203,7 @@ test("bar: grouped bars, deterministic colors, unit-filtered benchmarks", () => 
     assert.equal(option.series.length, 2);
     assert.deepEqual(option.xAxis.data, ["c0", "c1", "c2"]);
     assert.equal(option.xAxis.boundaryGap, true);
+    assert.equal(option.yAxis.scale, false, "count bars must start from zero");
     assert.deepEqual(option.series[0].data, [3, 4, 5]);
     assert.equal(option.series[0].itemStyle.color, groupColor("g0"));
     assert.equal(option.series[1].itemStyle.color, groupColor("g1"));

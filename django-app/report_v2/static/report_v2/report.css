@@ -107,3 +107,5 @@
 .report-v2-list-link { font-weight: 600; }
 .report-v2-list-meta { display: block; margin-top: 4px; color: var(--c-text-muted); }
 .report-default-label { color: var(--c-primary); font-weight: 600; }
+
+.report-default-actions { display: flex; justify-content: flex-end; }

@@ -47,3 +47,10 @@ persistent default; `/report/` opens that report when still published, otherwise
 `/report/?list=1` always opens the list, and each report provides an All reports back link.
 Default changes require a CSRF-protected POST and a published report identifier. Apply the
 report_v2 migration during rollout (`manage.py migrate`) to create the preference table.
+
+`seed/showcase.v1.yaml` provides Showcase: one example of value, table, line, bar, pie,
+confusion matrix and horizontal boxplot. It uses the same PRIME adapter and current dataset
+as Analysis Report; no alternate data mode is configured. Publish this definition through
+the existing editor/repository to make it available in the report list on another deployment.
+Categorical cards show the selected grouping's counts, or the configured label distribution
+with Group by None. Binary matrices retain both axes for single-class selected populations.

@@ -535,10 +535,12 @@ def _measure_prevalence(rows: Sequence[Mapping], ctx: dict) -> tuple[dict, dict]
 
 
 def _measure_categorical(rows: Sequence[Mapping], ctx: dict) -> tuple[dict, dict]:
-    by_category = categorical_count(rows, column="category")
+    grouping = ctx.get("grouping") or ()
+    by_category = categorical_count(rows, column=grouping[0] if grouping else "category")
     chart: dict[str, Any] = {}
     if ctx.get("display") == "pie":
         chart["categories"] = [{"label": k, "count": v} for k, v in sorted(by_category.items())]
+    chart["series"] = [{"group": "Studies", "category": str(k), "value": v, "unit": "count"} for k, v in sorted(by_category.items(), key=lambda item: str(item[0]))]
     return {"by_category": by_category}, {"chart": chart}
 
 
@@ -1077,6 +1079,10 @@ def _measure_confusion_matrix(rows: Sequence[Mapping], ctx: dict) -> tuple[dict,
         raise UnknownMeasurementError(
             "confusion_matrix requires at least two distinct non-None label classes"
         )
+    # Binary sources retain both classes even when the selected population has only one.
+    if all_labels <= {0, 1}:
+        pairs = [(int(gt), int(pred)) for gt, pred in pairs]
+        all_labels = {0, 1}
     # Check for mixed str/int
     types = {type(label) for label in all_labels}
     if len(types) > 1:
