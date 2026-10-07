@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-06-14)
 Phase: 6 of 6 (remaining hipaa controls plan)
 Plan: Not started
 Status: Ready to execute
-Last activity: 2026-10-07 - Completed quick task 261007-wj7: fixed table pagination and bounded navigation reuse
+Last activity: 2026-10-08 - Completed quick task 261008-0ay: report_v2 ponytail UI sweep
 
 Progress: [----------] 0%
 
@@ -163,6 +163,7 @@ None yet.
 | 261007-w9h | Skeleton-first reports with bounded progressive card loading | 2026-10-07 | 5411b53 | [261007-w9h](./quick/261007-w9h-load-report-shell-first-with-bounded-asy/) |
 
 | 261007-wj7 | Fixed table pagination footer and bounded user-scoped navigation reuse | 2026-10-07 | See quick summary | [261007-wj7](./quick/261007-wj7-replace-table-show-more-with-fixed-pagin/) |
+| 261008-0ay | Simplify report_v2 duplicated UI and native functionality | 2026-10-08 | df8b535 | [261008-0ay](./quick/261008-0ay-simplify-report-v2-duplicated-ui-and-nat/) |
 
 ### Report v2 workstream execution
 
