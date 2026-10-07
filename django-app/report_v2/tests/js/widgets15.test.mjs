@@ -185,7 +185,7 @@ test("t8 confusion binary percent cells, attributes, and summary line", () => {
     const table = findByClass(container, "widget-confusion");
     assert.ok(table, "confusion table must carry widget-confusion");
     const head = tableHead(table);
-    assert.deepEqual(head.children.map((node) => collectText(node)), ["Prediction", "Negative", "Positive"]);
+    assert.deepEqual(head.children.map((node) => collectText(node)), ["", "Negative", "Positive"]);
     const rows = tableBodyRows(table);
     assert.equal(collectText(rows[0].children[0]), "Negative");
     assert.deepEqual(rowCells(rows[0]).map((cell) => collectText(cell)), ["60.0%", "40.0%"]);
@@ -209,7 +209,7 @@ test("t9 confusion multiclass count cells and the a11y label", () => {
     registry.render("confusion_matrix", container, fixture.payload, fixture.options);
     const table = findByClass(container, "widget-confusion");
     assert.ok((table.className || "").split(/\s+/).includes("widget-confusion"));
-    assert.deepEqual(tableHead(table).children.map((node) => collectText(node)), ["Prediction", "A", "B", "C"]);
+    assert.deepEqual(tableHead(table).children.map((node) => collectText(node)), ["", "A", "B", "C"]);
     assert.deepEqual(tableBodyRows(table).map((row) => rowCells(row).map((cell) => collectText(cell))), [["8", "1", "0"], ["1", "6", "2"], ["0", "2", "7"]]);
     const aria = container.getAttribute("aria-label");
     assert.ok(aria.includes("3 by 3"));
@@ -356,8 +356,9 @@ test("confusion heatmap shades counts and labels binary axes clearly", () => {
     const container = makeContainer();
     registry.render("confusion_matrix", container, { classes: [0, 1], cells: [[0, 2], [2, 4]] }, {});
     const table = findByClass(container, "widget-confusion");
-    assert.deepEqual(tableHead(table).children.map(collectText), ["Prediction", "Negative", "Positive"]);
+    assert.deepEqual(tableHead(table).children.map(collectText), ["", "Negative", "Positive"]);
     assert.equal(collectText(findByClass(container, "widget-confusion-axis")), "Ground truth");
+    assert.equal(collectText(findByClass(container, "widget-confusion-prediction")), "Prediction");
     const rows = tableBodyRows(table);
     assert.equal(rowCells(rows[0])[0].getAttribute("style"), "background-color: rgb(231,245,236); color: #123c2d");
     assert.equal(rowCells(rows[1])[1].getAttribute("style"), "background-color: rgb(0,100,65); color: #fff");

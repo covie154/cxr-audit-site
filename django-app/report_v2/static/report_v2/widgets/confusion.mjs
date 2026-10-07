@@ -43,7 +43,7 @@ export function render(container, payload, options) {
     table.setAttribute("style", "--matrix-classes: " + classes.length);
     table.appendChild(el("caption", "widget-caption", "Ground truth rows, prediction columns"));
     const head = el("tr", "widget-a11y-head");
-    head.appendChild(el("th", "widget-a11y-corner", "Prediction"));
+    head.appendChild(el("th", "widget-a11y-corner", ""));
     for (let j = 0; j < classes.length; j += 1) {
         head.appendChild(el("th", "widget-a11y-col", classLabel(classes[j])));
     }
@@ -76,6 +76,7 @@ export function render(container, payload, options) {
     }
     const plot = el("div", "widget-confusion-plot");
     plot.appendChild(el("span", "widget-confusion-axis", "Ground truth"));
+    plot.appendChild(el("div", "widget-confusion-prediction", "Prediction"));
     plot.appendChild(table);
     container.appendChild(plot);
     const accuracy = matrix.accuracy;

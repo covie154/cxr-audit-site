@@ -120,3 +120,5 @@
 .widget-confusion th, .widget-confusion th:first-child { display: flex; align-items: center; justify-content: center; padding: 10px 4px; font-size: 1rem; text-align: center; border: 0; text-transform: none; letter-spacing: normal; }
 .widget-confusion td { display: flex; align-items: center; justify-content: center; aspect-ratio: 1; padding: 0; border: 1px solid white; print-color-adjust: exact; font-size: 1.5rem; font-weight: 600; }
 .widget-confusion_matrix .widget-summary-line { font-size: 1.05rem; text-align: center; margin: 12px 0 0; }
+
+.widget-confusion-prediction { margin-left: 90px; text-align: center; font-size: 1.05rem; padding-bottom: 4px; }
