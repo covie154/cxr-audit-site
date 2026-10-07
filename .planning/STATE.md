@@ -111,6 +111,8 @@ None yet.
 
 | 261007-jqn | Publish Showcase with all seven card types using current project data | 2026-10-07 | 7de0f26 | [261007-jqn](./quick/261007-jqn-create-showcase-report-using-existing-de/) |
 
+| 261007-k0t | Enlarge confusion matrix typography and cells | 2026-10-07 | d0dd378 | [261007-k0t](./quick/261007-k0t-enlarge-confusion-matrix-typography-and-/) |
+
 ## Deferred Items
 
 | Category | Item | Status | Deferred At |
