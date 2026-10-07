@@ -110,11 +110,13 @@
 
 .report-default-actions { display: flex; justify-content: flex-end; }
 
-/* Confusion matrices are the visible display, with roomy cells and heading-sized labels. */
-.widget-confusion_matrix { font-size: 1rem; }
-.widget-confusion { width: 100%; table-layout: fixed; border-collapse: collapse; font-size: 1.05rem; }
-.widget-confusion caption { font-size: 1.05rem; text-align: left; margin-bottom: 12px; }
-.widget-confusion th, .widget-confusion td, .widget-confusion th:first-child { padding: 20px 12px; text-align: center; }
-.widget-confusion th { font-size: 1.05rem; }
-.widget-confusion td { font-size: 1.35rem; font-weight: 600; }
-.widget-confusion_matrix .widget-summary-line { font-size: 1.05rem; margin: 12px 0 0; }
+/* Square heatmap cells retain a semantic table for print and accessibility. */
+.widget-frame[data-type="confusion_matrix"] .widget-body { max-height: none; overflow: visible; }
+.widget-confusion-plot { position: relative; width: min(100%, 560px); margin: 16px auto; padding-left: 32px; box-sizing: border-box; }
+.widget-confusion-axis { position: absolute; left: 0; top: 55%; writing-mode: vertical-rl; transform: translateY(-50%) rotate(180deg); font-size: 1.05rem; }
+.widget-confusion { display: grid; grid-template-columns: 90px repeat(var(--matrix-classes), minmax(0, 1fr)); width: 100%; font-size: 1.05rem; }
+.widget-confusion tr { display: contents; }
+.widget-confusion caption { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+.widget-confusion th, .widget-confusion th:first-child { display: flex; align-items: center; justify-content: center; padding: 10px 4px; font-size: 1rem; text-align: center; border: 0; text-transform: none; letter-spacing: normal; }
+.widget-confusion td { display: flex; align-items: center; justify-content: center; aspect-ratio: 1; padding: 0; border: 1px solid white; print-color-adjust: exact; font-size: 1.5rem; font-weight: 600; }
+.widget-confusion_matrix .widget-summary-line { font-size: 1.05rem; text-align: center; margin: 12px 0 0; }

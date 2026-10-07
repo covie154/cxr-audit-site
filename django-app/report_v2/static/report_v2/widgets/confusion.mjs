@@ -1,5 +1,5 @@
 /*
- * Confusion matrix widget renderer: a DOM table IS the display (export/PDF safe, no echarts).
+ * Confusion matrix widget renderer: a shaded square DOM table is the display (export/PDF safe).
  * Consumes the server matrix dict verbatim: declared-order classes on both axes, ground-truth rows,
  * prediction columns. Count or percent mode is driven purely by options.display. Idempotent dispose
  * (clearContainer only) since there is no chart handle or observers to tear down.
@@ -35,24 +35,30 @@ export function render(container, payload, options) {
     }
     const percent = opts.display === "percent";
     const cells = matrix.cells || [];
+    const maximum = Math.max(0, ...classes.flatMap((_, i) => classes.map((_, j) => cellAt(cells, i, j))));
+    const classLabel = (value) => classes.length === 2 && classes.map(String).join(",") === "0,1" ? (String(value) === "0" ? "Negative" : "Positive") : String(value);
     const rowTotals = Array.isArray(matrix.row_totals) ? matrix.row_totals : [];
     container.className = "widget widget-confusion_matrix widget-table";
     const table = el("table", "widget-confusion widget-a11y widget-alt-table");
+    table.setAttribute("style", "--matrix-classes: " + classes.length);
     table.appendChild(el("caption", "widget-caption", "Ground truth rows, prediction columns"));
     const head = el("tr", "widget-a11y-head");
-    head.appendChild(el("th", "widget-a11y-corner", "GT \\ Pred"));
+    head.appendChild(el("th", "widget-a11y-corner", "Prediction"));
     for (let j = 0; j < classes.length; j += 1) {
-        head.appendChild(el("th", "widget-a11y-col", String(classes[j])));
+        head.appendChild(el("th", "widget-a11y-col", classLabel(classes[j])));
     }
     table.appendChild(head);
     for (let i = 0; i < classes.length; i += 1) {
         const row = el("tr", "widget-a11y-row");
-        row.appendChild(el("th", "widget-a11y-rowhead", String(classes[i])));
+        row.appendChild(el("th", "widget-a11y-rowhead", classLabel(classes[i])));
         const rowTotal = finiteNumber(rowTotals[i]);
         for (let j = 0; j < classes.length; j += 1) {
             const cell = cellAt(cells, i, j);
             let text = String(cell);
             const td = el("td", "widget-a11y-cell", text);
+            const intensity = maximum > 0 ? Math.max(0, cell / maximum) : 0;
+            const rgb = [231, 245, 236].map((start, index) => Math.round(start + ([0, 100, 65][index] - start) * intensity));
+            td.setAttribute("style", "background-color: rgb(" + rgb.join(",") + "); color: " + (intensity > 0.55 ? "#fff" : "#123c2d"));
             td.setAttribute("data-row-class", String(classes[i]));
             td.setAttribute("data-col-class", String(classes[j]));
             if (percent) {
@@ -68,7 +74,10 @@ export function render(container, payload, options) {
         }
         table.appendChild(row);
     }
-    container.appendChild(table);
+    const plot = el("div", "widget-confusion-plot");
+    plot.appendChild(el("span", "widget-confusion-axis", "Ground truth"));
+    plot.appendChild(table);
+    container.appendChild(plot);
     const accuracy = matrix.accuracy;
     const value = accuracy ? finiteNumber(accuracy.value) : null;
     container.appendChild(el("p", "widget-summary-line", value === null ? "Accuracy: unavailable" : "Accuracy: " + formatValue(value, "rate[0,1]")));
