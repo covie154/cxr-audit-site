@@ -1,6 +1,6 @@
 from pathlib import Path
 import re
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 from django.contrib.auth.models import AnonymousUser, User
 from django.contrib.staticfiles import finders
@@ -34,10 +34,11 @@ class ReportRoutingTests(SimpleTestCase):
         request.user = Mock(is_authenticated=True, is_superuser=False, username="reviewer")
         request.user.groups.filter.return_value.exists.return_value = False
         request.resolver_match = resolve("/report/")
-        response = views.index(request)
+        with patch("report_v2.views._preferred_report", return_value=None):
+            response = views.index(request)
         self.assertEqual(response.status_code, 200)
         html = response.content.decode()
-        for marker in ('href="/report-old/"', 'href="/report/"', 'data-report-chart', 'No study data', 'echarts.min.js', 'aria-current="page"'):
+        for marker in ('href="/report-old/"', 'href="/report/"', 'Available reports', 'Choose a report.', 'aria-current="page"'):
             self.assertIn(marker, html)
 
     def test_static_assets_are_discoverable(self):
@@ -45,7 +46,7 @@ class ReportRoutingTests(SimpleTestCase):
             self.assertIsNotNone(finders.find(f"report_v2/{asset}"))
 
     def test_report_sidebar_items_have_independent_active_states(self):
-        for url, active_label in (("/report/", "Report V2"), ("/report-old/", "Report V1")):
+        for url, active_label in (("/report/", "Report"), ("/report-old/", "Report V1")):
             request = RequestFactory().get(url)
             request.user = Mock(is_authenticated=True, is_superuser=False, username="reviewer")
             request.resolver_match = resolve(url)
@@ -57,7 +58,7 @@ class ReportRoutingTests(SimpleTestCase):
             self.assertIn(active_label, active.group(1))
         source = Path(__file__).resolve().parent.parent / "templates" / "report_v2"
         for name in ("index.html", "page.html"):
-            self.assertNotIn('class="report-v2-legacy"', (source / name).read_text())
+            self.assertNotIn('class="report-v2-legacy"', (source / name).read_text(encoding="utf-8"))
 
     def test_card_settings_render_for_every_kind_and_width(self):
         for kind, width, expected in (("value", 12, True), ("table", 2, True), ("bar", 1, True), ("table", 3, True), ("bar", 6, True)):

@@ -14,6 +14,7 @@
     {# House pattern (cf. base.html logout form): the tag emits the hidden token field AND primes #}
     {# the csrftoken cookie, which report.js then reads for its X-CSRFToken header. #}
     <span class="widget-csrf" data-role="csrf" aria-hidden="true">{% csrf_token %}</span>
+    <p><a href="{% url 'report_v2:index' %}?list=1">← All reports</a></p>
     <h1 class="page-title">{{ title }} <small>{{ version }}</small></h1>
     {# Task 17/18: freeze the current widget states server-side, then print or email. #}
     {# report.js blocks the request until every pending widget update has settled. #}

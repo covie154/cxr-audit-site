@@ -23,7 +23,7 @@ Security posture (the invariant this module is written around):
   can never turn the page into a ``500``.
 
 The index view keeps the exact behaviour and HTML markers the routing tests pin (it renders no
-clinical data and touches no database); the two new views add the published report page and its
+clinical data; it reads only user preferences); the two new views add the published report page and its
 per-widget JSON data endpoint.
 """
 from __future__ import annotations
@@ -37,13 +37,14 @@ from urllib.parse import urlencode
 from django.contrib.auth.decorators import login_required
 from django.core import signing
 from django.http import HttpResponse, JsonResponse
-from django.shortcuts import render
+from django.shortcuts import redirect, render
 from django.urls import Resolver404, reverse
 from django.utils.html import escape
 from django.views.decorators.csrf import csrf_protect
 from django.views.decorators.http import require_GET, require_POST
 
 from . import data
+from .models import ReportPreference
 from .definitions.repository import InvalidDefinitionIdError, validate_definition_id
 from .evaluation import (EvaluationError, PAIRED_MEASUREMENTS, RequestContract, WidgetSpec, evaluate,
                          _catalog_score_columns, _highest_score_cell)
@@ -467,22 +468,39 @@ def _csv_links(slug, version, widget, payload):
             for kind, label in kinds]
 
 
+def _preferred_report(user):
+    return ReportPreference.objects.filter(user=user).values_list("default_slug", flat=True).first()
+
+
 @login_required
 @require_GET
 def index(request):
-    """Landing page listing the published reports. Renders no clinical data, touches no database."""
-    try:
-        published_reports = data.list_published(project_id=_PROJECT_ID)
-    except Exception:  # the index must never fail because the definition tree is absent/broken
-        published_reports = []
-    return render(
-        request,
-        "report_v2/index.html",
-        {
-            "published_reports": published_reports,
-            "legacy_report_url": reverse("report:index"),
-        },
-    )
+    """Published report list, or the current user's chosen default; never reads study rows."""
+    published_reports = data.list_published(project_id=_PROJECT_ID)
+    default_slug = _preferred_report(request.user) if published_reports else None
+    available = {entry["slug"] for entry in published_reports}
+    if default_slug not in available:
+        default_slug = None
+    if default_slug and request.GET.get("list") != "1":
+        return redirect("report_v2:page", slug=default_slug)
+    return render(request, "report_v2/index.html", {
+        "published_reports": published_reports,
+        "default_slug": default_slug,
+    })
+
+
+@login_required
+@require_POST
+@csrf_protect
+def set_default_report(request):
+    slug = request.POST.get("slug", "")
+    if slug and slug not in {entry["slug"] for entry in data.list_published(project_id=_PROJECT_ID)}:
+        return HttpResponse("Choose an available published report.", status=400)
+    if slug:
+        ReportPreference.objects.update_or_create(user=request.user, defaults={"default_slug": slug})
+    else:
+        ReportPreference.objects.filter(user=request.user).delete()
+    return redirect(reverse("report_v2:index") + "?list=1")
 
 
 @login_required

@@ -4,7 +4,10 @@ from . import exports
 from . import views
 
 app_name = "report_v2"
-urlpatterns = [path("", views.index, name="index")]
+urlpatterns = [
+    path("", views.index, name="index"),
+    path("preferences/default/", views.set_default_report, name="set_default"),
+]
 
 # --- APPEND-ONLY (Task 12): the reserved /report/layout/* editor routes -----------
 # Pure append: the existing index pattern above is byte-for-byte untouched, and this project has no

@@ -41,3 +41,9 @@ Range controls select explicit From/To dates or D/W/M/Y presets anchored to the 
 eligible study date (D). W starts Monday, M starts on the first and Y on January 1. Window selects
 day/week/month/year calendar buckets on time-series cards; it does not alter the date range.
 The validated `time_grouping` override is retained in print/email snapshots.
+
+Report navigation lists all published reports for signed-in users. A user may set/clear their own
+persistent default; `/report/` opens that report when still published, otherwise the list.
+`/report/?list=1` always opens the list, and each report provides an All reports back link.
+Default changes require a CSRF-protected POST and a published report identifier. Apply the
+report_v2 migration during rollout (`manage.py migrate`) to create the preference table.

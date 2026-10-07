@@ -100,3 +100,10 @@
 .widget-group-menu .widget-group-actions { margin-top: 0; }
 .widget-group-menu fieldset { flex-direction: column; gap: 8px; }
 .widget-group-menu [data-action] { padding: 4px 8px; font-size: inherit; }
+
+.report-v2-list { list-style: none; padding: 0; margin: 0 0 16px; }
+.report-v2-list-item { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; padding: 16px 0; border-bottom: 1px solid var(--c-border); }
+.report-v2-list-item > div { flex: 1; min-width: 180px; }
+.report-v2-list-link { font-weight: 600; }
+.report-v2-list-meta { display: block; margin-top: 4px; color: var(--c-text-muted); }
+.report-default-label { color: var(--c-primary); font-weight: 600; }

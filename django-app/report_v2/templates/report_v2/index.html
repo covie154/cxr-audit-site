@@ -1,38 +1,42 @@
 {% extends "base.html" %}
 {% load static %}
-{% block title %}Report v2 — PRIMER-LLM{% endblock %}
+{% block title %}Reports — PRIMER-LLM{% endblock %}
 {% block nav_report %}active{% endblock %}
-{% block extra_head %}
-<link rel="stylesheet" href="{% static 'report_v2/report.css' %}">
-{% endblock %}
+{% block extra_head %}<link rel="stylesheet" href="{% static 'report_v2/report.css' %}">{% endblock %}
 {% block body %}
 <div class="report-v2-page">
-    <h1 class="page-title">Report <small>v2</small></h1>
-    <p class="page-subtitle">A new workspace for audit reports.</p>
+    <h1 class="page-title">Reports</h1>
+    <p class="page-subtitle">Choose a report. Set a default to open it when you click Report.</p>
     <section class="card" aria-labelledby="publishedTitle">
-        <h2 id="publishedTitle">Published reports</h2>
+        <h2 id="publishedTitle">Available reports</h2>
         {% if published_reports %}
         <ul class="report-v2-list">
             {% for entry in published_reports %}
             <li class="report-v2-list-item">
-                <a class="report-v2-list-link" href="{% url 'report_v2:page' entry.slug %}">{{ entry.title|default:entry.slug }}</a>
-                <small class="report-v2-list-meta">{{ entry.slug }} · {{ entry.version }} · {{ entry.section_count }} section{{ entry.section_count|pluralize }}</small>
+                <div>
+                    <a class="report-v2-list-link" href="{% url 'report_v2:page' entry.slug %}">{{ entry.title|default:entry.slug }}</a>
+                    <small class="report-v2-list-meta">{{ entry.version }} · {{ entry.section_count }} section{{ entry.section_count|pluralize }}</small>
+                </div>
+                {% if entry.slug == default_slug %}
+                <span class="report-default-label">Default</span>
+                {% else %}
+                <form method="post" action="{% url 'report_v2:set_default' %}">
+                    {% csrf_token %}<input type="hidden" name="slug" value="{{ entry.slug }}">
+                    <button class="btn btn-secondary" type="submit">Set as default</button>
+                </form>
+                {% endif %}
             </li>
             {% endfor %}
         </ul>
+        {% if default_slug %}
+        <form method="post" action="{% url 'report_v2:set_default' %}">
+            {% csrf_token %}<input type="hidden" name="slug" value="">
+            <button class="btn btn-secondary" type="submit">Clear default — open this list</button>
+        </form>
+        {% endif %}
         {% else %}
-        <p id="noPublished" role="status">No reports are published yet. Published reports will appear here once an administrator publishes one from the layout editor.</p>
+        <p id="noPublished" role="status">No reports are published yet. Published reports will appear here once an administrator publishes one.</p>
         {% endif %}
     </section>
-    <section class="card" aria-labelledby="overviewTitle">
-        <h2 id="overviewTitle">Overview</h2>
-        <p id="chartStatus" role="status">Report sections are not configured yet. No study data are displayed.</p>
-        <div class="report-v2-chart" data-report-chart role="img" aria-label="Empty report chart. Report sections are not configured yet."></div>
-        <noscript>JavaScript is required to display interactive charts.</noscript>
-    </section>
 </div>
-{% endblock %}
-{% block extra_js %}
-<script src="{% static 'report_v2/vendor/echarts.min.js' %}"></script>
-<script src="{% static 'report_v2/report.js' %}"></script>
 {% endblock %}
