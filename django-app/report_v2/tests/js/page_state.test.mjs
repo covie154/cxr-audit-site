@@ -380,3 +380,18 @@ test('day-first dates and native pickers preserve relative expressions', async (
     let opened = false; picker.showPicker = () => { opened = true; }; picker.fire('click');
     assert.equal(opened, true);
 });
+
+test('single-digit day-first dates normalize for both boundaries and pickers', async () => {
+    const { frames, requests } = await runReportScript(true, true);
+    const frame = frames[0].frame;
+    for (const [startValue, endValue] of [['5/4/2026', '7/4/2026'], ['5-4-2026', '07-04-2026'], ['05/4/2026', '7/04/2026']]) {
+        const start = frame.querySelector('[data-date="start"]');
+        const end = frame.querySelector('[data-date="end"]');
+        start.value = startValue; end.value = endValue;
+        start.fire('input'); end.fire('input');
+        assert.equal(frame.querySelector('[data-date-picker="start"]').value, '2026-04-05');
+        assert.equal(frame.querySelector('[data-date-picker="end"]').value, '2026-04-07');
+        frames[0].form.fire('submit', { preventDefault() {} });
+        assert.deepEqual(JSON.parse(requests.at(-1).init.body).date, { start: '2026-04-05', end: '2026-04-07' });
+    }
+});
