@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-06-14)
 Phase: 6 of 6 (remaining hipaa controls plan)
 Plan: Not started
 Status: Ready to execute
-Last activity: 2026-10-07 - Completed quick task 261007-l4m: Slash-formatted report dates and verified preview pickers
+Last activity: 2026-10-07 - Completed report v2 visual editor execution (84b722e)
 
 Progress: [----------] 0%
 
@@ -141,8 +141,22 @@ None yet.
 
 | 261007-mjd | Use report name for main heading and editor URL | 2026-10-07 | See quick summary | [261007-mjd](./quick/261007-mjd-use-report-name-in-editor-heading-and-ca/) |
 
+| 261007-nff | Add default Visual editor and YAML editor tabs | 2026-10-07 | Uncommitted; preserves existing editor edits | [261007-nff](./quick/261007-nff-add-default-visual-editor-tab-before-yam/) |
+
+| 261007-n4w | Viewport YAML editor, automatic card preview and accurate validation callout | 2026-10-07 | See quick summary | [261007-n4w](./quick/261007-n4w-move-report-preview-below-taller-yaml-ed/) |
+
+| 261007-nxp | Plan the visual report layout editor | 2026-10-07 | See quick summary | [261007-nxp](./quick/261007-nxp-document-visual-report-layout-editor-imp/) |
+
 
 | 261007-nyx | Grey admin-only Edit layout button beside Email report | 2026-10-07 | 1b9bba9 | [261007-nyx](./quick/261007-nyx-make-edit-layout-a-grey-admin-only-butto/) |
+
+| 261007-o1l | Full final-report card preview with temporary controls | 2026-10-07 | See quick summary | [261007-o1l](./quick/261007-o1l-render-editor-preview-with-the-full-fina/) |
+
+### Report v2 workstream execution
+
+Visual layout editor: Complete (2026-10-07). Production commit `84b722e`; execution and verification
+recorded in [visual-editor-execution/SUMMARY.md](./report-v2/visual-editor-execution/SUMMARY.md).
+The numbered HIPAA phase position is unchanged.
 
 ## Deferred Items
 
