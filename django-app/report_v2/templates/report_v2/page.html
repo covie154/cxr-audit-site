@@ -42,7 +42,7 @@
     </div>
     {% if is_admin %}
     <p class="report-v2-adminbar">
-        <a class="btn btn-secondary" href="{% url 'report_v2:editor_detail' def_id=slug %}" data-role="edit-layout">Edit layout</a>
+        <a class="btn btn-secondary" href="{% url 'report_editor:editor_detail' def_id=slug %}" data-role="edit-layout">Edit layout</a>
         <small>Drafts are private to admins and are never shown on this page.</small>
     </p>
     {% endif %}

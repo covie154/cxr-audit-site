@@ -9,31 +9,15 @@
 {% block body %}
 {# The editor is a plain textarea + buttons. There is deliberately no pointer-reordering editing UI. #}
 <div class="report-v2-page report-v2-editor" data-editor data-def-id="{{ def_id }}"
-     data-editor-url="{% url 'report_v2:editor' %}"
-     data-save-url="{% url 'report_v2:editor_save_draft' %}"
-     data-preview-url="{% url 'report_v2:editor_preview' %}"
-     data-publish-url="{% url 'report_v2:editor_publish' %}"
-     data-new-url="{% url 'report_v2:editor_new' %}"
-     data-seed-check-url="{% url 'report_v2:editor_seed' %}"
-     data-seed-load-url="{% url 'report_v2:editor_seed' %}">
-    <p><a href="{% url 'report_v2:editor' %}">← Report editor</a></p>
-    <header class="editor-header"><div><h1 class="page-title">Report layout</h1><p class="page-subtitle">Edit report definitions and review results before publishing.</p></div></header>
-
-    <section class="card editor-report-bar" aria-labelledby="reportBarTitle">
-        <h2 id="reportBarTitle" class="visually-hidden">Report selection</h2>
-        <label class="editor-report-label" for="id_def_id">Report
-            <select id="id_def_id" name="def_id" data-role="report-select">
-                <option value="">— choose a report —</option>
-                {% for entry in reports %}
-                <option value="{{ entry.def_id }}" {% if entry.def_id == def_id %}selected{% endif %} data-state="{{ entry.state_label }}">{{ entry.def_id }} — {{ entry.state_label }}</option>
-                {% endfor %}
-            </select>
-        </label>
-        <button type="button" class="btn btn-outline" data-action="create">Create report</button>
-    </section>
+     data-editor-url="{% url 'report_editor:editor' %}"
+     data-save-url="{% url 'report_editor:editor_save_draft' %}"
+     data-preview-url="{% url 'report_editor:editor_preview' %}"
+     data-publish-url="{% url 'report_editor:editor_publish' %}"
+>
+    <p><a href="{% url 'report_editor:editor' %}">← Report editor</a></p>
+    <header class="editor-header"><div><h1 class="page-title">Report layout</h1><p class="page-subtitle">Editing: <strong>{{ report_title }}</strong></p></div></header>
 
     {% include "report_v2/_editor_form.html" %}
-    {% include "report_v2/_create_dialog.html" %}
 </div>
 {% endblock %}
 {% block extra_js %}

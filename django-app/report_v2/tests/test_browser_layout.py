@@ -568,7 +568,7 @@ class BrowserLayoutTests(unittest.TestCase):
         editor_url = self.server.base + link.get_attribute("href")
         link.click()
         self.page.wait_for_load_state("networkidle")
-        self.assertTrue(self.page.url.endswith(f"/report/layout/editor/{DEF_ID}/"), self.page.url)
+        self.assertTrue(self.page.url.endswith(f"/layout/editor/{DEF_ID}/"), self.page.url)
         selector_option = self.page.locator(f'select option[value="{DEF_ID}"]').first
         self.assertTrue(selector_option.count() >= 1)
         self.assertIsNotNone(selector_option.get_attribute("data-state"))

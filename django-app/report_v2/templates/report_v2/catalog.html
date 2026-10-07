@@ -8,12 +8,11 @@
 {% endblock %}
 {% block body %}
 <div class="report-v2-page report-v2-editor" data-editor
-     data-editor-url="{% url 'report_v2:editor' %}"
-     data-new-url="{% url 'report_v2:editor_new' %}"
-     data-delete-url="{% url 'report_v2:editor_delete' %}">
+     data-editor-url="{% url 'report_editor:editor' %}"
+     data-new-url="{% url 'report_editor:editor_new' %}"
+     data-delete-url="{% url 'report_editor:editor_delete' %}">
     <header class="editor-header">
         <div><h1 class="page-title">Report editor</h1><p class="page-subtitle">Choose a report to edit or create a new one.</p></div>
-        <button type="button" class="btn btn-primary" data-action="create">Create report</button>
     </header>
     <section class="card" aria-labelledby="catalogTitle">
         <h2 id="catalogTitle">Available reports</h2>
@@ -22,10 +21,10 @@
         <ul class="report-v2-list">
             {% for entry in reports %}
             <li class="report-v2-list-item" data-state="{{ entry.state_label }}">
-                <div><a class="report-v2-list-link" href="{% url 'report_v2:editor_detail' entry.def_id %}">{{ entry.title }}</a>
+                <div><a class="report-v2-list-link" href="{% url 'report_editor:editor_detail' entry.def_id %}">{{ entry.title }}</a>
                     <small class="report-v2-list-meta">{{ entry.def_id }} — {{ entry.state_label }}{% if entry.version %} · {{ entry.version }}{% endif %}</small></div>
                 <div class="editor-actions">
-                    <a class="btn btn-outline" href="{% url 'report_v2:editor_detail' entry.def_id %}">Edit</a>
+                    <a class="btn btn-outline" href="{% url 'report_editor:editor_detail' entry.def_id %}">Edit</a>
                     <button type="button" class="btn btn-danger" data-action="delete" data-def-id="{{ entry.def_id }}" data-title="{{ entry.title }}" data-revision="{{ entry.revision }}" data-version="{{ entry.version }}">Delete</button>
                 </div>
             </li>
@@ -33,13 +32,19 @@
         </ul>
         {% else %}<p class="editor-empty">No reports yet. Create a report to begin.</p>{% endif %}
     </section>
+    <div class="editor-actions">
+        <button type="button" class="btn btn-primary" data-action="create">Create report</button>
+    </div>
     {% include "report_v2/_create_dialog.html" %}
     <dialog class="editor-dialog" data-role="delete-dialog" aria-labelledby="deleteTitle">
         <h2 id="deleteTitle">Delete report?</h2>
         <p data-role="delete-name"></p>
         <p class="editor-help">This removes the draft and makes the report unavailable. Published version history is retained.</p>
+        <label class="editor-report-label" for="id_delete_confirmation">Type <strong>delete this report</strong> to confirm
+            <input id="id_delete_confirmation" data-role="delete-confirmation" autocomplete="off" spellcheck="false">
+        </label>
         <div class="editor-actions">
-            <button type="button" class="btn btn-danger" data-action="confirm-delete">Delete report</button>
+            <button type="button" class="btn btn-danger" data-action="confirm-delete" disabled>Delete report</button>
             <button type="button" class="btn btn-outline" data-action="cancel-delete">Cancel</button>
         </div>
     </dialog>

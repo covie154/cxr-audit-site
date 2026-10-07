@@ -32,5 +32,6 @@ urlpatterns = [
     path("view/", include("viewer.urls")),
     path("report-old/", include("report.urls")),
     path("report/", include("report_v2.urls")),
+    path("layout/", include("report_v2.editor_urls")),
     path("gt/", include("gt.urls")),
 ]

@@ -300,6 +300,7 @@ def editor(request, def_id: str | None = None):
         "report_v2/layout.html",
         {
             "def_id": def_id or "",
+            "report_title": next(entry["title"] for entry in reports if entry["def_id"] == def_id),
             "draft_text": draft_text,
             "revision": revision,
             "reports": reports,
@@ -450,13 +451,15 @@ def editor_new(request):
     except RepositoryError as exc:
         return JsonResponse({"error": str(exc)}, status=400)
     return JsonResponse({"def_id": def_id, "revision": revision, "yaml_text": scaffold,
-                         "status": "created", "url": reverse("report_v2:editor_detail", args=[def_id])})
+                         "status": "created", "url": reverse("report_editor:editor_detail", args=[def_id])})
 
 
 @require_POST
 @csrf_protect
 @require_admin
 def editor_delete(request):
+    if _param(request, "confirmation", "") != "delete this report":
+        return JsonResponse({"error": 'Type "delete this report" to confirm deletion.'}, status=400)
     def_id = str(_param(request, "def_id", "")).strip()
     repo = _repository()
     try:

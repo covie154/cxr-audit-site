@@ -22,13 +22,13 @@
   var errorList = root.querySelector('[data-role="error-list"]');
   var errorsEmpty = root.querySelector('[data-role="errors-empty"]');
   var previewOut = root.querySelector('[data-role="preview-output"]');
-  var selector = root.querySelector('[data-role="report-select"]');
   var newNameInput = root.querySelector('[data-role="new-report-name"]');
   var createDialog = root.querySelector('[data-role="create-dialog"]');
   var createForm = root.querySelector('[data-role="create-form"]');
   var templateSelect = root.querySelector('[data-role="starter-template"]');
   var deleteDialog = root.querySelector('[data-role="delete-dialog"]');
   var deleting = null;
+  var deleteConfirmation = root.querySelector('[data-role="delete-confirmation"]');
   var cardSelect = root.querySelector('[data-role="preview-card"]');
   var cardTimer;
   var cardRequest = 0;
@@ -105,7 +105,7 @@
     function add(key, value) {
       fields.push(encodeURIComponent(key) + "=" + encodeURIComponent(value === null || value === undefined ? "" : value));
     }
-    add("def_id", selector ? selector.value : (root.getAttribute("data-def-id") || ""));
+    add("def_id", root.getAttribute("data-def-id") || "");
     add("yaml_text", textarea ? textarea.value : "");
     add("expected_revision", savedRevision);
     if (cardSelect) { add("widget_id", cardSelect.value); }
@@ -268,13 +268,14 @@
   }
 
   function deleteReport() {
-    if (!deleting) { return; }
+    if (!deleting || !deleteConfirmation || deleteConfirmation.value !== "delete this report") { return; }
     var button = root.querySelector('[data-action="confirm-delete"]');
     button.disabled = true;
     return post(root.getAttribute("data-delete-url"), {
       def_id: deleting.getAttribute("data-def-id"),
       expected_revision: deleting.getAttribute("data-revision"),
-      expected_version: deleting.getAttribute("data-version")
+      expected_version: deleting.getAttribute("data-version"),
+      confirmation: deleteConfirmation.value
     }).then(function (result) {
       if (result.status >= 400) {
         deleteDialog.close();
@@ -283,37 +284,7 @@
     }).catch(function () {
       deleteDialog.close();
       showErrors(["The report could not be deleted. Try again."]);
-    }).finally(function () { button.disabled = false; });
-  }
-
-  function renderSeedResult(result) {
-    if (!result) {
-      return;
-    }
-    var data = result.data || {};
-    if (result.status >= 400) {
-      // Rejected/failed seed: list the violations through the shared, textContent-safe error renderer.
-      showErrors(data.errors || [data.error || "the seed could not be loaded"]);
-      return;
-    }
-    showErrors(data.errors || []);
-    if (data.status === "seeded") {
-      window.location.reload();
-      return;
-    }
-    if (previewOut) {
-      // No raw server text is ever injected as HTML; fill() writes a textContent-only <p>.
-      var label = data.status === "checked" ? "Seed validated (nothing written)." : "Seed drafts loaded.";
-      fill(previewOut, data.def_id ? label + " " + data.def_id : label);
-    }
-  }
-
-  function seedLoad(dry) {
-    // The shared body() helper already carries def_id + expected_revision + csrfmiddlewaretoken; only the
-    // dry_run flag is added here, so both seed actions reuse the exact same signed form encoding.
-    return post(root.getAttribute(dry ? "data-seed-check-url" : "data-seed-load-url"), {
-      dry_run: dry ? "1" : "0"
-    }).then(renderSeedResult);
+    }).finally(function () { button.disabled = deleteConfirmation.value !== "delete this report"; });
   }
 
   if (textarea) {
@@ -345,30 +316,25 @@
     } else if (action === "delete") {
       deleting = trigger;
       root.querySelector('[data-role="delete-name"]').textContent = trigger.getAttribute("data-title");
+      deleteConfirmation.value = "";
+      root.querySelector('[data-action="confirm-delete"]').disabled = true;
       deleteDialog.showModal();
+      deleteConfirmation.focus();
     } else if (action === "cancel-delete") {
       deleteDialog.close();
     } else if (action === "confirm-delete") {
       deleteReport();
-    } else if (action === "seed-check") {
-      seedLoad(true);
-    } else if (action === "seed-load") {
-      seedLoad(false);
+
     }
   });
 
+  if (deleteConfirmation) {
+    deleteConfirmation.addEventListener("input", function () {
+      root.querySelector('[data-action="confirm-delete"]').disabled = deleteConfirmation.value !== "delete this report";
+    });
+  }
   if (createForm) {
     createForm.addEventListener("submit", function (event) { event.preventDefault(); createReport(); });
   }
-  if (selector) {
-    selector.addEventListener("change", function () {
-      if (dirty && !window.confirm("Leave this report with unsaved changes?")) {
-        selector.value = root.getAttribute("data-def-id") || "";
-        return;
-      }
-      window.location.assign(root.getAttribute("data-editor-url") + (selector.value ? "editor/" + encodeURIComponent(selector.value) + "/" : ""));
-    });
-  }
-
   setDirty(false);
 })();

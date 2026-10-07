@@ -4,23 +4,20 @@ import { runInNewContext } from "node:vm";
 import test from "node:test";
 
 const source = readFileSync(new URL("../../static/report_v2/editor.js", import.meta.url), "utf8");
-test("report selection uses the server editor URL on index and detail pages", () => {
-  for (const pathname of ["/report/layout/", "/report/layout/editor/overview/"]) {
-    let change, destination;
-    const selector = { value: "", addEventListener: (_, handler) => { change = handler; } };
-    const root = {
-      querySelector: query => query.includes("report-select") ? selector : null,
-      addEventListener() {},
-      getAttribute: name => name === "data-editor-url" ? "/report/layout/" : null,
-    };
-    runInNewContext(source, {
-      document: { querySelector: () => root },
-      window: { location: { pathname, assign: url => { destination = url; } } },
-    });
-    for (const [id, expected] of [["showcase", "/report/layout/editor/showcase/"], ["new-report", "/report/layout/editor/new-report/"], ["", "/report/layout/"]]) {
-      selector.value = id;
-      change();
-      assert.equal(destination, expected);
-    }
-  }
+test("saving uses the report ID from the editor route without a report selector", async () => {
+  let click, posted;
+  const textarea = { value: "schema_version: 1", addEventListener() {} };
+  const root = {
+    querySelector: query => query.includes("yaml-textarea") ? textarea : null,
+    addEventListener: (name, handler) => { if (name === "click") click = handler; },
+    getAttribute: name => ({ "data-def-id": "my_report", "data-save-url": "/layout/actions/save/" })[name],
+  };
+  runInNewContext(source, {
+    document: { querySelector: () => root, cookie: "" }, window: {},
+    fetch: async (url, options) => { posted = { url, body: options.body }; return { status: 200, json: async () => ({ revision: "saved" }) }; },
+  });
+  click({ target: { closest: () => ({ getAttribute: () => "save" }) }, preventDefault() {} });
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(posted.url, "/layout/actions/save/");
+  assert.equal(new URLSearchParams(posted.body).get("def_id"), "my_report");
 });

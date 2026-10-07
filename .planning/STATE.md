@@ -137,6 +137,8 @@ None yet.
 
 | 261007-lt3 | Admin report list, template creation, deletion and card preview | 2026-10-07 | See quick summary | [261007-lt3](./quick/261007-lt3-add-admin-report-catalog-create-delete-a/) |
 
+| 261007-m4c | Typed report deletion and focused /layout/ editor | 2026-10-07 | See quick summary | [261007-m4c](./quick/261007-m4c-require-typed-report-deletion-confirmati/) |
+
 ## Deferred Items
 
 | Category | Item | Status | Deferred At |
