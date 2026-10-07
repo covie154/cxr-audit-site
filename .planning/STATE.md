@@ -105,6 +105,8 @@ None yet.
 
 | 261007-i5n | Fit report cards to content and enlarge graph plotting areas | 2026-10-07 | 8fcc977 | [261007-i5n](./quick/261007-i5n-fit-report-cards-to-content-and-increase/) |
 
+| 261007-jby | Match metadata fonts and compact Include groups dropdown | 2026-10-07 | 8e2da08 | [261007-jby](./quick/261007-jby-match-report-metadata-fonts-and-compact-/) |
+
 ## Deferred Items
 
 | Category | Item | Status | Deferred At |
