@@ -60,38 +60,26 @@
                 {% if f.controls.enabled %}
                 <form class="widget-controls" data-role="controls" novalidate>
                     {% if f.controls.date_range %}
-                    <label>From <input type="date" name="date_start" data-date="start"></label>
-                    <label>To <input type="date" name="date_end" data-date="end"></label>
-                    <label>Range
-                        <select name="date_relative" data-date="relative">
-                            <option value="">Default</option>
-                            <option value="D-7">Last 7 days</option>
-                            <option value="D-30">Last 30 days</option>
-                            <option value="D-90">Last 90 days</option>
-                            <option value="D-365">Last 365 days</option>
-                            <option value="D">Latest day (D)</option>
-                            <option value="W">Week to date (W)</option>
-                            <option value="M">Month to date (M)</option>
-                            <option value="Y">Year to date (Y)</option>
-                        </select>
-                    </label>
+                    <label>From <input type="text" name="date_start" data-date="start" value="{{ f.controls.window.start }}" placeholder="YYYY-MM-DD or W-2" aria-label="From date or D/W/M/Y with optional minus offset" autocomplete="off"></label>
+                    <label>To <input type="text" name="date_end" data-date="end" value="{{ f.controls.window.end }}" placeholder="YYYY-MM-DD or D" aria-label="To date or D/W/M/Y with optional minus offset" autocomplete="off"></label>
                     {% endif %}
-                    {% if f.controls.time_grouping %}
-                    <label>Window
+                    <label>Grouping
                         <select name="time_grouping" data-time-grouping>
+                            {% if f.type != "line" %}<option value=""{% if not f.controls.time_grouping %} selected{% endif %}>Overall</option>{% endif %}
                             <option value="day"{% if f.controls.time_grouping == "day" %} selected{% endif %}>Day</option>
                             <option value="week"{% if f.controls.time_grouping == "week" %} selected{% endif %}>Week</option>
                             <option value="month"{% if f.controls.time_grouping == "month" %} selected{% endif %}>Month</option>
                             <option value="year"{% if f.controls.time_grouping == "year" %} selected{% endif %}>Year</option>
                         </select>
                     </label>
-                    {% endif %}
                     <label>Group by
-                        <select name="comparison" data-comparison>
+                        <select name="comparison" data-comparison{% if f.type == "pie" or f.type == "confusion_matrix" %} disabled{% endif %}>
                             <option value="">None</option>
+                            {% if f.type != "pie" and f.type != "confusion_matrix" %}
                             {% for dim in f.controls.compare_by %}
                             <option value="{{ dim.id }}"{% if dim.id == f.controls.default_compare_by %} selected{% endif %}>{{ dim.label }}</option>
                             {% endfor %}
+                            {% endif %}
                         </select>
                     </label>
                     <div class="widget-group-picker" data-group-picker hidden>

@@ -307,6 +307,7 @@
         const select = frame.el.querySelector('[data-comparison]');
         const holder = frame.el.querySelector('[data-group-options]');
         if (!picker || !select || !holder) { return; }
+        if (select.disabled) { picker.hidden = true; return; }
         if (payload && payload.group_options) { frame.groupOptions = payload.group_options; }
         const field = select.value;
         picker.hidden = !field;
@@ -356,20 +357,21 @@
         const overrides = baseDefaults();
         const timeGrouping = frame.el.querySelector('[data-time-grouping]');
         if (timeGrouping) { overrides.time_grouping = timeGrouping.value; }
-        const relative = frame.el.querySelector('[data-date="relative"]');
         const start = frame.el.querySelector('[data-date="start"]');
         const end = frame.el.querySelector('[data-date="end"]');
-        if (relative && relative.value) {
-            overrides.date = { relative: relative.value };
-        } else if (start && end && start.value && end.value) {
-            overrides.date = { start: start.value, end: end.value };
+        if (start && end) {
+            overrides.date = {
+                start: (start.value.trim() || start.defaultValue).toUpperCase(),
+                end: (end.value.trim() || end.defaultValue).toUpperCase()
+            };
         }
         frame.el.querySelectorAll('[data-filter]').forEach((input) => {
             const value = input.value === null || input.value === undefined ? '' : String(input.value).trim();
             if (value !== '') { overrides.filters[input.dataset.filter] = value; }
         });
         const comparison = frame.el.querySelector('[data-comparison]');
-        if (comparison) {
+        if (comparison && comparison.disabled) { overrides.comparison = ""; }
+        if (comparison && !comparison.disabled) {
             overrides.comparison = comparison.value;
             if (comparison.value && frame.el.querySelector('[data-group-options]')) {
                 overrides.filters[comparison.value] = Array.from(frame.el.querySelectorAll('[data-group-value]'))
