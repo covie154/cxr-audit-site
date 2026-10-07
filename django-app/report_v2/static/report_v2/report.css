@@ -12,7 +12,7 @@
 .report-v2-page h1 small { color: var(--c-text-muted); font-size: .6em; }
 .report-v2-page .card { padding: 24px; }
 .report-v2-page > .card { margin-bottom: 24px; }
-.report-v2-adminbar, .report-v2-exportbar { margin-bottom: 24px; }
+.report-v2-exportbar { margin-bottom: 24px; }
 .report-v2-page h2 { margin-bottom: 12px; }
 .report-v2-page [role="status"] { color: var(--c-text-muted); }
 .report-v2-chart { width: 100%; height: 320px; }
@@ -51,6 +51,8 @@
 /* Task 18: the email modal (recipients + optional note). Transient by design -- nothing
    here persists after the dialog closes, matching the "no saved user settings" rule. */
 .report-v2-exportbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.report-v2-exportbar [data-role="edit-layout"] { background: var(--c-surface-muted); border-color: var(--c-border); color: var(--c-text); }
+.report-v2-exportbar [data-role="edit-layout"]:hover { background: var(--c-border); }
 .email-modal { position: fixed; inset: 0; background: rgba(15, 23, 32, 0.45); display: flex; align-items: center; justify-content: center; z-index: 50; }
 .email-modal[hidden] { display: none; }
 .email-modal-card { background: var(--c-surface); color: var(--c-text, #111a2b); border-radius: 6px; padding: 20px; width: min(520px, calc(100vw - 32px)); box-shadow: 0 12px 32px rgba(15, 23, 32, 0.25); }

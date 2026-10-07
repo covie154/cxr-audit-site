@@ -305,7 +305,9 @@ class PublishedReportPageTests(TestCase):
         for forbidden in ("Edit layout", "/report/layout/", "draft"):
             with self.subTest(token=forbidden):
                 self.assertNotIn(forbidden, ordinary)
-        self.assertIn("Edit layout", admin)
+        toolbar = re.search(r'<p class="report-v2-exportbar">(.*?)</p>', admin, re.S).group(1)
+        self.assertRegex(toolbar, r'(?s)data-action="email".*?</button>\s*<a class="btn btn-secondary"[^>]*data-role="edit-layout">Edit layout</a>')
+        self.assertEqual(admin.count('data-role="edit-layout"'), 1)
 
     # -- 4. the server-issued context token pins the version, and tampering is refused -----
     def test_server_issued_context_pins_version(self):

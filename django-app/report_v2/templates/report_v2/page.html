@@ -21,6 +21,9 @@
     <p class="report-v2-exportbar">
         <button type="button" class="btn btn-primary" data-action="print">Print / Save as PDF</button>
         <button type="button" class="btn btn-secondary" data-action="email">Email report</button>
+        {% if is_admin %}
+        <a class="btn btn-secondary" href="{% url 'report_editor:editor_detail' def_id=slug %}" data-role="edit-layout">Edit layout</a>
+        {% endif %}
         <span class="print-status" data-role="print-status" role="status"></span>
     </p>
     {# Task 18: the email modal. Recipients/note live only in this form for the current #}
@@ -40,12 +43,6 @@
             </form>
         </div>
     </div>
-    {% if is_admin %}
-    <p class="report-v2-adminbar">
-        <a class="btn btn-secondary" href="{% url 'report_editor:editor_detail' def_id=slug %}" data-role="edit-layout">Edit layout</a>
-        <small>Drafts are private to admins and are never shown on this page.</small>
-    </p>
-    {% endif %}
     {% for section in sections_ctx %}
     <section class="report-section" data-section-id="{{ section.id }}">
         <h2>{{ section.title }}</h2>
