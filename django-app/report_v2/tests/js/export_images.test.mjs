@@ -20,3 +20,10 @@ test('email combines every period chart and label in one widget image', () => {
     assert.deepEqual(labels, ['January', 'February']);
     assert.equal(canvas.height, 1312);
 });
+
+test('chart capture failures stop email instead of silently sending data tables', () => {
+    const frames = [{id:'trend',type:'bar',el:{querySelectorAll() {return [{}];}}}];
+    const document = {createElement() {throw new Error('canvas unavailable');}};
+    const capture = new Function('frames','document','window','CHART_TYPES',captureSource+';return captureChartImages;')(frames,document,{}, {bar:1});
+    assert.throws(capture, /Could not capture chart/);
+});

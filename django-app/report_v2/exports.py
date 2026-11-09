@@ -63,6 +63,7 @@ from .views import (
     _summary_text,
     _primary_value,
     _validate_overrides,
+    _widget_result_key,
 )
 
 __all__ = ["create_snapshot", "print_view", "email_report"]
@@ -118,19 +119,25 @@ def _entry_state(widget: dict, entry: dict) -> tuple[dict | None, dict, str | No
     return _validate_overrides(widget, entry)
 
 
-def _freeze_widgets(layout, plan, project_id):
-    # The evaluation pass: one ORM read per widget, fault-isolated per frame (a bad
-    # widget freezes its error string exactly like the page render does).
+def _freeze_widgets(layout, plan, project_id, *, request=None):
+    # Reuse the caller's loaded results; expired/missing entries evaluate afresh.
+    # Each widget stays fault-isolated, including script-free API exports.
     frozen_widgets: list[dict[str, Any]] = []
     for widget, entry, date_override, filters, comparison, grouping, page in plan:
         try:
-            rows = [] if widget.get("type") in {"text", "divider", "heading"} else data.fetch_project_rows(project_id, layout_widget=widget)
-            payload = _evaluate(
-                layout, widget,
-                date_override=date_override, filters=filters,
-                comparison=comparison, grouping=grouping, page=page, rows=rows,
-                time_grouping=entry.get("time_grouping"),
-            )
+            try:
+                payload = (snapshots.load_widget_result(_widget_result_key(request, widget, entry))
+                           if request is not None else None)
+            except (OSError, ValueError):
+                payload = None
+            if payload is None:
+                rows = [] if widget.get("type") in {"text", "divider", "heading"} else data.fetch_project_rows(project_id, layout_widget=widget)
+                payload = _evaluate(
+                    layout, widget,
+                    date_override=date_override, filters=filters,
+                    comparison=comparison, grouping=grouping, page=page, rows=rows,
+                    time_grouping=entry.get("time_grouping"),
+                )
         except (EvaluationError, data.AdapterError) as exc:
             payload = {"widget_id": widget.get("id"), "error": str(exc)}
         except Exception as exc:  # fault isolation: one frame must not kill the export
@@ -257,7 +264,7 @@ def create_snapshot(request, slug: str):
         return JsonResponse({"error": "snapshot must cover every published widget exactly once",
                              "status": "rejected"}, status=400)
 
-    frozen_widgets = _freeze_widgets(layout, plan, _PROJECT_ID)
+    frozen_widgets = _freeze_widgets(layout, plan, _PROJECT_ID, request=request)
 
     document = {
         "kind": _SNAPSHOT_KIND,
@@ -605,9 +612,64 @@ def _email_view_model(document: Mapping[str, Any], cid_map: Mapping[str, str]) -
         widget["rows_note"] = ""
         if widget["error"]:
             continue
+        payload = widget["payload"]
+        widget["value_groups"] = []
+        if widget["type"] == "value":
+            for period in payload.get("time_groups") or [{"label": "", "payload": payload}]:
+                result = period["payload"]
+                for group in result.get("grouped_values") or [{"name": "", "aggregates": result.get("aggregates")}]:
+                    widget["value_groups"].append({
+                        "label": _display_dates(" · ".join(filter(None, [period["label"], str(group["name"])]))),
+                        "value": _primary_value({"query": {"measurement": widget["measurement"]}},
+                                                {**result, "aggregates": group["aggregates"]}),
+                    })
+                    key = "n" if widget["measurement"] == "record_count" else widget["measurement"]
+                    ci = ((group.get("ci") or result.get("ci") or {}).get(key) or {})
+                    if ci.get("available") and ci.get("lower") is not None and ci.get("upper") is not None:
+                        bounds = [_primary_value({"query": {"measurement": key}},
+                                  {"aggregates": {key: ci[bound]}, "units": result.get("units")})
+                                  for bound in ("lower", "upper")]
+                        widget["value_groups"][-1]["ci"] = f"({round(ci.get('confidence_level', .95) * 100)}% CI {bounds[0]} to {bounds[1]})"
+        widget["matrix_groups"] = []
+        if widget["type"] == "confusion_matrix":
+            for period in payload.get("time_groups") or [{"label": "", "payload": payload}]:
+                result = period["payload"]
+                matrix = {"label": _display_dates(period["label"])}
+                classes = result.get("classes") or []
+                cells = result.get("cells") or []
+                maximum = max([value for row in cells for value in row] or [0])
+                labels = ["Negative", "Positive"] if list(map(str, classes)) == ["0", "1"] else list(map(str, classes))
+                matrix["matrix_labels"] = labels
+                matrix["matrix_rows"] = []
+                for label, row in zip(labels, cells):
+                    values = []
+                    for value in row:
+                        intensity = value / maximum if maximum else 0
+                        rgb = [round(start + (end - start) * intensity) for start, end in zip([231,245,236], [0,100,65])]
+                        values.append({"value": value, "background": ",".join(map(str, rgb)),
+                                       "color": "#fff" if intensity > .55 else "#123c2d"})
+                    matrix["matrix_rows"].append({"label": label, "cells": values})
+                accuracy = result.get("accuracy") or {}
+                matrix["matrix_accuracy"] = (f"{accuracy['value'] * 100:.1f}%" if accuracy.get("value") is not None else "unavailable")
+                widget["matrix_groups"].append(matrix)
         tables = widget["tables"]
         if widget["image_cid"]:
-            tables = [t for t in tables if t.get("kind") != "chart"]
+            tables = []
+        if widget["type"] == "table" and payload.get("pagination") is None and widget["measurement"] in {
+            "classification_summary", "reference_agreement", "paired_reference_comparison", "duration_summary",
+            "record_count", "label_count",
+        }:
+            tables = []
+            for period in payload.get("time_groups") or [{"label": "", "payload": payload}]:
+                result = period["payload"]
+                rows = result.get("rows") or []
+                columns = list(dict.fromkeys(key for row in rows for key in row))
+                cells = [[_primary_value({"query": {"measurement": key}},
+                          {"aggregates": {key: row.get(key)}, "units": result.get("units")})
+                          if isinstance(row.get(key), (int, float)) else _fmt(row.get(key))
+                          for key in columns] for row in rows]
+                tables.append(_table(_display_dates(period["label"]),
+                                     [key.replace("_", " ") for key in columns], cells, kind="summary"))
         if widget["type"] == "table":
             cases = [t for t in tables if t.get("kind") == "cases"]
             if widget.get("export") != "full":
@@ -637,6 +699,8 @@ def _email_view_model(document: Mapping[str, Any], cid_map: Mapping[str, str]) -
             used = 0
         vm["rows"][-1].append(widget)
         used += width
+    for row in vm["rows"]:
+        row[-1]["email_remaining"] = max(0, 100 - sum(widget["email_width"] for widget in row))
     return vm
 
 

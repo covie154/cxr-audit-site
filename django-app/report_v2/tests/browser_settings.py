@@ -33,3 +33,8 @@ CSRF_COOKIE_SECURE = False
 SESSION_COOKIE_DOMAIN = None
 CSRF_COOKIE_DOMAIN = None
 STORAGES = {"staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"}}
+
+
+# Browser exports use isolated transient storage and never contact SMTP.
+REPORT_V2_SNAPSHOT_ROOT = _os.path.join(_os.path.dirname(_os.environ.get("DATABASE_NAME", REPORT_V2_ROOT)), "snapshots")
+EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"

@@ -61,6 +61,8 @@ __all__ = [
     "default_snapshot_root",
     "create_snapshot",
     "load_snapshot",
+    "cache_widget_result",
+    "load_widget_result",
     "transient_get",
     "transient_set",
 ]
@@ -318,3 +320,15 @@ def transient_get(key: str) -> str | None:
         return None
     value = _store().get(key)
     return value if isinstance(value, str) else None
+
+
+def cache_widget_result(key: str, payload: dict) -> None:
+    """Retain server results for export, within the existing private store bounds."""
+    blob = json.dumps(payload, default=_json_coerce)
+    if len(blob.encode("utf-8")) <= MAX_SNAPSHOT_BYTES:
+        _store().set(f"widget:{key}", blob, timeout=DEFAULT_SNAPSHOT_TTL)
+
+
+def load_widget_result(key: str) -> dict | None:
+    raw = _store().get(f"widget:{key}")
+    return json.loads(raw) if raw is not None else None

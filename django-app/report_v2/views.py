@@ -73,6 +73,13 @@ _TABLE_PAGES = LocMemCache("report-v2-table-pages", {"TIMEOUT": 60, "OPTIONS": {
 _TABLE_CACHE_MAX_BYTES = 2 * 1024 * 1024
 
 
+def _widget_result_key(request, widget: dict, entry: dict) -> str:
+    scope = {key: entry[key] for key in ("context", "date", "filters", "comparison", "page", "time_grouping")
+             if key in entry}
+    scope.update(widget_definition=widget, user=request.user.pk, session=request.session.session_key)
+    return hashlib.sha256(json.dumps(scope, sort_keys=True).encode()).hexdigest()
+
+
 def _table_page(payload: dict, page: int) -> dict:
     """Slice evaluated detail rows without changing full-population statistics."""
     payload = dict(payload)
@@ -755,6 +762,12 @@ def widget_data(request, slug: str, widget_id: str):
             payload = _table_page(payload, page)
     except (EvaluationError, data.AdapterError, DateRangeError, OverrideRejectedError) as exc:
         return JsonResponse({"status": "error", "error": str(exc), "widget_id": widget_id}, status=200)
+
+    from . import snapshots
+    try:
+        snapshots.cache_widget_result(_widget_result_key(request, widget, body), payload)
+    except (OSError, snapshots.SnapshotPayloadError):
+        pass  # A cache write must not prevent a report card from loading.
 
     # (8) echo the client's sequencing token (int-coerced when it is one) and return the payload.
     request_seq = body.get("request_seq")

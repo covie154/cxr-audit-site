@@ -143,13 +143,21 @@
 .print-main { display:grid; grid-template-columns:repeat(12,minmax(0,1fr)); gap:16px; align-items:start; }
 .print-widget { min-width:0; margin:0; border-radius:12px; padding:20px; }
 .print-widget[data-type="heading"], .print-widget[data-type="divider"], .print-widget[data-type="text"] { grid-column:span 12 !important; border:0; padding:8px 0; }
-.export-mount { min-width:0; display:flex; flex-direction:column; }
-.print-widget[data-type="value"] .export-mount { height:100px; }
-.print-widget .widget-chart { height:320px; min-height:320px; }
+[data-export-mount] { min-width:0; display:flex; flex-direction:column; }
+.print-widget[data-type="value"] [data-export-mount] { height:100px; }
+.print-widget .widget-chart { height:100%; min-height:0; }
+.print-widget[data-type="line"] [data-export-mount],
+.print-widget[data-type="bar"] [data-export-mount],
+.print-widget[data-type="pie"] [data-export-mount],
+.print-widget[data-type="boxplot"] [data-export-mount],
+.print-widget[data-type="confusion_matrix"] [data-export-mount] { min-height:240px; height:calc(var(--widget-rows, 5) * 80px - 80px); }
+.print-widget .widget-period { min-height:240px; }
+.print-widget[data-type="confusion_matrix"] [data-export-mount] { container-type:size; }
+.print-widget .widget-confusion th, .print-widget .widget-confusion td { padding:4px 2px; }
 .print-widget .widget-primary-value { color:#1f2933; }
 .print-widget .widget-table { width:100%; border-collapse:collapse; }
 .print-widget .widget-table th, .print-widget .widget-table td { padding:6px; border-bottom:1px solid #d5dde5; overflow-wrap:anywhere; }
-.print-widget .widget-a11y { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); }
+.print-widget:not([data-type="confusion_matrix"]) .widget-a11y { display:block; position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); }
 [hidden] { display:none !important; }
 @media print {
     @page { size:A4 landscape; margin:12mm; }
@@ -159,7 +167,7 @@
     tr { break-inside:avoid; }
 }
 
-.print-widget[data-type="value"] .export-mount:has(.widget-period) { height:auto; }
+.print-widget[data-type="value"] [data-export-mount]:has(.widget-period) { height:auto; }
 
 .automated-pdf { width:auto; }
 .automated-pdf .print-main { display:block; }

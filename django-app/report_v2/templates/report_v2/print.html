@@ -26,7 +26,7 @@
         <p class="print-meta">Frozen export snapshot: the values below are the ones the open report
             page showed when the export was requested. They do not change with later data or
             publication.</p>
-        <button type="button" class="print-button no-print" onclick="window.print()">Print / Save as PDF</button>{% endif %}
+        <button type="button" class="print-button no-print" data-print-button disabled>Print / Save as PDF</button><p class="print-meta no-print" data-print-status role="status">Loading report charts. If this message remains, reload this page.</p>{% endif %}
     </header>
 
     <main class="print-main">

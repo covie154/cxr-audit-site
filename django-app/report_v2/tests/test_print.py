@@ -237,6 +237,33 @@ class PrintFlowTests(TestCase):
         self.assertEqual(printed.status_code, 200)
         self.assertIn(views._display_dates(widget["payload"]["time_groups"][0]["label"]), printed.content.decode())
 
+    def test_loaded_widget_results_are_reused_without_reading_studies(self):
+        self._patch_seam()
+        self.flow.publish("t13report")
+        client = self._login(self.normal)
+        tokens = self.flow.tokens_from_page(client, "t13report")
+        for widget_id, token in tokens.items():
+            response = client.post(f"/report/t13report/widget/{widget_id}/data/",
+                                   json.dumps({"context": token}), content_type="application/json")
+            self.assertEqual(response.status_code, 200)
+        self.seam.reset()
+        snapshots._reset_store_for_tests()  # Reopen storage as another worker would.
+        response = self.flow.post_snapshot(client, "t13report", self.flow.snapshot_body(tokens))
+        self.assertEqual(response.status_code, 201, response.content[:300])
+        self.assertEqual(self.seam.calls, [])
+        document = snapshots.load_snapshot(response.json()["token"], user_id=self.normal.pk,
+                                           project_id="prime", slug="t13report")
+        self.assertEqual(document["widgets"][0]["payload"]["aggregates"]["n"], 3)
+        # A changed filter must evaluate afresh, and another session cannot reuse results.
+        response = self.flow.post_snapshot(client, "t13report", self.flow.snapshot_body(
+            tokens, state_by_widget={"v1": {"filters": {"site": "SYNTH-SITE-A"}}}))
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(self.seam.calls, ["v1"])
+        other_session = self._login(self.normal)
+        response = self.flow.post_snapshot(other_session, "t13report", self.flow.snapshot_body(tokens))
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(set(self.seam.calls), set(tokens))
+
     # -- 5. later data changes or publication do not alter the captured export ------------
     def test_print_is_frozen_against_data_and_publication_changes(self):
         self._patch_seam()

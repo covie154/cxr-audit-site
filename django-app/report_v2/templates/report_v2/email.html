@@ -51,10 +51,24 @@
                     {% if w.counts_line %}<p style="font-size:12px;margin:0 0 8px;">{{ w.counts_line }}</p>{% endif %}
                     {% if w.image_cid %}
                     <img src="{{ w.image_cid }}" alt="Chart: {{ w.title }}"
-                         style="width:100%;max-width:600px;border:1px solid #d5dde5;display:block;margin:0 0 8px;">
+                         style="width:100%;border:1px solid #d5dde5;display:block;margin:0 0 8px;">
                     {% endif %}
                     {% if w.rows_note %}<p style="font-size:12px;color:#52606d;margin:0 0 8px;">{{ w.rows_note }}</p>{% endif %}
-                    {% if w.type == "value" and not w.payload.grouped_values and not w.payload.time_groups %}<p style="font-size:36px;font-weight:700;margin:12px 0;">{{ w.primary_value }}</p>{% else %}
+                    {% if w.image_cid %}
+                    {% elif w.type == "value" %}
+                        {% for group in w.value_groups %}{% if group.label %}<p style="font-weight:600;">{{ group.label }}</p>{% endif %}<p style="font-size:36px;font-weight:700;margin:12px 0;text-align:center;">{{ group.value }}</p>{% if group.ci %}<p style="font-size:12px;">{{ group.ci }}</p>{% endif %}{% endfor %}
+                    {% elif w.type == "confusion_matrix" %}
+                        {% for matrix in w.matrix_groups %}
+                        {% if matrix.label %}<p style="font-weight:600;">{{ matrix.label }}</p>{% endif %}
+                        <p style="text-align:center;">Prediction</p>
+                        <table style="width:100%;max-width:560px;margin:0 auto;border-collapse:collapse;text-align:center;">
+                            <caption>Ground truth rows, prediction columns</caption>
+                            <thead><tr><th>Ground truth</th>{% for label in matrix.matrix_labels %}<th>{{ label }}</th>{% endfor %}</tr></thead>
+                            <tbody>{% for row in matrix.matrix_rows %}<tr><th>{{ row.label }}</th>{% for cell in row.cells %}<td style="background-color: rgb({{ cell.background }});color:{{ cell.color }};padding:8px;height:120px;font-size:24px;font-weight:600;border:1px solid white;">{{ cell.value }}</td>{% endfor %}</tr>{% endfor %}</tbody>
+                        </table>
+                        <p style="text-align:center;">Accuracy: {{ matrix.matrix_accuracy }}</p>
+                        {% endfor %}
+                    {% else %}
                     {% for t in w.tables %}
                     <table style="width:100%;border-collapse:collapse;font-size:12px;margin:0 0 8px;" cellpadding="0" cellspacing="0">
                         {% if t.caption %}<caption style="text-align:left;color:#52606d;padding:0 0 4px;">{{ t.caption }}</caption>{% endif %}
@@ -67,13 +81,13 @@
                     </table>
                     {% endfor %}
                     {% endif %}
-                    {% if not w.tables and not w.image_cid %}
+                    {% if not w.tables and not w.image_cid and w.type != "value" and w.type != "confusion_matrix" %}
                     <p style="font-size:12px;color:#52606d;margin:0;">{{ w.summary }}</p>
                     {% endif %}
                 {% endif %}
                 {% endif %}
             </div>
-            </td>{% endfor %}</tr></table>
+            </td>{% endfor %}{% with last=row|last %}{% if last.email_remaining %}<td width="{{ last.email_remaining }}%"></td>{% endif %}{% endwith %}</tr></table>
             {% endfor %}
             <p style="color:#52606d;font-size:11px;border-top:1px solid #e5eaf0;padding-top:8px;margin:0;">
                 Sent via PRIMER-LLM &middot; export snapshot of report {{ email.slug }} version {{ email.version }}.

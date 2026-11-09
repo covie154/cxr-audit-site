@@ -467,6 +467,8 @@ import './widgets/boot.mjs';
         if (href) {
             const link = el('a');
             link.href = href;
+            link.target = '_blank';
+            link.rel = 'noopener';
             link.textContent = text;
             printStatus.append(link);
         } else {
@@ -483,7 +485,7 @@ import './widgets/boot.mjs';
     };
 
     // Shared freeze: resolves {print_url, token} once every widget update has settled.
-    const postSnapshot = (onWait) => new Promise((resolve, reject) => {
+    const postSnapshot = (onWait, onPrepare) => new Promise((resolve, reject) => {
         const started = Date.now();
         const attempt = (n) => {
             if (!updatesSettled()) {
@@ -496,6 +498,7 @@ import './widgets/boot.mjs';
                 window.setTimeout(() => { attempt(n); }, PRINT_POLL_MS);
                 return;
             }
+            if (onPrepare) { onPrepare(); }
             window.fetch(SNAPSHOT_URL, {
                 method: 'POST',
                 credentials: 'same-origin',
@@ -509,7 +512,7 @@ import './widgets/boot.mjs';
                         resolve(result.payload);
                         return;
                     }
-                    if (result.status === 409 && n < 4) {
+                    if (result.status === 409 && result.payload.status === 'pending' && n < 4) {
                         // The server still sees an unsettled race; wait and retry.
                         if (onWait) { onWait(); }
                         window.setTimeout(() => { attempt(n + 1); }, PRINT_POLL_MS * 4);
@@ -537,7 +540,8 @@ import './widgets/boot.mjs';
                     opened.document.body.textContent = 'Preparing report…';
                 }
             } catch (error) { /* The completed export still offers a direct link. */ }
-            postSnapshot(() => { setPrintStatus('Waiting for pending widget updates…'); })
+            postSnapshot(() => { setPrintStatus('Waiting for pending widget updates…'); },
+                () => { setPrintStatus('Preparing report…'); })
                 .then((payload) => {
                     setPrintStatus('');
                     openPrintView(payload.print_url, opened);
@@ -574,7 +578,10 @@ import './widgets/boot.mjs';
             if (!CHART_TYPES[frame.type]) { return; }
             if (frame.regDisposed) { return; }
             const plots = Array.from(frame.el.querySelectorAll('[_echarts_instance_]'));
-            if (!plots.length) { return; }
+            if (!plots.length) {
+                if (frame.el.querySelector('.widget-error')) { throw new Error('A chart could not be loaded. Retry the card before emailing.'); }
+                return;
+            }
             try {
                 // A time-grouped widget has one chart per period, not a root chart.
                 const canvas = document.createElement('canvas');
@@ -600,7 +607,7 @@ import './widgets/boot.mjs';
                 }
                 images[frame.id] = canvas.toDataURL('image/png');
             } catch (captureError) {
-                // Not capture-ready; the email falls back to the frozen text tables.
+                throw new Error('Could not capture chart "' + frame.id + '". Reload the report and try again.');
             }
         });
         return images;
@@ -630,11 +637,14 @@ import './widgets/boot.mjs';
             }
             const note = ((emailNote && emailNote.value) || '').trim();
             if (emailSend) { emailSend.disabled = true; }   // duplicate-click prevention
-            setEmailStatus('Waiting for pending widget updates…');
-            postSnapshot(() => { setEmailStatus('Waiting for pending widget updates…'); })
+            let images;
+            setEmailStatus('Preparing report…');
+            postSnapshot(() => { setEmailStatus('Waiting for pending widget updates…'); }, () => {
+                setEmailStatus('Preparing report…');
+                images = captureChartImages();
+            })
                 .then((payload) => {
-                    setEmailStatus('Capturing the report…');
-                    const images = captureChartImages();
+                    setEmailStatus('Sending report…');
                     return window.fetch(EMAIL_URL, {
                         method: 'POST',
                         credentials: 'same-origin',
