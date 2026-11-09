@@ -62,14 +62,43 @@ class BrowserExportTests(unittest.TestCase):
                         self.assertEqual(printed.locator('[data-export-fallback]:visible').count(), 0)
                         printed.wait_for_function("Array.from(document.querySelectorAll('canvas')).every(x => x.clientHeight > 120 && x.clientWidth < innerWidth)")
                         # Capture the actual outbound body, then let the isolated locmem backend send it.
+                        pending_email = []
+                        page.route("**/email/", lambda route: pending_email.append(route))
                         with page.expect_request("**/email/") as sending:
                             page.locator('[data-action="email"]').click()
                             page.locator('[data-role="email-recipients"]').fill("synthetic@example.invalid")
                             page.locator('[data-action="email-send"]').click()
+                        status = page.locator('[data-role="email-status"]')
+                        status.get_by_text("Sending report...", exact=True).wait_for()
+                        send = page.locator('[data-action="email-send"]').bounding_box()
+                        cancel = page.locator('[data-action="email-cancel"]').bounding_box()
+                        status_box = status.bounding_box()
+                        self.assertAlmostEqual(send["y"], cancel["y"], delta=1)
+                        self.assertGreater(status_box["x"], cancel["x"] + cancel["width"])
+                        self.assertTrue(page.locator('[data-action="email-send"]').is_disabled())
+                        pending_email.pop().continue_()
+                        page.unroute("**/email/")
                         body = sending.value.post_data_json
                         self.assertEqual(len(body["images"]), expected_charts)
                         self.assertTrue(all(value.startswith("data:image/png;base64,") for value in body["images"].values()))
-                        page.get_by_text("Sent to synthetic@example.invalid.", exact=True).wait_for()
+                        status.get_by_text("Report Sent", exact=True).wait_for()
+                        self.assertTrue(page.locator('[data-role="email-modal"]').is_visible())
+                        # Error status stays alongside the buttons on a narrow viewport, too.
+                        page.set_viewport_size({"width": 520, "height": 800})
+                        page.route("**/email/", lambda route: route.fulfill(status=500, json={"error": "Synthetic delivery failure"}))
+                        page.locator('[data-action="email-send"]').click()
+                        status.get_by_text("Error: Synthetic delivery failure", exact=True).wait_for()
+                        send = page.locator('[data-action="email-send"]').bounding_box()
+                        cancel = page.locator('[data-action="email-cancel"]').bounding_box()
+                        self.assertAlmostEqual(send["y"], cancel["y"], delta=1)
+                        self.assertGreater(status.bounding_box()["x"], cancel["x"] + cancel["width"])
+                        self.assertTrue(page.locator('[data-action="email-send"]').is_enabled())
+                        modal_evidence = Path(tempfile.gettempdir()) / "primer-export-evidence"
+                        modal_evidence.mkdir(exist_ok=True)
+                        page.locator('[data-role="email-modal"]').screenshot(path=str(modal_evidence / "email-modal-status.png"))
+                        page.locator('[data-action="email-cancel"]').click()
+                        self.assertFalse(page.locator('[data-role="email-modal"]').is_visible())
+                        page.set_viewport_size({"width": 1440, "height": 1000})
                         self.assertEqual(errors, [])
                         # Keep small synthetic visual evidence outside the repository.
                         evidence = Path(tempfile.gettempdir()) / "primer-export-evidence"

@@ -269,15 +269,15 @@ class EmailFlowTests(TestCase):
         self.assertIn("t18report@r1", message.subject)
 
         text_plain, text_html = self._parts(message.message())
-        # Every intended widget, its window/state/counts and provenance metadata.
+        # Every intended widget, with the same compact window/state line as print.
         for title in ("Value One", "Share Pie", "Discrepancy Table", "Full Table"):
             self.assertIn(title, text_html)
             self.assertIn(title, text_plain)
         self.assertIn("02/08/2026 .. 01/09/2026", text_html)
         self.assertIn("site=SYNTH-SITE-A", text_html)
-        self.assertIn("matching 3 of 3", text_html)
-        self.assertIn("record_count", text_html)
-        self.assertIn("threshold policy", text_html)
+        for detail in ("matching 3 of 3", "Measurement record_count", "threshold policy", "anchor", "coverage"):
+            self.assertNotIn(detail, text_html)
+            self.assertNotIn(detail, text_plain)
         # The note and the CID reference.
         self.assertIn("Please review the weekly numbers.", text_html)
         self.assertIn('src="cid:c1@primer-llm"', text_html)
@@ -289,7 +289,7 @@ class EmailFlowTests(TestCase):
         self.assertEqual(image_parts[0].get_payload(decode=True), _PNG_BYTES)
         # Readable prose fallback, not a monospaced dump and not a bare pointer.
         self.assertIn("Sent via PRIMER-LLM by t18-normal.", text_plain)
-        self.assertIn("Window 02/08/2026 .. 01/09/2026", text_plain)
+        self.assertIn("02/08/2026 .. 01/09/2026 · site=SYNTH-SITE-A", text_plain)
         self.assertNotIn("See HTML version", text_plain)
 
     def test_email_values_come_from_the_snapshot_not_later_data(self):
@@ -303,7 +303,7 @@ class EmailFlowTests(TestCase):
             response = self._email(client, token)
         self.assertEqual(response.status_code, 200)
         _, text_html = self._parts(mail.outbox[0].message())
-        self.assertIn("matching 3 of 3", text_html)
+        self.assertIn('text-align:center;">3</p>', text_html)
 
     # -- 3. disclosure rules --------------------------------------------------------------
     def test_case_tables_are_summary_only_and_full_tables_are_capped(self):

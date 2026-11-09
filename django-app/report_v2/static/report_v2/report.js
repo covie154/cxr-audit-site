@@ -632,7 +632,7 @@ import './widgets/boot.mjs';
             const recipients = raw.split(/[,;\n]+/).map((item) => { return item.trim(); })
                 .filter((item) => { return item !== ''; });
             if (!recipients.length) {
-                setEmailStatus('Enter at least one email address.');
+                setEmailStatus('Error: Enter at least one email address.');
                 return;
             }
             const note = ((emailNote && emailNote.value) || '').trim();
@@ -644,7 +644,7 @@ import './widgets/boot.mjs';
                 images = captureChartImages();
             })
                 .then((payload) => {
-                    setEmailStatus('Sending report…');
+                    setEmailStatus('Sending report...');
                     return window.fetch(EMAIL_URL, {
                         method: 'POST',
                         credentials: 'same-origin',
@@ -661,22 +661,18 @@ import './widgets/boot.mjs';
                 })
                 .then((result) => {
                     if (result.ok && result.body.status === 'sent') {
-                        setEmailStatus('Sent to ' + (result.body.sent_to || []).join(', ') + '.');
-                        window.setTimeout(() => {
-                            emailModal.close();
-                            setEmailStatus('');
-                        }, 1200);
+                        setEmailStatus('Report Sent');
                         return;
                     }
                     if (result.status === 409 && result.body.status === 'duplicate') {
-                        setEmailStatus('This report was already sent to these recipients from this snapshot.');
+                        setEmailStatus('Error: This report was already sent to these recipients from this snapshot.');
                         return;
                     }
-                    setEmailStatus((result.body && result.body.error) ||
-                        ('The email failed (' + result.status + ').'));
+                    setEmailStatus('Error: ' + ((result.body && result.body.error) ||
+                        ('The email failed (' + result.status + ').')));
                 })
                 .catch((error) => {
-                    setEmailStatus('The email failed: ' +
+                    setEmailStatus('Error: ' +
                         (error && error.message ? error.message : String(error)));
                 })
                 .finally(() => {

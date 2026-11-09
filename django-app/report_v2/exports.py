@@ -721,12 +721,7 @@ def _email_text(vm: Mapping[str, Any], note: str, sender: str) -> str:
         if widget["error"]:
             lines.append(f"  Could not be evaluated when captured: {widget['error']}")
         else:
-            lines.append(f"  Window {widget['window']}, anchor {widget['anchor']}.")
-            lines.append(f"  State: {widget['applied_line']}.")
-            if widget["counts_line"]:
-                lines.append(f"  Counts: {widget['counts_line']}.")
-            if widget["measurement"]:
-                lines.append(f"  Measurement {widget['measurement']}, policy {widget['policy']}.")
+            lines.append(f"  {widget['window']} · {widget['applied_line']}")
             if widget["image_cid"]:
                 lines.append("  The chart is attached as an image.")
             if widget["rows_note"]:
