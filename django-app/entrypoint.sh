@@ -5,7 +5,7 @@ echo "🫁 PRIMER-LLM Django — Starting up..."
 
 # Fix volume permissions (volumes may be created as root)
 echo "🔒 Fixing volume permissions..."
-chown -R appuser:appuser /app/db /app/media /app/staticfiles /app/audit_artifacts
+chown -R appuser:appuser /app/db /app/media /app/staticfiles /app/audit_artifacts /app/private_data
 
 # Run migrations (as appuser). The audit app is routed to a separate "audit"
 # database (AuditRouter), so it must be migrated explicitly with --database=audit;

@@ -137,3 +137,30 @@
         border-color: #9aa5b1;
     }
 }
+
+/* Match the report grid while keeping paper cards and table rows readable. */
+.print-body { max-width: 1400px; --c-text:#1f2933; --c-text-muted:#52606d; --c-border:#d5dde5; --c-surface:#fff; }
+.print-main { display:grid; grid-template-columns:repeat(12,minmax(0,1fr)); gap:16px; align-items:start; }
+.print-widget { min-width:0; margin:0; border-radius:12px; padding:20px; }
+.print-widget[data-type="heading"], .print-widget[data-type="divider"], .print-widget[data-type="text"] { grid-column:span 12 !important; border:0; padding:8px 0; }
+.export-mount { min-width:0; display:flex; flex-direction:column; }
+.print-widget[data-type="value"] .export-mount { height:100px; }
+.print-widget .widget-chart { height:320px; min-height:320px; }
+.print-widget .widget-primary-value { color:#1f2933; }
+.print-widget .widget-table { width:100%; border-collapse:collapse; }
+.print-widget .widget-table th, .print-widget .widget-table td { padding:6px; border-bottom:1px solid #d5dde5; overflow-wrap:anywhere; }
+.print-widget .widget-a11y { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); }
+[hidden] { display:none !important; }
+@media print {
+    @page { size:A4 landscape; margin:12mm; }
+    .print-body { width:270mm; }
+    .print-widget { print-color-adjust:exact; -webkit-print-color-adjust:exact; }
+    .print-widget[data-type="table"] { break-inside:auto; }
+    tr { break-inside:avoid; }
+}
+
+.print-widget[data-type="value"] .export-mount:has(.widget-period) { height:auto; }
+
+.automated-pdf { width:auto; }
+.automated-pdf .print-main { display:block; }
+.automated-pdf .print-widget { margin:14px 0; }

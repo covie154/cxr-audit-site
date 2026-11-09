@@ -13,9 +13,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ print.title }} — {{ print.version }} — Print — PRIMER-LLM</title>
     {% if automated_pdf %}<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none';">
-    <style>{{ pdf_css|safe }}</style>{% else %}<link rel="stylesheet" href="{% static 'report_v2/print.css' %}">{% endif %}
+    <style>{{ pdf_css|safe }}</style>{% else %}<link rel="stylesheet" href="{% static 'report_v2/report.css' %}"><link rel="stylesheet" href="{% static 'report_v2/print.css' %}">{% endif %}
 </head>
-<body class="print-body">
+<body class="print-body{% if automated_pdf %} automated-pdf{% endif %}">
     <header class="print-header">
         <h1>{{ print.title }} <small>{{ print.version }}</small></h1>
         <p class="print-meta">
@@ -31,11 +31,14 @@
 
     <main class="print-main">
         {% for w in print.widgets %}
-        <section class="print-widget" data-print-widget="{{ w.id }}">
+        <section class="print-widget" data-print-widget="{{ w.id }}" data-type="{{ w.type }}" data-measurement="{{ w.measurement }}" style="grid-column:span {{ w.width }};--widget-rows:{{ w.height }};">
             {% if w.type == "heading" %}<h2>{{ w.title }}</h2>{% elif w.type == "text" %}<h2>{{ w.title }}</h2><p style="white-space:pre-wrap;">{{ w.text }}</p>
             {% elif w.type == "divider" %}<hr>
             {% else %}
-            <h2>{{ w.title }} <small>{{ w.type }}</small></h2>
+            <h2>{{ w.title }}</h2>
+            <p class="print-meta">{{ w.window }} · {{ w.applied_line }}</p>
+            {% if not automated_pdf %}<div data-export-mount class="export-mount"></div>{{ w.payload|json_script:w.id }}{% endif %}
+            <div data-export-fallback>
             <dl class="print-facts">
                 <div><dt>Window</dt><dd>{{ w.window }}</dd></div>
                 <div><dt>Anchor (D)</dt><dd>{{ w.anchor }}</dd></div>
@@ -61,6 +64,7 @@
                 {% endfor %}
                 {% if not w.tables %}<p class="print-empty">{{ w.summary }}</p>{% endif %}
             {% endif %}
+            </div>
             {% endif %}
         </section>
         {% endfor %}
@@ -69,5 +73,6 @@
     <footer class="print-footer">
         <p>PRIMER-LLM report export · snapshot of report {{ print.slug }} version {{ print.version }}.</p>
     </footer>
+{% if not automated_pdf %}<script src="{% static 'report_v2/vendor/echarts.min.js' %}"></script><script type="module" src="{% static 'report_v2/print.mjs' %}"></script>{% endif %}
 </body>
 </html>

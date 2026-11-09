@@ -23,8 +23,8 @@ Two endpoints, both login-gated, both built on the Task-13 forged-input discipli
 
 The print page is a standalone light-theme document (no app chrome, no widget
 controls, no page-state contract): a snapshot is export state, never restored user
-preferences. Charts render as accessible data tables straight from the frozen
-payloads, so offscreen widgets and long tables print deterministically.
+preferences. Browser exports reuse the web renderers with frozen payloads;
+script-free exports retain accessible data tables.
 """
 from __future__ import annotations
 
@@ -61,6 +61,7 @@ from .views import (
     _layout_widgets,
     _parse_widget_context,
     _summary_text,
+    _primary_value,
     _validate_overrides,
 )
 
@@ -140,6 +141,8 @@ def _freeze_widgets(layout, plan, project_id):
                 "title": widget.get("title"),
                 "type": widget.get("type"),
                 "section_id": None,
+                "layout": widget.get("layout") or {},
+                "measurement": (widget.get("query") or {}).get("measurement"),
                 "export": widget.get("export"),
                 "applied": {
                     "date": entry.get("date"),
@@ -493,6 +496,10 @@ def _print_view_model(document: Mapping[str, Any]) -> dict[str, Any]:
                 "title": widget.get("title"),
                 "type": widget.get("type"),
                 "text": payload.get("text", ""),
+                "payload": payload,
+                "width": max(1, min(12, int((widget.get("layout") or {}).get("width", 12)))),
+                "height": max(1, int((widget.get("layout") or {}).get("height", 1))),
+                "primary_value": _primary_value({"query": {"measurement": widget.get("measurement") or versions.get("measurement_id")}}, payload),
                 "export": widget.get("export"),
                 "error": str(error) if error else "",
                 "summary": _summary_text(payload) if not error else str(error),
@@ -502,7 +509,7 @@ def _print_view_model(document: Mapping[str, Any]) -> dict[str, Any]:
                 "anchor": _display_dates(dates.get("anchor_date") or "—"),
                 "timezone": dates.get("timezone") or "",
                 "coverage": _display_dates(dates.get("coverage_note") or ""),
-                "measurement": versions.get("measurement_id") or "",
+                "measurement": widget.get("measurement") or versions.get("measurement_id") or "",
                 "policy": (versions.get("policy_ref") or "—") + ("; " + payload["caption"] if payload.get("lunit_thresholds") else ""),
                 "tables": [] if error else _widget_tables(payload),
             }
@@ -620,6 +627,16 @@ def _email_view_model(document: Mapping[str, Any], cid_map: Mapping[str, str]) -
                     f"Showing the first {_EMAIL_ROWS_CAP} of {len(full)} captured rows."
                 )
         widget["tables"] = tables
+    vm["rows"] = []
+    used = 0
+    for widget in vm["widgets"]:
+        width = widget["width"] if widget["type"] not in {"heading", "text", "divider"} else 12
+        widget["email_width"] = width * 100 / 12
+        if not vm["rows"] or used + width > 12:
+            vm["rows"].append([])
+            used = 0
+        vm["rows"][-1].append(widget)
+        used += width
     return vm
 
 

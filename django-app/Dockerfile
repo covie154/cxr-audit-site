@@ -54,7 +54,7 @@ COPY templates/ templates/
 COPY static/ static/
 
 # Create directories for data that will be volume-mounted
-RUN mkdir -p /app/db /app/media /app/staticfiles /app/audit_artifacts
+RUN mkdir -p /app/db /app/media /app/staticfiles /app/audit_artifacts /app/private_data
 
 # Create non-root user and grant ownership of writable directories.
 # A writable home is provided because `su` sets HOME=/home/appuser from
@@ -63,7 +63,7 @@ RUN addgroup --gid 1000 appuser && \
     adduser --uid 1000 --gid 1000 --disabled-password --no-create-home appuser && \
     mkdir -p /home/appuser && \
     install -d -m 0700 -o appuser -g appuser /run/primer-parser && \
-    chown -R appuser:appuser /app/db /app/media /app/staticfiles /app/audit_artifacts /home/appuser
+    chown -R appuser:appuser /app/db /app/media /app/staticfiles /app/audit_artifacts /app/private_data /home/appuser
 
 # Copy entrypoint
 COPY entrypoint.sh .

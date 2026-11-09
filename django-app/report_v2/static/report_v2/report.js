@@ -558,11 +558,33 @@ import './widgets/boot.mjs';
         const images = {};
         frames.forEach((frame) => {
             if (!CHART_TYPES[frame.type]) { return; }
-            const chart = frame.regInstance && frame.regInstance.chart;
-            if (frame.regDisposed || !chart || typeof chart.getDataURL !== 'function') { return; }
+            if (frame.regDisposed) { return; }
+            const plots = Array.from(frame.el.querySelectorAll('[_echarts_instance_]'));
+            if (!plots.length) { return; }
             try {
-                const url = chart.getDataURL({ type: 'png', pixelRatio: 2, backgroundColor: '#ffffff' });
-                if (url && url.indexOf('data:image/png;base64,') === 0) { images[frame.id] = url; }
+                // A time-grouped widget has one chart per period, not a root chart.
+                const canvas = document.createElement('canvas');
+                const ratio = 2;
+                canvas.width = Math.max(...plots.map((plot) => plot.clientWidth)) * ratio;
+                canvas.height = plots.reduce((height, plot) => height + plot.clientHeight + 28, 0) * ratio;
+                const context = canvas.getContext('2d');
+                context.fillStyle = '#ffffff';
+                context.fillRect(0, 0, canvas.width, canvas.height);
+                let top = 0;
+                for (const plot of plots) {
+                    const chart = window.echarts.getInstanceByDom(plot);
+                    const period = plot.closest('.widget-period');
+                    const label = period && period.querySelector('.widget-period-label');
+                    if (label) {
+                        context.fillStyle = '#1f2933';
+                        context.font = 'bold 24px Arial';
+                        context.fillText(label.textContent, 0, top + 24);
+                    }
+                    top += 28 * ratio;
+                    context.drawImage(chart.getRenderedCanvas({ pixelRatio: ratio, backgroundColor: '#ffffff' }), 0, top);
+                    top += plot.clientHeight * ratio;
+                }
+                images[frame.id] = canvas.toDataURL('image/png');
             } catch (captureError) {
                 // Not capture-ready; the email falls back to the frozen text tables.
             }
