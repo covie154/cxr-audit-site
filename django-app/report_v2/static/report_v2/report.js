@@ -474,11 +474,11 @@ import './widgets/boot.mjs';
         }
     };
 
-    const openPrintView = (printUrl) => {
-        const opened = window.open(printUrl, '_blank');
-        if (!opened) {
-            // Popup refused (common with blockers): offer a direct navigation fallback.
-            setPrintStatus('The print view was blocked from opening. Open it here.', printUrl);
+    const openPrintView = (printUrl, opened) => {
+        if (opened && !opened.closed) {
+            opened.location.replace(printUrl);
+        } else {
+            setPrintStatus('Open the print view here.', printUrl);
         }
     };
 
@@ -526,12 +526,26 @@ import './widgets/boot.mjs';
     if (printButton) {
         printButton.addEventListener('click', () => {
             printButton.disabled = true;
+            setPrintStatus('Preparing report…');
+            // Reserve the tab during user activation; async window.open can be blocked.
+            let opened = null;
+            try {
+                opened = window.open('about:blank', '_blank');
+                if (opened) {
+                    opened.opener = null;
+                    opened.document.title = 'Preparing report';
+                    opened.document.body.textContent = 'Preparing report…';
+                }
+            } catch (error) { /* The completed export still offers a direct link. */ }
             postSnapshot(() => { setPrintStatus('Waiting for pending widget updates…'); })
                 .then((payload) => {
                     setPrintStatus('');
-                    openPrintView(payload.print_url);
+                    openPrintView(payload.print_url, opened);
                 })
-                .catch((error) => { setPrintStatus(error.message || String(error)); })
+                .catch((error) => {
+                    if (opened && !opened.closed) { opened.close(); }
+                    setPrintStatus(error.message || String(error));
+                })
                 .finally(() => { printButton.disabled = false; });
         });
     }

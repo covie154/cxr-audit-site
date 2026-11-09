@@ -408,6 +408,21 @@ class PrintFlowTests(TestCase):
         self.assertIn("could not be evaluated", page)  # the faulting widget froze its error
         self.assertIn("synthetic adapter fault", page)
 
+    def test_flat_report_can_freeze_and_print_current_widget_settings(self):
+        import yaml
+        layout = yaml.safe_load(LAYOUT)
+        layout["widgets"] = [widget for section in layout.pop("sections") for widget in section["widgets"]]
+        self._patch_seam()
+        self.flow.publish("t13report", yaml.safe_dump(layout))
+        client = self._login(self.normal)
+        tokens = self.flow.tokens_from_page(client, "t13report")
+        self.assertTrue(all(tokens.values()), "Flat cards must have signed export contexts")
+        response = self._create_snapshot(client, "t13report", state_by_widget={"v1": {"date": {"relative": "D-7"}}})
+        self.assertEqual(response.status_code, 201, response.content[:400])
+        printed = client.get(response.json()["print_url"])
+        self.assertEqual(printed.status_code, 200)
+        self.assertContains(printed, "window D-7")
+
 
 def signing_dumps(payload: str) -> str:
     """A correctly signed context token for a *foreign* binding (salt reused on purpose)."""
